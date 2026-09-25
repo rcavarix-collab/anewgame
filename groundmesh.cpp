@@ -85,6 +85,16 @@ void CopyGroundCells(World& w, const ChunkCoord& cc, GroundCells& out) {
         }
 }
 
+int GroundWantLevel(int d, int current, int fine) {
+    if (fine <= 0) return 0;
+    int want = d < fine ? 2 : d < 2 * fine ? 1 : 0;
+    if (current > want) {
+        int keep = d < fine + 1 ? 2 : d < 2 * fine + 1 ? 1 : 0;
+        want = std::max(want, std::min(current, keep));
+    }
+    return want;
+}
+
 float GroundSkyAt(const GroundCells& g, int cx, int cy, int cz) {
     static const float dirs[8][2] = { { 1, 0 }, { 0.7071f, 0.7071f }, { 0, 1 }, { -0.7071f, 0.7071f },
                                       { -1, 0 }, { -0.7071f, -0.7071f }, { 0, -1 }, { 0.7071f, -0.7071f } };
@@ -110,7 +120,7 @@ static float SkyCallback(int cx, int cy, int cz, void* user) {
     return GroundSkyAt(*(const GroundCells*)user, cx, cy, cz);
 }
 
-void BuildGroundMesh(const GroundCells& in, int (*band)(Vec3, void*), void* user, GroundMesh& out) {
+void BuildGroundMesh(const GroundCells& in, int level, GroundMesh& out) {
     const int N = GROUND_GRID;
     FacetGrid g;
     g.x0 = in.cc.x * CHUNK_SIZE - FACET_PAD; g.y0 = in.cc.y * CHUNK_SIZE - FACET_PAD; g.z0 = in.cc.z * CHUNK_SIZE - FACET_PAD;
@@ -120,13 +130,14 @@ void BuildGroundMesh(const GroundCells& in, int (*band)(Vec3, void*), void* user
     FacetBuildParams p;
     p.bx0 = in.cc.x * CHUNK_SIZE; p.by0 = in.cc.y * CHUNK_SIZE; p.bz0 = in.cc.z * CHUNK_SIZE;
     p.bx1 = p.bx0 + CHUNK_SIZE; p.by1 = p.by0 + CHUNK_SIZE; p.bz1 = p.bz0 + CHUNK_SIZE;
-    // The facet builder has one user pointer: the band callback's goes in a
-    // small bundle beside the cells the sky callback reads.
-    struct Ctx { const GroundCells* cells; int (*band)(Vec3, void*); void* user; };
-    Ctx ctx{ &in, band, user };
+    // The facet builder has one user pointer: the level rides beside the
+    // cells the sky callback reads.
+    struct Ctx { const GroundCells* cells; int level; };
+    Ctx ctx{ &in, std::max(0, std::min(2, level)) };
     p.user = &ctx;
-    if (band) p.band = [](Vec3 q, void* u) { Ctx* c = (Ctx*)u; return c->band(q, c->user); };
+    p.band = [](Vec3, void* u) { return ((Ctx*)u)->level; };
     p.sky = [](int cx, int cy, int cz, void* u) { return SkyCallback(cx, cy, cz, (void*)((Ctx*)u)->cells); };
+    p.stitchBox = true;
     FacetMesh m;
     FacetBuild(g, p, m);
     out.verts.resize(m.verts.size());

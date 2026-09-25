@@ -20,6 +20,7 @@ static const float SENS_MIN = 0.25f, SENS_MAX = 3.0f;
 void ResetLookSettings() { g_sensitivityMultX = 1.0f; g_sensitivityMultY = 1.0f; g_invertX = false; g_invertY = false; }
 void ResetGraphicsSettings() {
     g_loadRadius = 3;
+    g_fineDetail = 2;
     g_shadows = true; g_postEdges = false; g_postSSAO = false; g_bloom = true;
     g_vsync = true; g_frameLimit = 60;
     g_lastPlayerChunkX = INT32_MIN; g_lastPlayerChunkZ = INT32_MIN; // force a rescan at the new radius
@@ -41,6 +42,7 @@ SliderRange GetSliderRange(int id) {
     switch (id) {
     case SLIDER_SENS_X: case SLIDER_SENS_Y: return { SENS_MIN, SENS_MAX };
     case SLIDER_RENDER_DIST: return { 1.0f, 8.0f };
+    case SLIDER_FINE_DETAIL: return { 0.0f, 3.0f };
     case SLIDER_FRAME_LIMIT: return { 30.0f, 200.0f };
     case SLIDER_MASTER_VOLUME: case SLIDER_MUSIC_VOLUME: case SLIDER_WORLD_VOLUME: return { 0.0f, 1.0f };
     case SLIDER_FOV: return { 45.0f, 100.0f };
@@ -55,6 +57,7 @@ UIRect GetSliderRowRect(int id) {
     case SLIDER_SENS_X: return SubmenuRowRect(LOOK_LAYOUT, LROW_SENS_X);
     case SLIDER_SENS_Y: return SubmenuRowRect(LOOK_LAYOUT, LROW_SENS_Y);
     case SLIDER_RENDER_DIST: return SubmenuRowRect(GRAPHICS_LAYOUT, GROW_RENDER_DIST);
+    case SLIDER_FINE_DETAIL: return SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FINE_DETAIL);
     case SLIDER_FRAME_LIMIT: return SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FRAME_LIMIT);
     case SLIDER_MASTER_VOLUME: return SubmenuRowRect(AUDIO_LAYOUT, AROW_MASTER_VOLUME);
     case SLIDER_MUSIC_VOLUME: return SubmenuRowRect(AUDIO_LAYOUT, AROW_MUSIC_VOLUME);
@@ -69,6 +72,7 @@ float GetSliderValue(int id) {
     case SLIDER_SENS_X: return g_sensitivityMultX;
     case SLIDER_SENS_Y: return g_sensitivityMultY;
     case SLIDER_RENDER_DIST: return (float)g_loadRadius;
+    case SLIDER_FINE_DETAIL: return (float)g_fineDetail;
     case SLIDER_FRAME_LIMIT: return (float)g_frameLimit;
     case SLIDER_MASTER_VOLUME: return g_masterVolume;
     case SLIDER_MUSIC_VOLUME: return g_musicVolume;
@@ -91,6 +95,7 @@ void SetSliderValue(int id, float v) {
         break;
     }
     case SLIDER_FRAME_LIMIT: g_frameLimit = (int)(v / 10.0f + 0.5f) * 10; break; // steps of 10
+    case SLIDER_FINE_DETAIL: g_fineDetail = (int)(v + 0.5f); break; // the renderer rebuilds what changes (23.6)
     case SLIDER_MASTER_VOLUME: g_masterVolume = v; ApplyAudioVolumes(); break;
     case SLIDER_MUSIC_VOLUME: g_musicVolume = v; ApplyAudioVolumes(); break;
     case SLIDER_WORLD_VOLUME: g_worldVolume = v; ApplyAudioVolumes(); break;
@@ -104,6 +109,7 @@ std::string GetSliderLabel(int id) {
     case SLIDER_SENS_X: snprintf(buf, sizeof(buf), "X SENSITIVITY: %.2fx", g_sensitivityMultX); break;
     case SLIDER_SENS_Y: snprintf(buf, sizeof(buf), "Y SENSITIVITY: %.2fx", g_sensitivityMultY); break;
     case SLIDER_RENDER_DIST: snprintf(buf, sizeof(buf), "RENDER DISTANCE: %d CHUNKS", g_loadRadius); break;
+    case SLIDER_FINE_DETAIL: if (g_fineDetail == 0) snprintf(buf, sizeof(buf), "FINE DETAIL: OFF"); else snprintf(buf, sizeof(buf), "FINE DETAIL: %d CHUNKS", g_fineDetail); break;
     case SLIDER_FRAME_LIMIT: snprintf(buf, sizeof(buf), "FRAME LIMIT (VSYNC OFF): %d FPS", g_frameLimit); break; // vsync paces frames when on (main.cpp)
     case SLIDER_MASTER_VOLUME: snprintf(buf, sizeof(buf), "MASTER VOLUME: %d%%", (int)(g_masterVolume * 100.0f + 0.5f)); break;
     case SLIDER_MUSIC_VOLUME: snprintf(buf, sizeof(buf), "MUSIC VOLUME: %d%%", (int)(g_musicVolume * 100.0f + 0.5f)); break;
@@ -181,6 +187,7 @@ void HandleLookSettingsClick(int mx, int my) {
 }
 void HandleGraphicsClick(int mx, int my) {
     if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_RENDER_DIST)))) { BeginSliderDrag(SLIDER_RENDER_DIST, mx); return; }
+    if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FINE_DETAIL)))) { BeginSliderDrag(SLIDER_FINE_DETAIL, mx); return; }
     if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FRAME_LIMIT)))) { BeginSliderDrag(SLIDER_FRAME_LIMIT, mx); return; }
     if (PointInRect(mx, my, SubmenuRowRect(GRAPHICS_LAYOUT, GROW_VSYNC))) { g_vsync = !g_vsync; SaveSettings(); return; }
     if (PointInRect(mx, my, SubmenuRowRect(GRAPHICS_LAYOUT, GROW_SHADOWS))) { g_shadows = !g_shadows; SaveSettings(); return; }
@@ -345,7 +352,7 @@ bool PressActsImmediately(int mx, int my) {
     if (g_menuScreen == MenuScreen::Library) return true;
     static const struct { int id; MenuScreen screen; } sliders[] = {
         { SLIDER_SENS_X, MenuScreen::LookSettings }, { SLIDER_SENS_Y, MenuScreen::LookSettings },
-        { SLIDER_RENDER_DIST, MenuScreen::Graphics }, { SLIDER_FRAME_LIMIT, MenuScreen::Graphics }, { SLIDER_MASTER_VOLUME, MenuScreen::Audio },
+        { SLIDER_RENDER_DIST, MenuScreen::Graphics }, { SLIDER_FINE_DETAIL, MenuScreen::Graphics }, { SLIDER_FRAME_LIMIT, MenuScreen::Graphics }, { SLIDER_MASTER_VOLUME, MenuScreen::Audio },
         { SLIDER_MUSIC_VOLUME, MenuScreen::Audio }, { SLIDER_WORLD_VOLUME, MenuScreen::Audio },
         { SLIDER_FOV, MenuScreen::Accessibility }, { SLIDER_MUSIC_INTENSITY, MenuScreen::Accessibility },
     };

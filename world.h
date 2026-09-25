@@ -75,6 +75,7 @@ struct Chunk {
     // place, means a newer build is coming). M1.5.
     uint64_t meshVersion = 0;
     bool index32 = false; // the mesh needs 32-bit indices (fine detail can pass 65,536 vertices)
+    int8_t detailLevel = -1; // the fine-detail level its mesh was built at (DESIGN.md 23.6); -1 none yet
     ID3D11Buffer* vb = nullptr;
     ID3D11Buffer* ib = nullptr;
     unsigned int indexCount = 0; // UINT, spelled out so this header doesn't need <windows.h>

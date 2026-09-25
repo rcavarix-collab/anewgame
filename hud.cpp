@@ -406,6 +406,7 @@ void RenderUIPass() {
         drawPanelTitle(panel, GRAPHICS_LAYOUT.panelW, "GRAPHICS SETTINGS", 1.0f);
 
         drawSliderRow(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_RENDER_DIST), SLIDER_RENDER_DIST);
+        drawSliderRow(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FINE_DETAIL), SLIDER_FINE_DETAIL);
         drawSliderRow(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FRAME_LIMIT), SLIDER_FRAME_LIMIT);
         drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_VSYNC), g_vsync ? "VSYNC: ON" : "VSYNC: OFF");
         // An effect whose shader didn't compile here says so (shader_errors.txt

@@ -113,6 +113,7 @@
 - **Change.** Detail bands: facets split only where it shows (T2), stitched at the band edges, with hysteresis so walking doesn't cause rebuild storms (F4). Shadows use the coarse mesh.
 - **Files.** Changed: `facetmesh.cpp`, `world.cpp` (band bookkeeping), `settings.cpp` (a fine-detail distance setting). The Graphics menu gets one row.
 - **Cost.** Triangles against the 1.5 million budget, measured.
+- **Status: built.** Also changed: `facetmesh.*` (stitchBox), `groundmesh.*` (levels), `world.h` (a chunk's built level), `game_internal.h`, `menus.cpp`, `hud.cpp` (the Graphics row). Shadows on the coarse mesh deferred (D40).
 - **Your check.** Close-up detail, no cracks, a Ctrl+F3 report.
 
 ### 1.9 Out with the old

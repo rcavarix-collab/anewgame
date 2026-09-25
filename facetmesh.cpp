@@ -248,12 +248,12 @@ struct Builder {
         if (inside) faceLevel[i] = (int8_t)level;
         return level;
     }
-    int ComputeFaceLevel(I3 cell, int axis, int sign) {
+    int ComputeFaceLevel(I3 cell, int axis, int sign, int bandOverride = -1) {
         I3 base = sign > 0 ? cell + kAxis[axis] : cell;
         int u = kU[axis], v = kV[axis];
         Vec3 centre = { base.x + 0.5f * (kAxis[u].x + kAxis[v].x), base.y + 0.5f * (kAxis[u].y + kAxis[v].y),
                         base.z + 0.5f * (kAxis[u].z + kAxis[v].z) };
-        int band = p.band ? std::max(0, std::min(2, p.band(centre, p.user))) : 0;
+        int band = bandOverride >= 0 ? bandOverride : p.band ? std::max(0, std::min(2, p.band(centre, p.user))) : 0;
         if (band == 0 || !p.selective) return band;
         // Detail is cut only where it adds shape: lumpy materials, finest
         // for the lumpiest. Creases and borders stay whole -- a cut crease
@@ -268,9 +268,21 @@ struct Builder {
 
     // How many pieces the lattice edge from `from` along `axis` is cut
     // into: as many as the finest face that uses it needs.
+    // On the build box's boundary (the edge's lattice line lies in one of
+    // its faces): with stitchBox, cut as if at the finest band.
+    bool OnBoxBoundary(I3 from, int axis) const {
+        for (int b = 0; b < 3; b++) {
+            if (b == axis) continue;
+            int c = Comp(from, b);
+            int lo = b == 0 ? p.bx0 : b == 1 ? p.by0 : p.bz0, hi = b == 0 ? p.bx1 : b == 1 ? p.by1 : p.bz1;
+            if (c == lo || c == hi) return true;
+        }
+        return false;
+    }
     int EdgeSegments(I3 from, int axis) {
         int f = kU[axis], gg = kV[axis];
         int level = 0;
+        const bool boundary = p.stitchBox && OnBoxBoundary(from, axis);
         // The four cells around the edge, indexed by their offsets across it.
         auto cellAt = [&](int df, int dg) {
             I3 c = from;
@@ -287,7 +299,8 @@ struct Builder {
                 int nAxis = which == 0 ? f : gg;
                 bool s0 = g.Solid(c0.x, c0.y, c0.z), s1 = g.Solid(c1.x, c1.y, c1.z);
                 if (s0 == s1) continue;
-                level = std::max(level, s0 ? FaceLevel(c0, nAxis, +1) : FaceLevel(c1, nAxis, -1));
+                if (boundary) level = std::max(level, s0 ? ComputeFaceLevel(c0, nAxis, +1, 2) : ComputeFaceLevel(c1, nAxis, -1, 2));
+                else level = std::max(level, s0 ? FaceLevel(c0, nAxis, +1) : FaceLevel(c1, nAxis, -1));
             }
         }
         return 1 << level;

@@ -74,6 +74,16 @@ struct GroundMesh {
     std::vector<uint32_t> idx;
     FacetMesh stats;   // counts only (its vectors are emptied)
 };
-// Job thread: the chunk's facets, packed. `band` as FacetBuildParams
-// (null: base facets only).
-void BuildGroundMesh(const GroundCells& in, int (*band)(Vec3, void*), void* user, GroundMesh& out);
+// Detail bands (DESIGN.md 23.6): the level a chunk `d` chunks from the
+// camera's (the largest of the three axis distances) should be built at,
+// given the level it has now (-1: none) and the fine-detail setting. The
+// finest cut within `fine` chunks, the middle one within twice that; a
+// chunk only drops a level once it's a whole chunk past the edge, so
+// walking along an edge doesn't rebuild chunks back and forth (F4).
+int GroundWantLevel(int d, int current, int fine);
+
+// Job thread: the chunk's facets, packed, with fine detail cut to `level`
+// (0 whole, 1 2x2, 2 4x4) where the materials call for it (DESIGN.md 23.6).
+// Its boundary edges are always cut for the finest level, so neighbours
+// built at other levels meet it exactly.
+void BuildGroundMesh(const GroundCells& in, int level, GroundMesh& out);

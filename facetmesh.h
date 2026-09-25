@@ -106,6 +106,12 @@ struct FacetBuildParams {
     // false: every face is cut to its band's level (blanket subdivision,
     // for comparison); true: only where it shows.
     bool selective = true;
+    // Chunks built separately at different levels (DESIGN.md 23.6): every
+    // edge on the box's boundary is cut as finely as its materials would be
+    // at the finest band, whatever `band` says, so neighbouring boxes agree
+    // on their shared edges without knowing each other's level -- no cracks,
+    // and a chunk changing level never needs its neighbours rebuilt.
+    bool stitchBox = false;
     FacetShape shape;
 };
 

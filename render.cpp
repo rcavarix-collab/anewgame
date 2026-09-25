@@ -596,10 +596,11 @@ static const char* g_skyShaderSrc =
 // ---- Ground meshes (DESIGN.md 23.3): built on the job threads ----
 // A finished mesh lands here, on the main thread: uploaded if the chunk is
 // still the one it was built for (same version stamp), dropped otherwise.
-static void UploadGroundMesh(World& w, const ChunkCoord& cc, uint64_t version, GroundMesh& m) {
+static void UploadGroundMesh(World& w, const ChunkCoord& cc, uint64_t version, int level, GroundMesh& m) {
     Chunk* cp = w.FindChunk(cc);
     if (!cp || cp->meshVersion != version) return; // edited again or replaced: a newer build is coming
     Chunk& c = *cp;
+    c.detailLevel = (int8_t)level;
     if (c.vb) { c.vb->Release(); c.vb = nullptr; }
     if (c.ib) { c.ib->Release(); c.ib = nullptr; }
     c.indexCount = 0; c.opaqueIndexCount = 0;
@@ -651,12 +652,29 @@ static const int MAX_MESH_UPLOADS_PER_FRAME = 8;
 static int g_meshesInFlight = 0;
 int MeshesBuilding() { return g_meshesInFlight; }
 
+static int WantLevel(int d, int current) { return GroundWantLevel(d, current, g_fineDetail); }
+static int ChunkDistance(const ChunkCoord& cc, int camCx, int camCy, int camCz) {
+    return std::max(std::abs(cc.x - camCx), std::max(std::abs(cc.y - camCy), std::abs(cc.z - camCz)));
+}
+
 // Nearest-first: of the chunks waiting (w.dirtyChunks -- nothing to scan
 // at all while the world is static), the few closest to the camera start
 // building. The copy of their cells is taken here, on the main thread;
 // the build runs on a job thread from that copy alone.
 void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz) {
     JobsApply(JOB_MESH, MAX_MESH_UPLOADS_PER_FRAME);
+    // When the camera enters another chunk (or the setting changes), any
+    // chunk whose level should change is rebuilt -- only those.
+    static int lastCx = INT32_MIN, lastCy = INT32_MIN, lastCz = INT32_MIN, lastFine = -1;
+    if (camCx != lastCx || camCy != lastCy || camCz != lastCz || g_fineDetail != lastFine) {
+        lastCx = camCx; lastCy = camCy; lastCz = camCz; lastFine = g_fineDetail;
+        for (auto& kv : w.chunks) {
+            Chunk& c = *kv.second;
+            if (c.detailLevel < 0) continue; // never built: already waiting
+            int d = ChunkDistance(kv.first, camCx, camCy, camCz);
+            if (WantLevel(d, c.detailLevel) != c.detailLevel) w.MarkChunkDirty(kv.first);
+        }
+    }
     if (w.dirtyChunks.empty() || g_meshesInFlight >= MAX_MESHES_IN_FLIGHT) return;
     struct Pending { long long d2; ChunkCoord cc; };
     static std::vector<Pending> pending; // reused: no per-frame allocation once warm
@@ -683,10 +701,11 @@ void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz) {
         CopyGroundCells(w, cc, *cells);
         auto mesh = std::make_shared<GroundMesh>();
         uint64_t version = c->meshVersion;
+        int level = WantLevel(ChunkDistance(cc, camCx, camCy, camCz), c->detailLevel);
         g_meshesInFlight++;
         JobsSubmit(JOB_MESH,
-            [cells, mesh] { BuildGroundMesh(*cells, nullptr, nullptr, *mesh); },
-            [cells, mesh, cc, version, &w] { g_meshesInFlight--; UploadGroundMesh(w, cc, version, *mesh); });
+            [cells, mesh, level] { BuildGroundMesh(*cells, level, *mesh); },
+            [cells, mesh, cc, version, level, &w] { g_meshesInFlight--; UploadGroundMesh(w, cc, version, level, *mesh); });
     }
 }
 

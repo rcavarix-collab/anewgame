@@ -100,8 +100,8 @@ enum LookRow { LROW_INVERT_X = 0, LROW_SENS_X = 1, LROW_INVERT_Y = 2, LROW_SENS_
 // no rendering path for yet.
 // Row height 50 still fits the slider row (label, track, 50px hit area)
 // while keeping six rows comfortably inside a 720p screen.
-static const SubmenuLayout GRAPHICS_LAYOUT = { 400.0f, 50.0f, 10.0f, 70.0f, 20.0f, 9 };
-enum GraphicsRow { GROW_RENDER_DIST = 0, GROW_FRAME_LIMIT = 1, GROW_VSYNC = 2, GROW_SHADOWS = 3, GROW_OUTLINES = 4, GROW_SSAO = 5, GROW_BLOOM = 6, GROW_RESET = 7, GROW_BACK = 8 };
+static const SubmenuLayout GRAPHICS_LAYOUT = { 400.0f, 50.0f, 10.0f, 70.0f, 20.0f, 10 };
+enum GraphicsRow { GROW_RENDER_DIST = 0, GROW_FINE_DETAIL = 1, GROW_FRAME_LIMIT = 2, GROW_VSYNC = 3, GROW_SHADOWS = 4, GROW_OUTLINES = 5, GROW_SSAO = 6, GROW_BLOOM = 7, GROW_RESET = 8, GROW_BACK = 9 };
 
 // Display: one real setting -- an FPS counter toggle. Resolution/
 // fullscreen switching would need swap-chain resize and WM_SIZE
@@ -158,7 +158,7 @@ static const int g_defaultBindings[ACT_COUNT] = {
 // A handful of settings are sliders rather than toggles/buttons. One
 // small generic slider system (value/range/row-rect all looked up by
 // ID) instead of one-off X-sensitivity-shaped code repeated per slider.
-enum SliderId { SLIDER_NONE = -1, SLIDER_SENS_X = 0, SLIDER_SENS_Y = 1, SLIDER_RENDER_DIST = 2, SLIDER_MASTER_VOLUME = 3, SLIDER_MUSIC_VOLUME = 4, SLIDER_FOV = 5, SLIDER_MUSIC_INTENSITY = 6, SLIDER_WORLD_VOLUME = 7, SLIDER_FRAME_LIMIT = 8 };
+enum SliderId { SLIDER_NONE = -1, SLIDER_SENS_X = 0, SLIDER_SENS_Y = 1, SLIDER_RENDER_DIST = 2, SLIDER_MASTER_VOLUME = 3, SLIDER_MUSIC_VOLUME = 4, SLIDER_FOV = 5, SLIDER_MUSIC_INTENSITY = 6, SLIDER_WORLD_VOLUME = 7, SLIDER_FRAME_LIMIT = 8, SLIDER_FINE_DETAIL = 9 };
 
 struct SliderRange { float minV, maxV; };
 

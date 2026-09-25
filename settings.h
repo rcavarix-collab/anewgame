@@ -30,6 +30,10 @@ extern bool g_showFPS;
 extern bool g_fullscreen; // borderless fullscreen on the window's monitor (Display settings / F11)
 // Graphics effects (Sections 4.8, 4.10), each independently toggleable.
 extern bool g_shadows, g_postEdges, g_postSSAO, g_bloom;
+// Fine ground detail (DESIGN.md 23.6): the finest cut reaches this many
+// chunks from the camera, the middle one twice as far; 0 turns it off
+// (lesser machines). Default 2.
+extern int g_fineDetail;
 extern float g_masterVolume;
 extern float g_musicVolume;
 extern float g_worldVolume; // the world sound palette (sfx_synth.h), under Master

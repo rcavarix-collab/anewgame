@@ -1543,7 +1543,7 @@ static void TestGroundMesh() {
         for (int cy = 0; cy <= 3; cy++) {
             ChunkCoord cc{ cx, cy, 0 };
             GroundCells cells; CopyGroundCells(w, cc, cells);
-            GroundMesh m; BuildGroundMesh(cells, nullptr, nullptr, m);
+            GroundMesh m; BuildGroundMesh(cells, 0, m);
             std::vector<P3> pts;
             for (auto& v : m.verts)
                 pts.push_back({ (int64_t)v.x + (int64_t)cc.x * 16 * 2048, (int64_t)v.y + (int64_t)cc.y * 16 * 2048, (int64_t)v.z + (int64_t)cc.z * 16 * 2048 });
@@ -1599,7 +1599,7 @@ static void TestGroundMesh() {
                 cubeSign = screenSign(P(cv[ci[i]]), P(cv[ci[i + 1]]), P(cv[ci[i + 2]]));
             }
         GroundCells fc; CopyGroundCells(f, { 0, 0, 0 }, fc);
-        GroundMesh fm; BuildGroundMesh(fc, nullptr, nullptr, fm);
+        GroundMesh fm; BuildGroundMesh(fc, 0, fm);
         int facetSign = 0, agree = 0, total = 0;
         for (size_t i = 0; i < fm.idx.size(); i += 3) {
             auto P = [&](const GroundVertex& v) { return Vec3{ v.x / 2048.0f - 2, v.y / 2048.0f - 2, v.z / 2048.0f - 2 }; };
@@ -1662,7 +1662,7 @@ static void TestSkyLight() {
     CHECK(under < 0.5f);
     CHECK(cliff > 0.4f && cliff < 0.8f);
     // And it reaches the vertices.
-    GroundMesh gm; BuildGroundMesh(gc, nullptr, nullptr, gm);
+    GroundMesh gm; BuildGroundMesh(gc, 0, gm);
     int dark = 0, bright = 0;
     for (auto& v : gm.verts) { if (v.sky < 100) dark++; if (v.sky > 250) bright++; }
     CHECK(dark > 0 && bright > 0);
@@ -1739,6 +1739,66 @@ static void TestFacetCollision() {
     CHECK(hx == 8 && hy == 12 && hz == 8 && px == 8 && py == 13 && pz == 8);
     // From inside the air, never a back face: looking up at open sky, nothing.
     CHECK(!FacetRaycast(f, { 8.5f, 16.0f, 8.5f }, { 0, 1, 0 }, 8.0f, hx, hy, hz, px, py, pz));
+}
+
+// ---- Detail bands (M1.8) ----
+static void TestDetailBands() {
+    printf("detail bands\n");
+    // Levels by distance, with a chunk of hysteresis on the way down.
+    CHECK(GroundWantLevel(0, -1, 2) == 2 && GroundWantLevel(1, -1, 2) == 2 && GroundWantLevel(2, -1, 2) == 1);
+    CHECK(GroundWantLevel(3, -1, 2) == 1 && GroundWantLevel(4, -1, 2) == 0);
+    CHECK(GroundWantLevel(2, 2, 2) == 2);  // just past the edge: keeps its level
+    CHECK(GroundWantLevel(3, 2, 2) == 1);  // a chunk further: drops
+    CHECK(GroundWantLevel(4, 1, 2) == 1 && GroundWantLevel(5, 1, 2) == 0);
+    CHECK(GroundWantLevel(0, -1, 0) == 0 && GroundWantLevel(0, 2, 0) == 0); // off
+    // Neighbouring chunks built at different levels meet exactly: every
+    // edge chunk (0, y, 0) leaves open along x = 16 is closed by chunk
+    // (1, y, 0)'s reverse edge, at each pairing of levels.
+    BlockTextureSet t; BuildBlockTextures(VtexSet(), t);
+    InitGroundMaterials(t.faceLayer);
+    World w; ResetWorldState(w);
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_WALKGRID; g_worldGen.seed = 5;
+    for (int cz = -2; cz <= 2; cz++) for (int cx = -2; cx <= 2; cx++) GenerateColumn(w, cx, cz);
+    typedef std::array<int64_t, 3> P3;
+    auto meshEdges = [&](int cx, int level, std::map<std::array<int64_t, 6>, int>& edges, int* tris) {
+        for (int cy = 0; cy <= 3; cy++) {
+            ChunkCoord cc{ cx, cy, 0 };
+            GroundCells cells; CopyGroundCells(w, cc, cells);
+            GroundMesh m; BuildGroundMesh(cells, level, m);
+            *tris += (int)m.idx.size() / 3;
+            std::vector<P3> pts;
+            for (auto& v : m.verts)
+                pts.push_back({ (int64_t)v.x + (int64_t)cc.x * 16 * 2048, (int64_t)v.y + (int64_t)cc.y * 16 * 2048, (int64_t)v.z + (int64_t)cc.z * 16 * 2048 });
+            for (size_t i = 0; i < m.idx.size(); i += 3)
+                for (int k = 0; k < 3; k++) {
+                    P3 a = pts[m.idx[i + k]], b = pts[m.idx[i + (k + 1) % 3]];
+                    edges[{ a[0], a[1], a[2], b[0], b[1], b[2] }]++;
+                }
+        }
+    };
+    auto world = [](int64_t q) { return q / 2048.0 - 2.0; };
+    int trisAt[3] = {};
+    for (int la = 0; la <= 2; la++)
+        for (int lb = 0; lb <= 2; lb++) {
+            std::map<std::array<int64_t, 6>, int> eA, eB;
+            int ta = 0, tb = 0;
+            meshEdges(0, la, eA, &ta); meshEdges(1, lb, eB, &tb);
+            if (la == lb) trisAt[la] = ta;
+            int seam = 0, unmatched = 0;
+            for (auto& kv : eA) {
+                const auto& e = kv.first;
+                if (eA.count({ e[3], e[4], e[5], e[0], e[1], e[2] })) continue;
+                bool nearSeam = true;
+                for (int k : { 0, 3 }) nearSeam &= world(e[k]) > 15.4 && world(e[k]) < 16.6 && world(e[k + 2]) > 1.0 && world(e[k + 2]) < 15.0;
+                if (!nearSeam) continue;
+                seam++;
+                if (!eB.count({ e[3], e[4], e[5], e[0], e[1], e[2] })) unmatched++;
+            }
+            CHECK(seam > 0 && unmatched == 0);
+            if (unmatched) printf("  levels %d|%d: %d of %d seam edges unmatched\n", la, lb, unmatched, seam);
+        }
+    printf("  triangles in 4 chunks by level: %d, %d, %d\n", trisAt[0], trisAt[1], trisAt[2]);
+    CHECK(trisAt[0] < trisAt[1] && trisAt[1] < trisAt[2]);
 }
 
 // ---- The faceted ground (facetmesh.h, M1.2) ----
@@ -1900,6 +1960,7 @@ int main() {
     TestGroundMesh();
     TestSkyLight();
     TestFacetCollision();
+    TestDetailBands();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

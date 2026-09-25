@@ -76,7 +76,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     HRESULT comHr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     bool comInitialized = SUCCEEDED(comHr);
 
-    if (!InitD3D(g_hwnd)) return -1;
+    if (!InitD3D(g_hwnd)) {
+        // No Direct3D 11.0 device (D20), or the core shaders failed: say so
+        // rather than vanish. (Player-facing text: moves to the string
+        // table with M1's text step, D26.)
+        MessageBoxW(g_hwnd, L"walkgrid needs a graphics card that supports DirectX 11 (feature level 11.0).",
+                    L"walkgrid", MB_OK | MB_ICONERROR);
+        return -1;
+    }
     if (g_fullscreen) ApplyFullscreen(true); // saved preference
     std::string textureProblems;
     if (!InitTextures(textureProblems)) return -1;

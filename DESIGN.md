@@ -500,6 +500,8 @@ Generation cost (now off the main thread): median ~1.3 ms per 0.25 s chunk (abou
 ---
 
 ## Part XV — Build
+**Graphics minimum (walkgrid, D20):** Direct3D 11 at feature level 11.0; every shader compiles as shader model 5.0 (`vs_5_0` / `ps_5_0`). A machine without it gets a message box at start-up instead of a silent exit.
+
 
 Eighteen source files (`main.cpp world.cpp render.cpp audio.cpp persist.cpp game.cpp textures.cpp music_synth.cpp profiler.cpp worldfile.cpp vtex.cpp blocktex.cpp mesher.cpp shapes.cpp icons.cpp theline.cpp essence.cpp essencemap.cpp`), one compiler invocation, no project file strictly needed (the checked-in `.vcxproj`/`.vcxproj.filters` list them all for Visual Studio):
 

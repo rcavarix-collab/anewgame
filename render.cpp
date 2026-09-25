@@ -1351,12 +1351,12 @@ static void PrepareShaders() {
     const std::string worldSrc = std::string(g_atmosphereSrc) + g_shaderSrc;
     const std::string skySrc = std::string(g_atmosphereSrc) + g_skyShaderSrc;
     struct { const std::string src; const char* entry; const char* profile; const char* what; } list[] = {
-        { worldSrc, "VSMain", "vs_4_0", "world" }, { worldSrc, "PSMain", "ps_4_0", "world" },
-        { g_uiShaderSrc, "VSMain", "vs_4_0", "ui" }, { g_uiShaderSrc, "PSMain", "ps_4_0", "ui" },
-        { skySrc, "VSMain", "vs_4_0", "sky" }, { skySrc, "PSMain", "ps_4_0", "sky" },
-        { g_shadowShaderSrc, "VSMain", "vs_4_0", "shadow map" },
-        { g_postShaderSrc, "VSMain", "vs_4_0", "post" }, { g_postShaderSrc, "PSMain", "ps_4_0", "post" },
-        { g_bloomDownShaderSrc, "PSMain", "ps_4_0", "bloom downsample" }, { g_bloomBlurShaderSrc, "PSMain", "ps_4_0", "bloom blur" },
+        { worldSrc, "VSMain", "vs_5_0", "world" }, { worldSrc, "PSMain", "ps_5_0", "world" },
+        { g_uiShaderSrc, "VSMain", "vs_5_0", "ui" }, { g_uiShaderSrc, "PSMain", "ps_5_0", "ui" },
+        { skySrc, "VSMain", "vs_5_0", "sky" }, { skySrc, "PSMain", "ps_5_0", "sky" },
+        { g_shadowShaderSrc, "VSMain", "vs_5_0", "shadow map" },
+        { g_postShaderSrc, "VSMain", "vs_5_0", "post" }, { g_postShaderSrc, "PSMain", "ps_5_0", "post" },
+        { g_bloomDownShaderSrc, "PSMain", "ps_5_0", "bloom downsample" }, { g_bloomBlurShaderSrc, "PSMain", "ps_5_0", "bloom blur" },
     };
     std::vector<size_t> todo;
     for (const auto& l : list) {
@@ -1530,7 +1530,10 @@ bool InitD3D(HWND hwnd) {
     scd.Windowed = TRUE;
     scd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
-    D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0 };
+    // Feature level 11.0 and shader model 5.0 minimum (D20): every card near
+    // the floor machine has it, and it opens tessellation and compute
+    // shaders. A card without it can't run walkgrid (main.cpp says so).
+    D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_11_0 };
     D3D_FEATURE_LEVEL chosen;
     HRESULT hr = D3D11CreateDeviceAndSwapChain(
         nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0,
@@ -1557,12 +1560,12 @@ bool InitD3D(HWND hwnd) {
     // the sky exactly), prepended at compile time.
     const std::string worldSrc = std::string(g_atmosphereSrc) + g_shaderSrc;
     const std::string skySrc = std::string(g_atmosphereSrc) + g_skyShaderSrc;
-    ID3DBlob* vsBlob = CompileShader(worldSrc.c_str(), "VSMain", "vs_4_0", nullptr, "world");
-    ID3DBlob* psBlob = CompileShader(worldSrc.c_str(), "PSMain", "ps_4_0", nullptr, "world");
+    ID3DBlob* vsBlob = CompileShader(worldSrc.c_str(), "VSMain", "vs_5_0", nullptr, "world");
+    ID3DBlob* psBlob = CompileShader(worldSrc.c_str(), "PSMain", "ps_5_0", nullptr, "world");
     bool worldShadows = psBlob != nullptr;
     if (!psBlob) {
         const D3D_SHADER_MACRO noShadows[] = { { "NO_SHADOWS", "1" }, { nullptr, nullptr } };
-        psBlob = CompileShader(worldSrc.c_str(), "PSMain", "ps_4_0", noShadows, "world");
+        psBlob = CompileShader(worldSrc.c_str(), "PSMain", "ps_5_0", noShadows, "world");
     }
     if (!vsBlob || !psBlob) return false;
     g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &g_vs);
@@ -1656,8 +1659,8 @@ bool InitD3D(HWND hwnd) {
 
     // --- UI pass pipeline objects (Section 4.6: a second pass, its own
     // shaders, orthographic-in-pixel-space, depth off, alpha blend on) ---
-    ID3DBlob* uiVsBlob = CompileShader(g_uiShaderSrc, "VSMain", "vs_4_0", nullptr, "ui");
-    ID3DBlob* uiPsBlob = CompileShader(g_uiShaderSrc, "PSMain", "ps_4_0", nullptr, "ui");
+    ID3DBlob* uiVsBlob = CompileShader(g_uiShaderSrc, "VSMain", "vs_5_0", nullptr, "ui");
+    ID3DBlob* uiPsBlob = CompileShader(g_uiShaderSrc, "PSMain", "ps_5_0", nullptr, "ui");
     if (!uiVsBlob || !uiPsBlob) {
         if (uiVsBlob) uiVsBlob->Release();
         if (uiPsBlob) uiPsBlob->Release();
@@ -1718,8 +1721,8 @@ bool InitD3D(HWND hwnd) {
     // --- Sky pass pipeline objects: depth off (g_uiDepthState is reused
     // here -- it's the same DepthEnable=FALSE state the UI pass already
     // needed, no reason to create a second identical one) ---
-    ID3DBlob* skyVsBlob = CompileShader(skySrc.c_str(), "VSMain", "vs_4_0", nullptr, "sky");
-    ID3DBlob* skyPsBlob = CompileShader(skySrc.c_str(), "PSMain", "ps_4_0", nullptr, "sky");
+    ID3DBlob* skyVsBlob = CompileShader(skySrc.c_str(), "VSMain", "vs_5_0", nullptr, "sky");
+    ID3DBlob* skyPsBlob = CompileShader(skySrc.c_str(), "PSMain", "ps_5_0", nullptr, "sky");
     if (!skyVsBlob || !skyPsBlob) {
         if (skyVsBlob) skyVsBlob->Release();
         if (skyPsBlob) skyPsBlob->Release();
@@ -1745,7 +1748,7 @@ bool InitD3D(HWND hwnd) {
     // --- Sun shadows (Section 4.8). Optional: any failure here just
     // leaves shadows unavailable (the Graphics toggle then does nothing).
     if (worldShadows) {
-        ID3DBlob* sv = CompileShader(g_shadowShaderSrc, "VSMain", "vs_4_0", nullptr, "shadow map");
+        ID3DBlob* sv = CompileShader(g_shadowShaderSrc, "VSMain", "vs_5_0", nullptr, "shadow map");
         if (sv) {
             g_device->CreateVertexShader(sv->GetBufferPointer(), sv->GetBufferSize(), nullptr, &g_shadowVS);
             sv->Release();
@@ -1784,8 +1787,8 @@ bool InitD3D(HWND hwnd) {
 
     // --- Post pass (Section 4.8): outlines and SSAO. Optional too.
     {
-        ID3DBlob* pv = CompileShader(g_postShaderSrc, "VSMain", "vs_4_0", nullptr, "post");
-        ID3DBlob* pp = CompileShader(g_postShaderSrc, "PSMain", "ps_4_0", nullptr, "post");
+        ID3DBlob* pv = CompileShader(g_postShaderSrc, "VSMain", "vs_5_0", nullptr, "post");
+        ID3DBlob* pp = CompileShader(g_postShaderSrc, "PSMain", "ps_5_0", nullptr, "post");
         if (pv) { g_device->CreateVertexShader(pv->GetBufferPointer(), pv->GetBufferSize(), nullptr, &g_postVS); pv->Release(); }
         if (pp) { g_device->CreatePixelShader(pp->GetBufferPointer(), pp->GetBufferSize(), nullptr, &g_postPS); pp->Release(); }
         D3D11_BUFFER_DESC pb = {};
@@ -1802,8 +1805,8 @@ bool InitD3D(HWND hwnd) {
         g_postAvailable = g_postVS && g_postPS && g_postCB && g_pointClampSampler && g_linearClampSampler;
 
         // Bloom (Section 4.10) rides on the post pass.
-        ID3DBlob* bd = CompileShader(g_bloomDownShaderSrc, "PSMain", "ps_4_0", nullptr, "bloom downsample");
-        ID3DBlob* bb = CompileShader(g_bloomBlurShaderSrc, "PSMain", "ps_4_0", nullptr, "bloom blur");
+        ID3DBlob* bd = CompileShader(g_bloomDownShaderSrc, "PSMain", "ps_5_0", nullptr, "bloom downsample");
+        ID3DBlob* bb = CompileShader(g_bloomBlurShaderSrc, "PSMain", "ps_5_0", nullptr, "bloom blur");
         if (bd) { g_device->CreatePixelShader(bd->GetBufferPointer(), bd->GetBufferSize(), nullptr, &g_bloomDownPS); bd->Release(); }
         if (bb) { g_device->CreatePixelShader(bb->GetBufferPointer(), bb->GetBufferSize(), nullptr, &g_bloomBlurPS); bb->Release(); }
         pb.ByteWidth = 4 * sizeof(float);

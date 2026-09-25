@@ -1,4 +1,4 @@
-# Prototype outline (draft for approval)
+# walkgrid: prototype outline (draft for approval)
 
 The plan for the first prototype: what's decided, what gets built in what order, file by file, and the checklist the first functional test is judged by. **Nothing is built until you approve this.** The engine review behind it is `docs/ENGINE_REVIEW.md`.
 
@@ -16,16 +16,17 @@ The plan for the first prototype: what's decided, what gets built in what order,
 | D6 | **Smaller ground triangles without hurting performance**: fine detail near the player, coarser with distance (section 3). Scale is weighed throughout, measured in F3. |
 | D7 | Natural material transitions: corner materials plus height-based blending (section 4). |
 | D8 | **Smooth-filtered textures**, not pixel-crisp. |
-| D9 | First and third person, the player's choice. Third person needs an animated player model: **milestone 2**, after the first test (section 6). |
+| D9 | **First person only** for the prototype. No player model. Third person (and the animated model it needs) comes later, if we want it. |
+| D10 | **Frame rate: 60 fps is the floor, higher where the machine allows**, with no jitter: rendering is interpolated between simulation ticks, and the frame cap no longer fights vsync on high-refresh displays. |
+| D11 | Working name: **walkgrid** (project, window, save folder). |
 
 ---
 
 ## 2. Milestones
 
-- **M0: separate engine from game.** Take the Voxistics layer off, with no other change. Also add screenshot capture and raw mouse input, and rewrite `CLAUDE.md` for the new game. *Done when:* it builds, the tests pass, and your frames from before and after match (minus the removed features).
+- **M0: separate engine from game.** Take the Voxistics layer off, with no other change. Also add screenshot capture and raw mouse input, rename the project to walkgrid, and rewrite `CLAUDE.md` for the new game. *Done when:* it builds, the tests pass, and your frames from before and after match (minus the removed features).
 - **M1: the first functional test.** A faceted, blended, textured and lit world to walk around in, with footsteps and placing and removing ground. Checklist in section 5.
-- **M2: third person and the player model.** A camera toggle, a segmented animated character, and footsteps timed to the animation.
-- **Later:** action systems (enemies, projectiles, particles) with fixed per-tick budgets, a real terrain generator with caves, and death metal music.
+- **Later:** third person and a player model (if wanted); action systems (enemies, projectiles, particles) with fixed per-tick budgets, a real terrain generator with caves, and death metal music.
 
 ---
 
@@ -86,10 +87,8 @@ Each item says who can check it. **"Me"** means native tests, still images or of
 | T9 | Placing and removing make their sounds and stay in key with the music. | Me (offline check), you |
 | T10 | The music plays as in Voxistics. | You |
 | T11 | Menus and settings all work (look, graphics, display, audio, keybindings, accessibility), including saves. | Me (save tests), you |
-| T12 | **Performance on your machine:** steady 60 fps at the default render distance. No frame over 33 ms while walking into new ground or editing. The F3 GPU world row is under 10 ms. | You (F3 and a Ctrl+F3 report) |
-| T13 | Smooth motion above 60 fps (interpolated between ticks). | You |
-
-Numbers in T12 are my proposal; change them if you want different ones.
+| T12 | **Performance on your machine:** never below 60 fps at the default render distance. No frame over 33 ms while walking into new ground or editing. The F3 GPU world row is under 10 ms. | You (F3 and a Ctrl+F3 report) |
+| T13 | Above 60 fps (vsync on a high-refresh display, or vsync off), motion is smooth with no judder or jitter while walking, turning or editing. | You |
 
 ---
 
@@ -112,7 +111,7 @@ Numbers in T12 are my proposal; change them if you want different ones.
 | `audio.cpp` | Effects voice rendered on its own thread; voice cap | M1 |
 | `worldsound.*`, `soundscape.*` | Line cues out; sound classes for the new materials | M0, M1 |
 | `icons.*` | Hotbar icons render a faceted lump of each material | M1 |
-| `Voxistics.vcxproj` | Source list follows the above; project renamed when the game has a name | M0 |
+| `Voxistics.vcxproj`, `.sln`, `.filters` | Source list follows the above; renamed to walkgrid | M0 |
 | `CLAUDE.md` | Rewritten for the new game | M0 |
 
 **New:**
@@ -123,7 +122,6 @@ Numbers in T12 are my proposal; change them if you want different ones.
 | `collide.cpp/.h` | Capsule against facets; ray picking | M1 |
 | `terrain.cpp/.h` | Seeded test landscape (versioned, like Voxistics' generators) | M1 |
 | `tools/facet_preview.cpp` | Renders still images of faceted, blended ground on the CPU, for checking the look here | M1 |
-| `player_model.*` | Segmented animated character, third-person camera | M2 |
 
 **Removed from the build** (the files stay in the repository history): `theline.*`, `pulse.*`, `pulse_colours.h`, `fliers.*`, `essence.*`, `essencemap.*`, `mesher.*` (replaced by `facetmesh`), `shapes.*` (cube props; parked).
 
@@ -131,7 +129,4 @@ Numbers in T12 are my proposal; change them if you want different ones.
 
 ## 7. Open questions
 
-- **Q1.** Third person in M2, after the first test. Is that the right order, or should it be in the first test?
-- **Q2.** The player model. A segmented figure (rigid parts, animated in code, faceted to match the world) is cheap and needs no art tools. A skinned model needs an art pipeline. Segmented for now?
-- **Q3.** The T12 numbers: 60 fps, no frame over 33 ms, GPU world pass under 10 ms. Right?
-- **Q4.** The game's name, for the project, window and files. It can stay "Voxistics" until you choose.
+None blocking. **Waiting on your approval of this outline to start M0.**

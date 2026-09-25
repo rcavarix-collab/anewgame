@@ -110,3 +110,10 @@ struct FacetBuildParams {
 };
 
 void FacetBuild(const FacetGrid& g, const FacetBuildParams& p, FacetMesh& out);
+
+// The two base triangles of the face between solid cell (x, y, z) and its
+// empty neighbour one step along `axis` (0 x, 1 y, 2 z) toward `sign`
+// (+1 or -1), exactly as FacetBuild splits it before any detail: what
+// collision and picking use (collide.h). Each is wound so (b - a) x (c - a)
+// points out of the ground.
+void FacetBaseFace(const FacetGrid& g, const FacetShape& s, int x, int y, int z, int axis, int sign, Vec3 tri[2][3]);

@@ -10,7 +10,7 @@ Every system, what it's allowed to cost (its budget), and what it was last measu
 |---|---|---|---|---|---|
 | Terrain queueing and generation | TERRAIN | 0.8 ms | columns arriving (capped 4/tick) | 0.00 median, 0.49 worst (M0, flat) | M1.4: generation on the job threads (0.05 ms a column there); the main thread submits and copies results in, 4 a tick. Awaiting a report |
 | Column eviction | EVICT | 0.2 ms | columns leaving (capped 4/tick) | 0.00, 0.01 worst | |
-| Player physics | PHYSICS | 0.2 ms | fixed | 0.00, 0.02 worst | |
+| Player physics | PHYSICS | 0.2 ms | fixed | 0.00, 0.02 worst (M0, cubes) | M1.7: on facets, 0.06 ms a tick on the build machine (gathering ~150 facets and the footprint tests). Awaiting a report |
 | Scheduled updates | UPDATES | 0.3 ms | updates due (capped 64/tick) | 0.00, 0.01 worst | Nothing schedules them in walkgrid yet |
 | Music synthesis | MUSIC | ~0 (own thread) | fixed | 0.00, 0.03 worst | |
 | Effects rendering (own thread, M1.1) | — (off the frame) | ~0 on the main thread | sounds playing (capped 48 voices) | Build machine: 0.6 ms median, 1.1 ms p95 per 11.6 ms buffer at the cap | Sleeps when silent |

@@ -12,6 +12,7 @@
 #include "shapes.h"
 #include "terrain.h"
 #include "jobs.h"
+#include "collide.h"
 #include <d3d11.h>
 #include <cmath>
 #include <cfloat>
@@ -596,6 +597,42 @@ static bool BoxIntersectsSolid(World& w, float cx, float cy, float cz, float hei
     return false;
 }
 
+// ---- Walking on facets (DESIGN.md 23.5) ----
+// The floor is the faceted surface itself (collide.h: the base facets the
+// ground is drawn with). Cells still stop the body -- walls, ceilings,
+// tunnels -- but only from BODY_SKIP above the feet: where a one-cell step
+// becomes a slope, the cube's top edge stands up to about 0.66 above the
+// facets (half a cell of slope plus the jitter), and it mustn't stop the
+// body halfway up. A wall is at least a whole cell, so it still blocks.
+static const float BODY_SKIP = 0.7f;
+static const float HEAD_SKIP = 0.15f;  // the head may meet a ceiling cell this far: ceilings' facets hang as much lower or higher
+static const float CLIMB = 1.05f;      // the most the feet rise onto the ground ahead: a one-cell slope, never a two-cell wall
+static const float STICK = 0.35f;      // walking downhill, the feet stay on the ground within this drop a tick
+static const float WALK_UP = 0.55f;    // steepest ground walked up: unit normal y (~57 degrees); a one-cell step is ~45
+static const float LAND_UP = 0.30f;    // steepest ground landed on
+static std::vector<FacetTri> g_facetsNear; // this tick's facets around the player (reused)
+
+// The ground under the player's footprint: the highest facet point under
+// the centre or near a corner (so the player stands on an edge) in [lo, hi].
+static bool FootprintGround(float x, float z, float lo, float hi, float minUp, float* g) {
+    const float k = PLAYER_HALFW - 0.05f;
+    const float pts[5][2] = { { 0, 0 }, { -k, -k }, { k, -k }, { -k, k }, { k, k } };
+    bool any = false;
+    float best = -1e30f;
+    for (auto& q : pts) {
+        float h;
+        if (GroundHeight(g_facetsNear, x + q[0], z + q[1], lo, hi, minUp, &h) && h > best) { best = h; any = true; }
+    }
+    if (any) *g = best;
+    return any;
+}
+// The body, between the facet-dip allowance at the feet and the head's,
+// against cells: a crouched player (0.9) still fits a one-cell crawlspace
+// over jittered ground.
+static bool BodyBlocked(World& w, float x, float feet, float z, float height) {
+    return BoxIntersectsSolid(w, x, feet + BODY_SKIP, z, height - BODY_SKIP - HEAD_SKIP);
+}
+
 static bool ColumnResidentAt(float x, float z) {
     return g_residentColumns.count(ColumnKey(FloorDiv16((int)floor(x)), FloorDiv16((int)floor(z)))) != 0;
 }
@@ -633,16 +670,21 @@ void UpdatePlayerPhysics(World& w, Player& p, float dt, const MoveInput& in) {
     }
     // No room to stand (a load or a block placed in a crawlspace) but room
     // to crouch: crouch, rather than being pushed up out of it.
-    if (!p.crouching && BoxIntersectsSolid(w, p.x, p.y, p.z, PLAYER_HEIGHT) && !BoxIntersectsSolid(w, p.x, p.y, p.z, PLAYER_CROUCH_HEIGHT))
+    if (!p.crouching && BodyBlocked(w, p.x, p.y, p.z, PLAYER_HEIGHT) && !BodyBlocked(w, p.x, p.y, p.z, PLAYER_CROUCH_HEIGHT))
         p.crouching = true;
-    // Never entombed: if the box overlaps solid blocks anyway (terrain
-    // that appeared around an edge, a block that fell onto the player),
-    // lift them a block per tick until they're standing free.
-    if (BoxIntersectsSolid(w, p.x, p.y, p.z, PlayerHeight(p))) {
+    // Never entombed: if the body overlaps solid blocks anyway (terrain
+    // that appeared around an edge, a block placed or fallen onto the
+    // player), lift them a block per tick until they're standing free.
+    if (BodyBlocked(w, p.x, p.y, p.z, PlayerHeight(p))) {
         p.y = floorf(p.y) + 1.0f;
         p.velY = 0.0f;
         p.onGround = false;
         return;
+    }
+
+    {   // The facets around the player, once a tick.
+        int x = (int)floorf(p.x), y = (int)floorf(p.y), z = (int)floorf(p.z);
+        GatherFacets(w, x - 3, std::max(Y_MIN, y - 3), z - 3, x + 4, std::min(Y_MAX + 1, y + 4), z + 4, g_facetsNear);
     }
 
     Vec3 f, r, u;
@@ -685,26 +727,24 @@ void UpdatePlayerPhysics(World& w, Player& p, float dt, const MoveInput& in) {
     }
     bool sliding = PlayerSliding(p);
     if (in.crouch || sliding) p.crouching = true;
-    else if (p.crouching && !BoxIntersectsSolid(w, p.x, p.y, p.z, PLAYER_HEIGHT)) p.crouching = false;
+    else if (p.crouching && !BodyBlocked(w, p.x, p.y, p.z, PLAYER_HEIGHT)) p.crouching = false;
     p.sprinting = in.sprint && in.fwd && !in.back && !p.crouching;
 
     // Horizontal moves, one axis at a time. Don't walk off the edge of
-    // generated ground; and when blocked while standing, step up onto
-    // anything up to half a block high (slabs, ramps, pyramid bases) --
-    // but never a full block. Returns whether the move happened.
-    const float STEP = 0.5f;
+    // generated ground. On the ground, the feet rise onto the facets ahead
+    // (up to a one-cell slope, never a wall); the camera doesn't jump but
+    // glides up with the eye's easing. Returns whether the move happened.
     const float h = PlayerHeight(p);
     auto tryMove = [&](float dx, float dz) {
         if (dx == 0.0f && dz == 0.0f) return true;
-        if (!ColumnResidentAt(p.x + dx, p.z + dz)) return false;
-        if (!BoxIntersectsSolid(w, p.x + dx, p.y, p.z + dz, h)) { p.x += dx; p.z += dz; return true; }
-        if (p.onGround && !BoxIntersectsSolid(w, p.x, p.y + STEP, p.z, h) &&
-            !BoxIntersectsSolid(w, p.x + dx, p.y + STEP, p.z + dz, h)) {
-            p.x += dx; p.z += dz; p.y += STEP;
-            p.eyeHeight -= STEP; // the view doesn't jump: it glides up with the eye's easing (~0.25 s)
-            return true;
-        }
-        return false;
+        float nx = p.x + dx, nz = p.z + dz;
+        if (!ColumnResidentAt(nx, nz)) return false;
+        float feet = p.y, g;
+        if (p.onGround && FootprintGround(nx, nz, feet - 0.01f, feet + CLIMB, WALK_UP, &g) && g > feet) feet = g;
+        if (BodyBlocked(w, nx, feet, nz, h)) return false;
+        if (feet > p.y) { p.eyeHeight -= feet - p.y; p.y = feet; }
+        p.x = nx; p.z = nz;
+        return true;
     };
     if (sliding) {
         // Momentum, not input: friction on the ground, none in the air;
@@ -729,12 +769,33 @@ void UpdatePlayerPhysics(World& w, Player& p, float dt, const MoveInput& in) {
     if (p.velY < -50.0f) p.velY = -50.0f;
 
     float dy = p.velY * dt;
-    if (!BoxIntersectsSolid(w, p.x, p.y + dy, p.z, h)) {
-        p.y += dy;
-        p.onGround = false;
+    float g;
+    if (p.onGround && p.velY <= 0.0f) {
+        // Keep to the ground: over bumps and down slopes, the feet follow
+        // the facets and the camera eases after them (no judder).
+        if (FootprintGround(p.x, p.z, p.y - STICK, p.y + 0.5f, LAND_UP, &g)) {
+            p.eyeHeight -= g - p.y;
+            p.y = g;
+            p.velY = 0.0f;
+        } else {
+            p.onGround = false; // walked off an edge
+            p.y += dy;
+        }
+    } else if (dy < 0.0f) {
+        // Falling: land on the first ground the feet reach (or already
+        // dipped into, by less than half a cell).
+        if (FootprintGround(p.x, p.z, p.y + dy - 0.01f, p.y + 0.5f, LAND_UP, &g)) {
+            p.y = g;
+            p.velY = 0.0f;
+            p.onGround = true;
+        } else {
+            p.y += dy;
+        }
     } else {
-        if (p.velY < 0) p.onGround = true;
-        p.velY = 0;
+        // Rising: the body stops at a ceiling.
+        if (BodyBlocked(w, p.x, p.y + dy, p.z, h)) p.velY = 0.0f;
+        else p.y += dy;
+        p.onGround = false;
     }
 
     // Camera: the eye drops when crouching and further in a slide, and a

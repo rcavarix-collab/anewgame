@@ -156,6 +156,22 @@ bool CornerPos(const FacetGrid& g, const FacetShape& s, int cx, int cy, int cz, 
     return true;
 }
 
+// The base split of a quad a, b, c, d (in winding order) facing `n`: of
+// the two folds, one that turns neither triangle inside out (a twisted
+// quad at a step's corner can), preferring the one that bulges outward.
+// True: split along a-c; false: along b-d. Shared by the mesher and
+// FacetBaseFace, so what's drawn and what's collided with agree.
+bool FoldAC(Vec3 a, Vec3 b, Vec3 c, Vec3 d, Vec3 n) {
+    auto outward = [&](Vec3 x, Vec3 y, Vec3 z) { return Dot(Cross(y - x, z - x), n) > 0; };
+    bool okAC = outward(a, b, c) && outward(a, c, d);
+    bool okBD = outward(a, b, d) && outward(b, c, d);
+    Vec3 m1 = (a + c) * 0.5f, m2 = (b + d) * 0.5f;
+    bool useAC = Dot(m1 - m2, n) >= 0;
+    if (useAC && !okAC && okBD) useAC = false;
+    else if (!useAC && !okBD && okAC) useAC = true;
+    return useAC;
+}
+
 struct Builder {
     const FacetGrid& g;
     const FacetBuildParams& p;
@@ -393,13 +409,7 @@ struct Builder {
         // inside out (a twisted quad at a step's corner can), preferring
         // the one that bulges outward.
         Attr ca = Corner(A), cb = Corner(B), cc = Corner(C), cd = Corner(D);
-        auto outward = [&](const Attr& x, const Attr& y, const Attr& z) { return Dot(Cross(y.pos - x.pos, z.pos - x.pos), faceN) > 0; };
-        bool okAC = outward(ca, cb, cc) && outward(ca, cc, cd);
-        bool okBD = outward(ca, cb, cd) && outward(cb, cc, cd);
-        Vec3 m1 = (ca.pos + cc.pos) * 0.5f, m2 = (cb.pos + cd.pos) * 0.5f;
-        bool useAC = Dot(m1 - m2, faceN) >= 0;
-        if (useAC && !okAC && okBD) useAC = false;
-        else if (!useAC && !okBD && okAC) useAC = true;
+        bool useAC = FoldAC(ca.pos, cb.pos, cc.pos, cd.pos, faceN);
         diagLo = useAC ? A : B; diagHi = useAC ? C : D;
         if (Less(diagHi, diagLo)) std::swap(diagLo, diagHi);
         diagN = n;
@@ -500,6 +510,28 @@ struct Builder {
 
 bool FacetCorner(const FacetGrid& g, const FacetShape& s, int cx, int cy, int cz, Vec3* pos) {
     return CornerPos(g, s, cx, cy, cz, pos, nullptr);
+}
+
+void FacetBaseFace(const FacetGrid& g, const FacetShape& s, int x, int y, int z, int axis, int sign, Vec3 tri[2][3]) {
+    I3 cell = { x, y, z };
+    I3 base = sign > 0 ? cell + kAxis[axis] : cell;
+    int u = kU[axis], v = kV[axis];
+    I3 A = base, B, C = base + kAxis[u] + kAxis[v], D;
+    if (sign > 0) { B = base + kAxis[u]; D = base + kAxis[v]; }
+    else          { B = base + kAxis[v]; D = base + kAxis[u]; }
+    Vec3 p[4];
+    I3 q[4] = { A, B, C, D };
+    for (int k = 0; k < 4; k++)
+        if (!CornerPos(g, s, q[k].x, q[k].y, q[k].z, &p[k], nullptr)) p[k] = { (float)q[k].x, (float)q[k].y, (float)q[k].z };
+    Vec3 n = { 0, 0, 0 };
+    if (axis == 0) n.x = (float)sign; else if (axis == 1) n.y = (float)sign; else n.z = (float)sign;
+    if (FoldAC(p[0], p[1], p[2], p[3], n)) {
+        tri[0][0] = p[0]; tri[0][1] = p[1]; tri[0][2] = p[2];
+        tri[1][0] = p[0]; tri[1][1] = p[2]; tri[1][2] = p[3];
+    } else {
+        tri[0][0] = p[0]; tri[0][1] = p[1]; tri[0][2] = p[3];
+        tri[1][0] = p[1]; tri[1][1] = p[2]; tri[1][2] = p[3];
+    }
 }
 
 void FacetBuild(const FacetGrid& g, const FacetBuildParams& p, FacetMesh& out) {

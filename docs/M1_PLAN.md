@@ -106,6 +106,7 @@
 - **Change.** The player's capsule collides with the coarse facets, and the crosshair ray hits real triangles and maps back to a cell. Walking, sprinting, crouching and the slide all carry over.
 - **Files.** New: `collide.cpp/.h` (layer 3). Changed: `world.cpp` (physics calls it), `game.cpp` (placing and removing use it).
 - **Checks here.** Scripted walks over varied ground, with no snagging (F3); picking at many angles.
+- **Status: built.** Also changed: `facetmesh.*` (FacetBaseFace, the shared fold rule), `tests/tests.cpp` (the movement tests restated for facets: heights within the jitter, a one-cell step walked up, a two-cell wall stops). D39 records the one rule that changed.
 - **Your check.** Feel (T6); placing and removing land where you aim (T8).
 
 ### 1.8 Fine detail near you

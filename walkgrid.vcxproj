@@ -97,6 +97,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="world.cpp" />
+    <ClCompile Include="collide.cpp" />
     <ClCompile Include="groundmesh.cpp" />
     <ClCompile Include="terrain.cpp" />
     <ClCompile Include="jobs.cpp" />
@@ -151,6 +152,7 @@
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="world.h" />
+    <ClInclude Include="collide.h" />
     <ClInclude Include="groundmesh.h" />
     <ClInclude Include="terrain.h" />
     <ClInclude Include="jobs.h" />

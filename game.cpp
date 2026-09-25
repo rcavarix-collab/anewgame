@@ -8,6 +8,7 @@
 // change). See game.h for what crosses into main.cpp's own loop.
 
 #include "game_internal.h"
+#include "collide.h" // picking on facets (DESIGN.md 23.5)
 
 // =======================================================================
 // Menu/game state
@@ -47,7 +48,9 @@ void PickAndAct(bool breakBlock) {
     float ex = g_player.x, ey = g_player.y + g_player.eyeHeight, ez = g_player.z;
 
     int hx, hy, hz, px, py, pz;
-    if (!Raycast(g_world, ex, ey, ez, dx, dy, dz, 6.0f, hx, hy, hz, px, py, pz)) return;
+    // The crosshair meets the facets as drawn, and maps back to their cell
+    // (and the empty cell across the face, for placing): DESIGN.md 23.5.
+    if (!FacetRaycast(g_world, { ex, ey, ez }, { dx, dy, dz }, 6.0f, hx, hy, hz, px, py, pz)) return;
 
     if (breakBlock) {
         // The world floor stays: nothing exists below it, so a hole there

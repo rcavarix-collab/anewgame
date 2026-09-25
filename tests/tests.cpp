@@ -24,6 +24,7 @@
 #include "../terrain.h"
 #include "../jobs.h"
 #include "../groundmesh.h"
+#include "../collide.h"
 static const uint64_t HILLS_V1_FINGERPRINT = 0x24bcdc60e3a97b69ull; // walkgrid-hills v1, seed 1, column (0, 0)
 #include <cstdio>
 #include <cstring>
@@ -37,6 +38,9 @@ static const uint64_t HILLS_V1_FINGERPRINT = 0x24bcdc60e3a97b69ull; // walkgrid-
 #include <fstream>
 
 static int g_failures = 0, g_checks = 0;
+// How far faceted flat ground sits from its cells' tops: the corners'
+// seeded jitter (facetmesh.h FacetShape: 0.16) and a little.
+static const float FACET_Y = 0.2f;
 #define CHECK(cond) do { g_checks++; if (!(cond)) { g_failures++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
 
 static void ResetWorldState(World& w) {
@@ -424,10 +428,10 @@ static void TestMovement() {
     run(p, walk, 2.0f);
     CHECK(p.x > 9.5f && p.x < 9.8f && !p.crouching);
     run(p, crawl, 3.0f);
-    CHECK(p.x > 12.0f && p.crouching && fabsf(p.y - G) < 1e-3f);
+    CHECK(p.x > 12.0f && p.crouching && fabsf(p.y - G) < FACET_Y);
     // Letting go of crouch under the roof: still crouched (no room to stand).
     run(p, MoveInput(), 0.3f);
-    CHECK(p.crouching && fabsf(p.y - G) < 1e-3f && p.eyeHeight < 0.8f);
+    CHECK(p.crouching && fabsf(p.y - G) < FACET_Y && p.eyeHeight < 0.8f);
     // Back out into the open, and you stand up by yourself.
     MoveInput back; back.back = true;
     run(p, back, 5.0f);
@@ -478,25 +482,26 @@ static void TestMovement() {
         run(late, crouchWalk, 0.05f);
         CHECK(!PlayerSliding(late));
     }
-    // Stepping up onto a slab moves the body at once but not the view: the
-    // eye's world height is continuous, then glides up to standing height.
+    // Walking up a one-cell step (a slope on faceted ground, M1.7): the body
+    // rises a block, and the view never jumps -- it glides with the eye's
+    // easing -- then settles at standing height.
     {
         World sw; ResetWorldState(sw); Stream(sw, 40, 8, 300);
         int gy = TerrainHeight(40, 8);
-        for (int z = 6; z <= 10; z++) sw.Set(42, gy + 1, z, BLOCK_STONE_SLAB);
+        for (int x = 42; x <= 46; x++) for (int z = 5; z <= 11; z++) sw.Set(x, gy + 1, z, BLOCK_STONE);
         Player q; q.x = 40.5f; q.z = 8.5f; q.y = (float)(gy + 1); q.yaw = 1.5708f;
         MoveInput go; go.fwd = true;
-        float prevEye = q.y + q.eyeHeight, worstJump = 0;
-        bool stepped = false;
+        for (int i = 0; i < 10; i++) UpdatePlayerPhysics(sw, q, 1.0f / 60.0f, MoveInput());
+        float startY = q.y, prevEye = q.y + q.eyeHeight, worstJump = 0;
         for (int i = 0; i < 60; i++) {
-            float y0 = q.y;
             UpdatePlayerPhysics(sw, q, 1.0f / 60.0f, go);
-            if (q.y - y0 > 0.4f) stepped = true;
             float eye = q.y + q.eyeHeight;
             worstJump = std::max(worstJump, eye - prevEye);
             prevEye = eye;
         }
-        CHECK(stepped && worstJump < 0.2f && fabsf(q.eyeHeight - PLAYER_EYE) < 0.02f);
+        for (int i = 0; i < 30; i++) UpdatePlayerPhysics(sw, q, 1.0f / 60.0f, MoveInput());
+        printf("    step: x %.2f, rose %.2f, worst eye jump %.3f, eye %.3f\n", q.x, q.y - startY, worstJump, q.eyeHeight);
+        CHECK(q.x > 43.0f && q.y - startY > 0.8f && worstJump < 0.2f && fabsf(q.eyeHeight - PLAYER_EYE) < 0.02f);
     }
     // And a slide carries you straight under the roof.
     Player u = at(0.5f, 8.5f);
@@ -507,7 +512,7 @@ static void TestMovement() {
     MoveInput none;
     run(u, none, 1.5f);             // let go of everything: momentum does the rest
     printf("    slid under the roof to x = %.2f\n", u.x);
-    CHECK(u.x > 10.5f && u.crouching && fabsf(u.y - G) < 1e-3f);
+    CHECK(u.x > 10.5f && u.crouching && fabsf(u.y - G) < FACET_Y);
 }
 
 static void TestPlayer() {
@@ -521,17 +526,17 @@ static void TestPlayer() {
         UpdatePlayerPhysics(w, p, 1.0f / 60.0f, false, false, false, false, false);
         minY = std::min(minY, p.y);
     }
-    CHECK(p.onGround && fabsf(p.y - 13.0f) < 1e-4f && minY >= 13.0f - 1e-4f);
+    CHECK(p.onGround && fabsf(p.y - 13.0f) < FACET_Y && minY >= 13.0f - FACET_Y);
 
     // Below the world: put back on top of the column.
     Player v = p; v.y = -100.0f;
     UpdatePlayerPhysics(w, v, 1.0f / 60.0f, false, false, false, false, false);
-    CHECK(fabsf(v.y - 13.0f) < 1e-4f);
+    CHECK(fabsf(v.y - 13.0f) < FACET_Y);
 
     p.y = 8.0f; // buried
     int ticks = 0;
     while (ticks < 60) { UpdatePlayerPhysics(w, p, 1.0f / 60.0f, false, false, false, false, false); ticks++; if (p.onGround) break; }
-    CHECK(p.onGround && fabsf(p.y - 13.0f) < 1e-4f);
+    CHECK(p.onGround && fabsf(p.y - 13.0f) < FACET_Y);
 }
 
 static void TestMesher() {
@@ -699,22 +704,23 @@ static void TestShapes() {
     BuildChunkMesh(w2, { 0, 0, 0 }, *w2.FindChunk({ 0, 0, 0 }), v, idx);
     CHECK(v.size() == 4 + 4 * 3 && idx.size() == 6 + 4 * 3);
 
-    // Collision: stand on a slab at half height; step up onto it from the
-    // ground; a full block can't be stepped onto.
+    // Collision on faceted ground (M1.7): a one-cell step is a slope you
+    // walk up; a two-cell wall stops you. (Shapes are whole cells to the
+    // facets until they leave in M1.9.)
     World g; ResetWorldState(g);
     g_loadRadius = 1; g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
     Stream(g, 8, 8, 20);
-    g.Set(10, 13, 8, BLOCK_STONE_SLAB);
-    g.Set(8, 13, 11, BLOCK_STONE);
+    for (int z = 6; z <= 10; z++) g.Set(10, 13, z, BLOCK_STONE);
+    for (int x = 6; x <= 10; x++) { g.Set(x, 13, 11, BLOCK_STONE); g.Set(x, 14, 11, BLOCK_STONE); }
     Player p; p.x = 8.5f; p.z = 8.5f; p.y = 13.0f; p.yaw = 1.5707963f; // facing +X
     for (int i = 0; i < 10; i++) UpdatePlayerPhysics(g, p, 1.0f / 60.0f, false, false, false, false, false);
-    CHECK(p.onGround && fabsf(p.y - 13.0f) < 1e-3f);
+    CHECK(p.onGround && fabsf(p.y - 13.0f) < FACET_Y);
     for (int i = 0; i < 30; i++) UpdatePlayerPhysics(g, p, 1.0f / 60.0f, true, false, false, false, false);
-    CHECK(p.x > 10.3f && p.x < 11.0f && fabsf(p.y - 13.5f) < 1e-3f); // walked up onto the slab (and is standing on it)
-    Player q; q.x = 8.5f; q.z = 8.5f; q.y = 13.0f; q.yaw = 0.0f; // facing +Z, toward the cube
+    CHECK(p.x > 10.0f && p.y > 13.6f); // walked up onto the step
+    Player q; q.x = 8.5f; q.z = 8.5f; q.y = 13.0f; q.yaw = 0.0f; // facing +Z, toward the wall
     for (int i = 0; i < 10; i++) UpdatePlayerPhysics(g, q, 1.0f / 60.0f, false, false, false, false, false);
     for (int i = 0; i < 90; i++) UpdatePlayerPhysics(g, q, 1.0f / 60.0f, true, false, false, false, false);
-    CHECK(q.z < 11.0f - PLAYER_HALFW + 1e-3f && fabsf(q.y - 13.0f) < 1e-3f); // stopped at the full block
+    CHECK(q.z < 11.0f && q.y < 13.0f + 1.0f); // stopped at the two-cell wall, not climbed it
 }
 
 static void TestScheduledUpdates() {
@@ -1662,6 +1668,79 @@ static void TestSkyLight() {
     CHECK(dark > 0 && bright > 0);
 }
 
+// ---- Walking and picking on facets (collide.h, M1.7) ----
+static void TestFacetCollision() {
+    printf("walking and picking on facets\n");
+    World w; ResetWorldState(w);
+    g_loadRadius = 3; g_worldGen = WorldGenParams(); g_worldGen.type = GEN_WALKGRID; g_worldGen.seed = 11;
+    Stream(w, 8, 8, 300);
+    std::vector<FacetTri> tris;
+    // Scripted walks over hills: 16 headings, 4 s each at a sprint, jumping
+    // when stopped. Never below the ground, never lifted out of it (no
+    // entombing), never a jump of the view.
+    int sank = 0, lifted = 0, jumpsOfView = 0, stuck = 0;
+    float walked = 0;
+    for (int k = 0; k < 16; k++) {
+        Player p; p.x = 8.5f; p.z = 8.5f; p.y = (float)TerrainHeight(8, 8) + 1.5f; p.yaw = k * 0.3927f;
+        for (int i = 0; i < 30; i++) UpdatePlayerPhysics(w, p, 1.0f / 60.0f, MoveInput());
+        MoveInput go; go.fwd = true; go.sprint = true;
+        float sx = p.x, sz = p.z, prevEye = p.y + p.eyeHeight;
+        int still = 0;
+        for (int i = 0; i < 240; i++) {
+            float px = p.x, pz = p.z, py = p.y;
+            bool wasOnGround = p.onGround;
+            go.jump = still > 10;
+            UpdatePlayerPhysics(w, p, 1.0f / 60.0f, go);
+            float eye = p.y + p.eyeHeight;
+            // Walking along the ground (not landing from a fall): the view glides.
+            if (!go.jump && wasOnGround && p.onGround && fabsf(eye - prevEye) > 0.25f) jumpsOfView++;
+            prevEye = eye;
+            if (p.y - py > 0.9f && !go.jump) lifted++;
+            still = (fabsf(p.x - px) + fabsf(p.z - pz) < 1e-4f) ? still + 1 : 0;
+            if (p.onGround) {
+                int x = (int)floorf(p.x), y = (int)floorf(p.y), z = (int)floorf(p.z);
+                GatherFacets(w, x - 1, std::max(0, y - 2), z - 1, x + 2, y + 2, z + 2, tris);
+                float g;
+                if (GroundHeight(tris, p.x, p.z, p.y - 3.0f, p.y + 3.0f, 0.3f, &g) && g > p.y + 0.1f) sank++;
+            }
+        }
+        if (still > 60) stuck++;
+        walked += sqrtf((p.x - sx) * (p.x - sx) + (p.z - sz) * (p.z - sz));
+    }
+    printf("  16 walks: %.0f blocks in all; sank %d, lifted %d, view jumps %d, stuck at the end %d\n", walked, sank, lifted, jumpsOfView, stuck);
+    CHECK(sank == 0 && lifted == 0 && jumpsOfView == 0);
+    CHECK(walked > 16 * 12.0f);
+    // Picking at many angles: the hit is a solid cell, the place cell is
+    // empty and across one of its faces, and the hit lies on the ground
+    // the player sees (the facet it met is within reach).
+    int hits = 0, bad = 0;
+    for (int a = 0; a < 24; a++)
+        for (int e = 1; e <= 5; e++) {
+            float yaw = a * 0.2618f, pitch = -e * 0.25f;
+            Vec3 d = { sinf(yaw) * cosf(pitch), sinf(pitch), cosf(yaw) * cosf(pitch) };
+            float ex = 8.5f, ez = 8.5f, ey = (float)TerrainHeight(8, 8) + 2.6f;
+            int hx, hy, hz, px, py, pz; float dist;
+            if (!FacetRaycast(w, { ex, ey, ez }, d, 8.0f, hx, hy, hz, px, py, pz, &dist)) continue;
+            hits++;
+            int adj = abs(px - hx) + abs(py - hy) + abs(pz - hz);
+            if (!w.Solid(hx, hy, hz) || w.Solid(px, py, pz) || adj != 1 || dist <= 0 || dist > 8) bad++;
+            // The facet it met belongs to that cell's face: within a block of the cell.
+            Vec3 q = { ex + d.x * dist, ey + d.y * dist, ez + d.z * dist };
+            if (fabsf(q.x - (hx + 0.5f)) > 1.01f || fabsf(q.y - (hy + 0.5f)) > 1.01f || fabsf(q.z - (hz + 0.5f)) > 1.01f) bad++;
+        }
+    printf("  picking: %d hits of 120 rays, %d wrong\n", hits, bad);
+    CHECK(hits > 60 && bad == 0);
+    // Straight down onto flat ground: the cell below, and the air above it.
+    World f; ResetWorldState(f);
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
+    Stream(f, 8, 8, 60);
+    int hx, hy, hz, px, py, pz;
+    CHECK(FacetRaycast(f, { 8.5f, 16.0f, 8.5f }, { 0, -1, 0 }, 8.0f, hx, hy, hz, px, py, pz));
+    CHECK(hx == 8 && hy == 12 && hz == 8 && px == 8 && py == 13 && pz == 8);
+    // From inside the air, never a back face: looking up at open sky, nothing.
+    CHECK(!FacetRaycast(f, { 8.5f, 16.0f, 8.5f }, { 0, 1, 0 }, 8.0f, hx, hy, hz, px, py, pz));
+}
+
 // ---- The faceted ground (facetmesh.h, M1.2) ----
 // A test world: a lumpy blob of three materials with a dug pit, inside a
 // box of air. Returns the cells (index (y * nz + z) * nx + x).
@@ -1820,6 +1899,7 @@ int main() {
     TestJobs();
     TestGroundMesh();
     TestSkyLight();
+    TestFacetCollision();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

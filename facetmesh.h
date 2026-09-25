@@ -123,3 +123,19 @@ void FacetBuild(const FacetGrid& g, const FacetBuildParams& p, FacetMesh& out);
 // collision and picking use (collide.h). Each is wound so (b - a) x (c - a)
 // points out of the ground.
 void FacetBaseFace(const FacetGrid& g, const FacetShape& s, int x, int y, int z, int axis, int sign, Vec3 tri[2][3]);
+
+// Which sides of a cube of cells see each other through open (not solid)
+// cells (DESIGN.md 23.7, M1.11): the faces are -X +X -Y +Y -Z +Z (0..5),
+// and bit FacetPairBit(a, b) is set when an open cell on face a connects to
+// one on face b by steps between open cells inside the cube. A solid cube
+// is 0; an empty one, every bit. The cube is `size` cells from grid cell
+// (x0, y0, z0). Cost: one flood fill of the cube, about 40 microseconds a
+// chunk (tests, -O1), on the job thread that meshes it.
+static inline int FacetPairBit(int a, int b) {
+    if (a > b) { int t = a; a = b; b = t; }
+    static const int base[6] = { 0, 5, 9, 12, 14, 15 };
+    return base[a] + (b - a - 1);
+}
+static const uint16_t FACET_ALL_OPEN = 0x7FFF;
+static inline bool FacetFacesSee(uint16_t openings, int a, int b) { return a == b || ((openings >> FacetPairBit(a, b)) & 1) != 0; }
+uint16_t FacetOpenings(const FacetGrid& g, int x0, int y0, int z0, int size);

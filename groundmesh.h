@@ -72,6 +72,7 @@ void CopyGroundCells(World& w, const ChunkCoord& cc, GroundCells& out);
 struct GroundMesh {
     std::vector<GroundVertex> verts;
     std::vector<uint32_t> idx;
+    uint16_t openings = FACET_ALL_OPEN; // which of the chunk's sides see each other (facetmesh.h FacetOpenings)
     FacetMesh stats;   // counts only (its vectors are emptied)
 };
 // Detail bands (DESIGN.md 23.6): the level a chunk `d` chunks from the
@@ -87,3 +88,17 @@ int GroundWantLevel(int d, int current, int fine);
 // Its boundary edges are always cut for the finest level, so neighbours
 // built at other levels meet it exactly.
 void BuildGroundMesh(const GroundCells& in, int level, GroundMesh& out);
+
+// Hidden-chunk skipping (DESIGN.md 23.7, M1.11): the chunks that could be
+// seen from the camera's chunk, walking outward chunk to chunk through
+// the sides each chunk's open cells connect (its openings), never turning
+// back toward the camera, and only through chunks in view. A chunk sealed
+// off by ground -- under the hills, behind a cave wall -- is never reached.
+// `openings(cc, user)` gives a chunk's openings, or -1 for no chunk there
+// (air: open every way); `inView(cc, user)` is the frustum test. Walks
+// chunk rows 0 .. chunkRows-1 within `radius` chunks across. Every chunk
+// reached is appended to `out` once (resident or not). Cost: a few
+// thousand steps at the default distance.
+void GroundVisibleChunks(const ChunkCoord& cam, int radius, int chunkRows,
+                         int (*openings)(const ChunkCoord&, void*), bool (*inView)(const ChunkCoord&, void*), void* user,
+                         std::vector<ChunkCoord>& out);

@@ -121,6 +121,7 @@ void BuildGroundMesh(const GroundCells& in, int level, GroundMesh& out) {
     p.stitchBox = true;
     FacetMesh m;
     FacetBuild(g, p, m);
+    out.openings = FacetOpenings(g, FACET_PAD, FACET_PAD, FACET_PAD, CHUNK_SIZE);
     out.verts.resize(m.verts.size());
     float bx = (float)p.bx0, by = (float)p.by0, bz = (float)p.bz0;
     // In double: v is exact (a float minus a whole number near it), and
@@ -144,4 +145,62 @@ void BuildGroundMesh(const GroundCells& in, int level, GroundMesh& out) {
     out.idx = std::move(m.idx);
     m.verts.clear();
     out.stats = std::move(m);
+}
+
+static void WalkVisible(const ChunkCoord& cam, int radius, int chunkRows,
+                        int (*openings)(const ChunkCoord&, void*), bool (*inView)(const ChunkCoord&, void*), void* user,
+                        std::vector<ChunkCoord>& out);
+
+void GroundVisibleChunks(const ChunkCoord& cam, int radius, int chunkRows,
+                         int (*openings)(const ChunkCoord&, void*), bool (*inView)(const ChunkCoord&, void*), void* user,
+                         std::vector<ChunkCoord>& out) {
+    out.clear();
+    if (radius < 0 || chunkRows <= 0) return;
+    // A camera above the world's top (or below its floor) starts from the
+    // row it looks down (or up) into.
+    ChunkCoord camIn = cam;
+    camIn.y = std::max(0, std::min(chunkRows - 1, cam.y));
+    WalkVisible(camIn, radius, chunkRows, openings, inView, user, out);
+}
+
+static void WalkVisible(const ChunkCoord& cam, int radius, int chunkRows,
+                        int (*openings)(const ChunkCoord&, void*), bool (*inView)(const ChunkCoord&, void*), void* user,
+                        std::vector<ChunkCoord>& out) {
+    const int W = 2 * radius + 1;
+    // Per chunk in the walk's box: the sides it has been entered through
+    // (bits 0..5), and 64 once it's in `out`. A chunk is walked once per
+    // side it's entered by, not just once: the first way in isn't always
+    // the one that sees furthest.
+    static std::vector<uint8_t> entered;
+    entered.assign((size_t)W * W * chunkRows, 0);
+    struct Step { ChunkCoord cc; int8_t in; uint8_t went; }; // `went`: the directions taken so far
+    static std::vector<Step> queue;
+    queue.clear();
+    static const int D[6][3] = { { -1, 0, 0 }, { 1, 0, 0 }, { 0, -1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 } };
+    auto slot = [&](const ChunkCoord& c) -> int {
+        int x = c.x - cam.x + radius, z = c.z - cam.z + radius;
+        if (x < 0 || z < 0 || x >= W || z >= W || c.y < 0 || c.y >= chunkRows) return -1;
+        return (c.y * W + z) * W + x;
+    };
+    // The camera's own chunk is always seen, and seen out of on every side
+    // (whatever its openings: the camera may be inside ground).
+    int s0 = slot(cam);
+    if (s0 >= 0) { entered[s0] = 64 | 63; out.push_back(cam); }
+    for (int f = 0; f < 6; f++) queue.push_back({ { cam.x + D[f][0], cam.y + D[f][1], cam.z + D[f][2] }, (int8_t)(f ^ 1), (uint8_t)(1 << f) });
+    for (size_t head = 0; head < queue.size(); head++) {
+        Step st = queue[head];
+        int si = slot(st.cc);
+        if (si < 0 || (entered[si] >> st.in & 1)) continue;
+        if (!(entered[si] & 64) && !inView(st.cc, user)) { entered[si] |= 63; continue; } // out of view: never drawn, never walked through
+        entered[si] |= (uint8_t)(1 << st.in);
+        if (!(entered[si] & 64)) { entered[si] |= 64; out.push_back(st.cc); }
+        int op = openings(st.cc, user);
+        uint16_t o = op < 0 ? FACET_ALL_OPEN : (uint16_t)op;
+        for (int f = 0; f < 6; f++) {
+            if (f == st.in) continue;
+            if (st.went >> (f ^ 1) & 1) continue; // never back toward the camera
+            if (!FacetFacesSee(o, st.in, f)) continue;
+            queue.push_back({ { st.cc.x + D[f][0], st.cc.y + D[f][1], st.cc.z + D[f][2] }, (int8_t)(f ^ 1), (uint8_t)(st.went | (1 << f)) });
+        }
+    }
 }

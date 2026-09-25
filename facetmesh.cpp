@@ -552,3 +552,46 @@ void FacetBuild(const FacetGrid& g, const FacetBuildParams& p, FacetMesh& out) {
     Builder b(g, p, out);
     b.Run();
 }
+
+uint16_t FacetOpenings(const FacetGrid& g, int x0, int y0, int z0, int size) {
+    const int n = size, n3 = n * n * n;
+    auto open = [&](int x, int y, int z) {
+        return !g.mats[g.cells[((size_t)(y0 + y) * g.nz + (z0 + z)) * g.nx + (x0 + x)]].solid;
+    };
+    // Scratch reused per thread: a fill label per cell (0 unvisited).
+    thread_local std::vector<uint8_t> seen;
+    thread_local std::vector<int> stack;
+    seen.assign((size_t)n3, 0);
+    uint16_t out = 0;
+    for (int start = 0; start < n3; start++) {
+        if (seen[start]) continue;
+        int sx = start % n, sz = (start / n) % n, sy = start / (n * n);
+        if (!open(sx, sy, sz)) { seen[start] = 1; continue; }
+        // One connected pocket of open cells: which faces it touches.
+        int faces = 0;
+        stack.clear(); stack.push_back(start); seen[start] = 1;
+        while (!stack.empty()) {
+            int i = stack.back(); stack.pop_back();
+            int x = i % n, z = (i / n) % n, y = i / (n * n);
+            if (x == 0) faces |= 1;
+            if (x == n - 1) faces |= 2;
+            if (y == 0) faces |= 4;
+            if (y == n - 1) faces |= 8;
+            if (z == 0) faces |= 16;
+            if (z == n - 1) faces |= 32;
+            const int nb[6][3] = { { x - 1, y, z }, { x + 1, y, z }, { x, y - 1, z }, { x, y + 1, z }, { x, y, z - 1 }, { x, y, z + 1 } };
+            for (const auto& q : nb) {
+                if (q[0] < 0 || q[1] < 0 || q[2] < 0 || q[0] >= n || q[1] >= n || q[2] >= n) continue;
+                int j = (q[1] * n + q[2]) * n + q[0];
+                if (seen[j]) continue;
+                seen[j] = 1;
+                if (open(q[0], q[1], q[2])) stack.push_back(j);
+            }
+        }
+        for (int a = 0; a < 6; a++)
+            for (int b = a + 1; b < 6; b++)
+                if ((faces >> a & 1) && (faces >> b & 1)) out |= (uint16_t)(1u << FacetPairBit(a, b));
+        if (out == FACET_ALL_OPEN) break;
+    }
+    return out;
+}

@@ -33,6 +33,7 @@ static const uint64_t HILLS_V1_FINGERPRINT = 0xb337671eeedafb98ull; // walkgrid-
 #include <array>
 #include <algorithm>
 #include <map>
+#include <chrono>
 #include <unordered_map>
 #include <sstream>
 #include <fstream>
@@ -1670,6 +1671,159 @@ static void TestStringTable() {
     SetStrings({});
 }
 
+// Draw only what can be seen (M1.11, DESIGN.md 23.7): chunk openings, the
+// visibility walk -- which must never hide a chunk a ray from the camera
+// can reach -- and the heading-aware load order.
+static void TestHiddenChunks() {
+    printf("hidden chunks, load order\n");
+    // Openings of a 16^3 cube of cells in a padded grid.
+    FacetMaterial mats[256]; mats[1].solid = true;
+    const int N = 20, P = 2;
+    std::vector<uint8_t> cells((size_t)N * N * N, 0);
+    FacetGrid g; g.nx = g.ny = g.nz = N; g.cells = cells.data(); g.mats = mats;
+    auto fill = [&](int x0, int y0, int z0, int x1, int y1, int z1, uint8_t id) {
+        for (int y = y0; y < y1; y++) for (int z = z0; z < z1; z++) for (int x = x0; x < x1; x++)
+            cells[((size_t)(y + P) * N + (z + P)) * N + (x + P)] = id;
+    };
+    CHECK(FacetOpenings(g, P, P, P, 16) == FACET_ALL_OPEN);
+    fill(0, 0, 0, 16, 16, 16, 1);
+    CHECK(FacetOpenings(g, P, P, P, 16) == 0);
+    fill(0, 7, 7, 16, 9, 9, 0); // a tunnel along x
+    uint16_t o = FacetOpenings(g, P, P, P, 16);
+    CHECK(o == (1u << FacetPairBit(0, 1)) && FacetFacesSee(o, 1, 0) && !FacetFacesSee(o, 0, 2));
+    fill(0, 0, 0, 16, 16, 16, 0); fill(0, 0, 0, 16, 8, 16, 1); // ground filling the lower half
+    o = FacetOpenings(g, P, P, P, 16);
+    CHECK(!FacetFacesSee(o, 2, 3) && FacetFacesSee(o, 3, 0) && FacetFacesSee(o, 0, 1) && FacetFacesSee(o, 4, 5));
+    fill(0, 0, 0, 16, 16, 16, 0); fill(0, 0, 0, 16, 16, 1, 1); fill(0, 0, 15, 16, 16, 16, 1); // walls at both z sides
+    o = FacetOpenings(g, P, P, P, 16);
+    CHECK(!FacetFacesSee(o, 4, 5) && !FacetFacesSee(o, 4, 0) && FacetFacesSee(o, 0, 1) && FacetFacesSee(o, 2, 3));
+    int bits = 0; for (int a = 0; a < 6; a++) for (int b = a + 1; b < 6; b++) bits |= 1 << FacetPairBit(a, b);
+    CHECK(bits == FACET_ALL_OPEN); // 15 pairs, 15 distinct bits
+
+    // The walk on real ground: hills, with a sealed tunnel dug under them.
+    BlockTextureSet t; BuildBlockTextures(VtexSet(), t);
+    InitGroundMaterials(t.faceLayer);
+    World w; ResetWorldState(w);
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_WALKGRID; g_worldGen.seed = 3;
+    const int R = 4;
+    for (int cz = -R - 1; cz <= R + 1; cz++) for (int cx = -R - 1; cx <= R + 1; cx++) GenerateColumn(w, cx, cz);
+    int floorY = 1000; // the lowest ground top in the middle columns
+    for (int z = -8; z < 24; z++) for (int x = -8; x < 24; x++) {
+        int y = 255; while (y > 0 && !w.Solid(x, y, z)) y--;
+        floorY = std::min(floorY, y);
+    }
+    int tunnelY = floorY - 20; // well under the ground, sealed at both ends
+    CHECK(tunnelY > 4);
+    for (int x = -8; x < 24; x++) for (int y = tunnelY; y < tunnelY + 3; y++) for (int z = 6; z < 9; z++) w.Set(x, y, z, BLOCK_AIR);
+    std::unordered_map<long long, uint16_t> open;
+    auto ckey = [](const ChunkCoord& c) { return ((long long)(c.x + 512) << 32) | ((long long)(c.z + 512) << 12) | (long long)c.y; };
+    double openMs = 0;
+    for (auto& kv : w.chunks) {
+        GroundCells gc; CopyGroundCells(w, kv.first, gc);
+        FacetGrid fg; fg.nx = fg.ny = fg.nz = GROUND_GRID; fg.cells = gc.cells; fg.mats = g_groundFacet;
+        auto t0 = std::chrono::steady_clock::now();
+        open[ckey(kv.first)] = FacetOpenings(fg, FACET_PAD, FACET_PAD, FACET_PAD, CHUNK_SIZE);
+        openMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    }
+    printf("  openings: %.1f us a chunk on average (job threads; this machine, -O1)\n", 1000.0 * openMs / w.chunks.size());
+    struct Ctx { std::unordered_map<long long, uint16_t>* open; decltype(ckey)* key; };
+    Ctx ctx{ &open, &ckey };
+    auto openings = [](const ChunkCoord& cc, void* u) -> int {
+        Ctx* c = (Ctx*)u; auto it = c->open->find((*c->key)(cc));
+        return it == c->open->end() ? -1 : (int)it->second;
+    };
+    auto always = [](const ChunkCoord&, void*) { return true; };
+    int rows = 0; for (auto& kv : w.chunks) rows = std::max(rows, kv.first.y + 2); // capped as render.cpp caps it
+    // Rays from the eye: the chunk of the first ground each ray meets, and
+    // of the air just before it, must both be reached by the walk.
+    auto rayCheck = [&](float ex, float ey, float ez, const std::vector<ChunkCoord>& seen, int& rays, int& missed) {
+        std::unordered_map<long long, int> in;
+        for (auto& c : seen) in[ckey(c)] = 1;
+        uint32_t seed = 12345;
+        auto rnd = [&]() { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0f; };
+        for (int i = 0; i < 3000; i++) {
+            float u = rnd() * 2 - 1, a = rnd() * 6.2831853f, r = sqrtf(1 - u * u);
+            float dx = r * cosf(a), dy = u, dz = r * sinf(a);
+            float x = ex, y = ey, z = ez;
+            int px = (int)floorf(x), py = (int)floorf(y), pz = (int)floorf(z);
+            for (float d = 0; d < R * 16.0f; d += 0.05f) {
+                x = ex + dx * d; y = ey + dy * d; z = ez + dz * d;
+                if (y < 0 || y > 255) break;
+                int cx = (int)floorf(x), cy = (int)floorf(y), cz = (int)floorf(z);
+                if (std::abs(FloorDiv16(cx)) > R || std::abs(FloorDiv16(cz)) > R) break;
+                if (w.Solid(cx, cy, cz)) {
+                    rays++;
+                    ChunkCoord hit{ FloorDiv16(cx), FloorDiv16(cy), FloorDiv16(cz) }, before{ FloorDiv16(px), FloorDiv16(py), FloorDiv16(pz) };
+                    if (!in.count(ckey(hit)) || !in.count(ckey(before))) missed++;
+                    break;
+                }
+                px = cx; py = cy; pz = cz;
+            }
+        }
+    };
+    std::vector<ChunkCoord> seen;
+    int resident = (int)w.chunks.size();
+    // On the surface: the tunnel's chunks are sealed off, and nothing a ray hits is missed.
+    float sx = 8.5f, sz = 8.5f; int sy = 255; while (!w.Solid(8, sy, 8)) sy--;
+    GroundVisibleChunks({ 0, FloorDiv16(sy + 2), 0 }, R, rows, openings, always, &ctx, seen);
+    int reachedResident = 0; for (auto& c : seen) reachedResident += open.count(ckey(c)) ? 1 : 0;
+    bool tunnelHidden = true;
+    for (auto& c : seen)
+        if (c.z == 0 && c.x >= -1 && c.x <= 1 && (c.y == FloorDiv16(tunnelY) || c.y == FloorDiv16(tunnelY + 2))) tunnelHidden = false;
+    int rays = 0, missed = 0;
+    rayCheck(sx, sy + 2.6f, sz, seen, rays, missed);
+    printf("  from the surface: %d of %d resident chunks reached; %d rays met ground, %d missed\n", reachedResident, resident, rays, missed);
+    CHECK(missed == 0 && rays > 1000);
+    CHECK(tunnelHidden); // no chunk of the sealed tunnel is reached from above
+    // In the tunnel: its chunks are reached; the surface far above isn't all.
+    GroundVisibleChunks({ 0, FloorDiv16(tunnelY + 1), 0 }, R, rows, openings, always, &ctx, seen);
+    int fromTunnel = 0; for (auto& c : seen) fromTunnel += open.count(ckey(c)) ? 1 : 0;
+    rays = 0; missed = 0;
+    rayCheck(0.5f, tunnelY + 1.6f, 7.5f, seen, rays, missed);
+    printf("  from the tunnel: %d of %d resident chunks reached; %d rays met ground, %d missed\n", fromTunnel, resident, rays, missed);
+    CHECK(missed == 0 && rays > 1000 && fromTunnel < reachedResident);
+    // A frustum-like test: only chunks with x >= the camera's are in view.
+    auto ahead = [](const ChunkCoord& cc, void*) { return cc.x >= 0; };
+    GroundVisibleChunks({ 0, FloorDiv16(sy + 2), 0 }, R, rows, openings, ahead, &ctx, seen);
+    bool allAhead = true; for (auto& c : seen) allAhead = allAhead && c.x >= 0;
+    CHECK(allAhead && !seen.empty());
+    // Above the world's top: starts from the top row, still sees the ground.
+    GroundVisibleChunks({ 0, rows + 5, 0 }, R, rows, openings, always, &ctx, seen);
+    int fromSky = 0; for (auto& c : seen) fromSky += open.count(ckey(c)) ? 1 : 0;
+    CHECK(fromSky > 0);
+    // Cost: the walk from the surface at the default distance, all in view.
+    {
+        const int RD = 12;
+        auto t0 = std::chrono::steady_clock::now();
+        for (int i = 0; i < 20; i++) GroundVisibleChunks({ 0, FloorDiv16(sy + 2), 0 }, RD + 1, rows, openings, always, &ctx, seen);
+        double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count() / 20;
+        printf("  walk at render distance %d, everything in view: %zu chunks, %.3f ms (this machine, -O1)\n", RD, seen.size(), ms);
+    }
+
+    // Load order: the player's own column and its neighbours first; ahead
+    // before behind; no heading, plain distance.
+    CHECK(ColumnLoadOrder(0, 0, 1, 0) < ColumnLoadOrder(1, 1, 1, 0));
+    CHECK(ColumnLoadOrder(-1, 1, 1, 0) < ColumnLoadOrder(3, 0, 1, 0)); // a neighbour behind beats ground ahead
+    CHECK(ColumnLoadOrder(8, 0, 1, 0) < ColumnLoadOrder(-5, 0, 1, 0)); // 8 ahead before 5 behind
+    CHECK(ColumnLoadOrder(0, 6, 0, 0) == ColumnLoadOrder(-6, 0, 0, 0));
+    // The queue follows it: heading east, the first columns queued beyond
+    // the nearest ring are east of the player; turning west re-orders them.
+    ResetWorldState(w);
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
+    int savedRadius = g_loadRadius; g_loadRadius = 6;
+    EnsureChunksLoaded(0, 0, 1.0f, 0.0f);
+    // The next 60 after the nearest ring lean well east: on average two
+    // columns east of the player (a plain distance order averages 0).
+    auto meanX = [] { double m = 0; for (size_t i = 9; i < 69; i++) m += g_pendingColumns[i].first; return m / 60; };
+    CHECK(g_pendingColumns.size() == 15 * 15 && meanX() > 1.5);
+    bool nearFirst = true; for (size_t i = 0; i < 9; i++) nearFirst = nearFirst && std::abs(g_pendingColumns[i].first) <= 1 && std::abs(g_pendingColumns[i].second) <= 1;
+    CHECK(nearFirst);
+    EnsureChunksLoaded(0, 0, -1.0f, 0.0f); // same chunk, turned round
+    CHECK(meanX() < -1.5);
+    g_loadRadius = savedRadius;
+    ResetWorldState(w);
+}
+
 int main() {
     TestVtex();
     TestBlockTextures();
@@ -1696,6 +1850,7 @@ int main() {
     TestFacetCollision();
     TestDetailBands();
     TestStringTable();
+    TestHiddenChunks();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

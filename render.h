@@ -148,7 +148,9 @@ void RenderEmptyScene();
 // the game loop calls once per frame.
 // Starts dirty chunks' ground meshes on the job threads (nearest first,
 // capped) and uploads finished ones (capped). Once per frame.
-void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz);
+// `headX, headZ`: the heading (world.h EnsureChunksLoaded), so chunks ahead
+// mesh before chunks behind at the same distance.
+void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz, float headX = 0.0f, float headZ = 0.0f);
 // Chunk meshes being built on the job threads right now (F3).
 int MeshesBuilding();
 // GPU timing (profiler.h PROF_GPU_*): bracket the frame's passes with

@@ -76,6 +76,10 @@ struct Chunk {
     uint64_t meshVersion = 0;
     bool index32 = false; // the mesh needs 32-bit indices (fine detail can pass 65,536 vertices)
     int8_t detailLevel = -1; // the fine-detail level its mesh was built at (DESIGN.md 23.6); -1 none yet
+    // Which of its sides see each other through open cells (facetmesh.h
+    // FacetOpenings), from its last mesh; every way until it has one.
+    uint16_t openings = 0x7FFF;
+    uint32_t seenFrame = 0; // the frame the visibility walk last reached it (render.cpp, DESIGN.md 23.7)
     ID3D11Buffer* vb = nullptr;
     ID3D11Buffer* ib = nullptr;
     unsigned int indexCount = 0; // UINT, spelled out so this header doesn't need <windows.h>
@@ -387,7 +391,15 @@ bool ColumnNeighborhoodResident(int cx, int cz);
 // generation) -- it never touches World directly, unlike its
 // gravity/mesh-rebuild counterparts. Also queues eviction for resident
 // columns that have drifted well outside the load radius.
-void EnsureChunksLoaded(int playerChunkX, int playerChunkZ);
+// `headX, headZ` (M1.11, DESIGN.md 23.7): where the player is heading --
+// looking and moving -- as a unit vector, or 0, 0 for none. Ground ahead
+// is queued before ground behind: a column ahead at a given distance
+// comes with columns behind at about half that. The columns under and
+// beside the player always come first. A turn of more than 45 degrees
+// re-orders what's still waiting.
+void EnsureChunksLoaded(int playerChunkX, int playerChunkZ, float headX = 0.0f, float headZ = 0.0f);
+// The heading-aware queue order: smaller comes first (tested).
+float ColumnLoadOrder(int dx, int dz, float headX, float headZ);
 void ProcessColumnGeneration(World& w);
 void ProcessColumnEviction(World& w);
 

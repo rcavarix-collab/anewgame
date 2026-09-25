@@ -423,15 +423,40 @@ std::unordered_set<long long> g_pendingColumnSet;
 std::deque<std::pair<int, int>> g_pendingEvictions;
 std::unordered_set<long long> g_pendingEvictionSet;
 
-void EnsureChunksLoaded(int playerChunkX, int playerChunkZ) {
+float ColumnLoadOrder(int dx, int dz, float headX, float headZ) {
+    float r = sqrtf((float)(dx * dx + dz * dz));
+    if (r < 1.5f) return r; // the player's own column and its neighbours: always first
+    float c = (dx * headX + dz * headZ) / r; // -1 behind .. 1 ahead (0 with no heading)
+    return std::max(1.5f, r * (1.0f - 0.33f * c));
+}
+
+static float g_queueHeadX = 0.0f, g_queueHeadZ = 0.0f;
+
+// Sorts what's waiting by ColumnLoadOrder from the player's column.
+static void OrderPendingColumns(float headX, float headZ) {
+    g_queueHeadX = headX; g_queueHeadZ = headZ;
+    int px = g_lastPlayerChunkX, pz = g_lastPlayerChunkZ;
+    std::stable_sort(g_pendingColumns.begin(), g_pendingColumns.end(), [&](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+        return ColumnLoadOrder(a.first - px, a.second - pz, headX, headZ) < ColumnLoadOrder(b.first - px, b.second - pz, headX, headZ);
+    });
+}
+
+void EnsureChunksLoaded(int playerChunkX, int playerChunkZ, float headX, float headZ) {
     // Recomputed only when the player's chunk coordinate actually
-    // changes (Section 2.4) -- not every frame.
-    if (playerChunkX == g_lastPlayerChunkX && playerChunkZ == g_lastPlayerChunkZ) return;
+    // changes (Section 2.4) -- not every frame -- or, for the order alone,
+    // when the heading turns past 45 degrees.
+    if (playerChunkX == g_lastPlayerChunkX && playerChunkZ == g_lastPlayerChunkZ) {
+        if (!g_pendingColumns.empty() && headX * g_queueHeadX + headZ * g_queueHeadZ < 0.7071f &&
+            (headX != 0.0f || headZ != 0.0f))
+            OrderPendingColumns(headX, headZ);
+        return;
+    }
     g_lastPlayerChunkX = playerChunkX;
     g_lastPlayerChunkZ = playerChunkZ;
 
-    // Queued ring by ring outward from the player's own column, so the
-    // ground under and around them always generates first. (This used
+    // Every missing column in range is queued, then the queue is ordered
+    // outward from the player, ahead before behind (ColumnLoadOrder), so
+    // the ground under and around them always generates first. (This used
     // to be a corner-to-corner raster order, which put the player's own
     // column halfway down the queue -- dozens of ticks at spawn, long
     // enough to fall into where the ground was about to appear.)
@@ -440,18 +465,16 @@ void EnsureChunksLoaded(int playerChunkX, int playerChunkZ) {
     // read across them -- see RebuildDirtyChunks), so this extra ring is
     // what lets the outermost visible ring be meshed.
     int genRadius = g_loadRadius + 1;
-    for (int ring = 0; ring <= genRadius; ring++) {
-        for (int dx = -ring; dx <= ring; dx++) {
-            for (int dz = -ring; dz <= ring; dz++) {
-                if (dx != -ring && dx != ring && dz != -ring && dz != ring) continue; // ring edge only
-                int cx = playerChunkX + dx, cz = playerChunkZ + dz;
-                long long key = ColumnKey(cx, cz);
-                if (g_residentColumns.count(key) || g_pendingColumnSet.count(key)) continue;
-                g_pendingColumnSet.insert(key);
-                g_pendingColumns.push_back({ cx, cz });
-            }
+    for (int dx = -genRadius; dx <= genRadius; dx++) {
+        for (int dz = -genRadius; dz <= genRadius; dz++) {
+            int cx = playerChunkX + dx, cz = playerChunkZ + dz;
+            long long key = ColumnKey(cx, cz);
+            if (g_residentColumns.count(key) || g_pendingColumnSet.count(key)) continue;
+            g_pendingColumnSet.insert(key);
+            g_pendingColumns.push_back({ cx, cz });
         }
     }
+    OrderPendingColumns(headX, headZ);
 
     // Resident columns that have drifted past a margin beyond the load
     // radius (not right at its edge, so a player oscillating near the

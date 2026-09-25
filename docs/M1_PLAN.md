@@ -140,6 +140,7 @@
 - **Change.** Hidden-chunk skipping (open-side connectivity, recorded while meshing), and loading ordered by where you look and where you're heading.
 - **Files.** Changed: `facetmesh.cpp`, `render.cpp`, `world.cpp`.
 - **Your check.** A Ctrl+F3 report with chunks drawn well under chunks resident.
+- **Status: built (D43).** The walk is `GroundVisibleChunks` in `groundmesh.cpp` (layer 4, platform-free so it's tested natively), rather than in `render.cpp`; openings are `FacetOpenings` in `facetmesh.cpp`, stored on each chunk (`world.h`). Also changed: `main.cpp` (the heading), `profiler.cpp/.h` (CHUNKS HIDDEN), `tests/tests.cpp`. Measured here: 0 of 4,500 eye rays met ground the walk skipped; the walk about 0.3 ms with everything in view at render distance 12, openings about 40 µs a chunk on the job threads (tests, -O1). On your machine: CHUNKS HIDDEN in F3, and the walk's cost inside RENDER.
 
 ### 1.12 The first functional test
 The footsteps first (D31): the palette's −21 dB ceiling (DESIGN 10.4) holds them to about +5 dB of the raise you picked, so I'll make clips of footsteps allowed past it, on the new ground, for you to choose from. Then the whole checklist, T1–T13, on your machine. Then the M1 reflection, the forecast review and the ledger.

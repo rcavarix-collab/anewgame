@@ -604,6 +604,7 @@ static void UploadGroundMesh(World& w, const ChunkCoord& cc, uint64_t version, i
     if (!cp || cp->meshVersion != version) return; // edited again or replaced: a newer build is coming
     Chunk& c = *cp;
     c.detailLevel = (int8_t)level;
+    c.openings = m.openings;
     if (c.vb) { c.vb->Release(); c.vb = nullptr; }
     if (c.ib) { c.ib->Release(); c.ib = nullptr; }
     c.indexCount = 0; c.opaqueIndexCount = 0;
@@ -660,11 +661,11 @@ static int ChunkDistance(const ChunkCoord& cc, int camCx, int camCy, int camCz) 
     return std::max(std::abs(cc.x - camCx), std::max(std::abs(cc.y - camCy), std::abs(cc.z - camCz)));
 }
 
-// Nearest-first: of the chunks waiting (w.dirtyChunks -- nothing to scan
+// Nearest-first, ahead before behind (ColumnLoadOrder): of the chunks waiting (w.dirtyChunks -- nothing to scan
 // at all while the world is static), the few closest to the camera start
 // building. The copy of their cells is taken here, on the main thread;
 // the build runs on a job thread from that copy alone.
-void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz) {
+void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz, float headX, float headZ) {
     JobsApply(JOB_MESH, MAX_MESH_UPLOADS_PER_FRAME);
     // When the camera enters another chunk (or the setting changes), any
     // chunk whose level should change is rebuilt -- only those.
@@ -679,7 +680,7 @@ void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz) {
         }
     }
     if (w.dirtyChunks.empty() || g_meshesInFlight >= MAX_MESHES_IN_FLIGHT) return;
-    struct Pending { long long d2; ChunkCoord cc; };
+    struct Pending { float d; ChunkCoord cc; };
     static std::vector<Pending> pending; // reused: no per-frame allocation once warm
     pending.clear();
     for (auto it = w.dirtyChunks.begin(); it != w.dirtyChunks.end();) {
@@ -688,12 +689,13 @@ void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz) {
         // they exist it waits outside the set, still flagged dirty, and the
         // last neighbour's arrival re-queues it.
         if (!ColumnNeighborhoodResident(cc.x, cc.z)) { it = w.dirtyChunks.erase(it); continue; }
-        long long dx = cc.x - camCx, dy = cc.y - camCy, dz = cc.z - camCz;
-        pending.push_back({ dx * dx + dy * dy + dz * dz, cc });
+        int dx = cc.x - camCx, dy = cc.y - camCy, dz = cc.z - camCz;
+        float flat = ColumnLoadOrder(dx, dz, headX, headZ);
+        pending.push_back({ sqrtf(flat * flat + (float)(dy * dy)), cc });
         ++it;
     }
     size_t n = std::min<size_t>(std::min(MAX_MESH_SUBMITS_PER_FRAME, MAX_MESHES_IN_FLIGHT - g_meshesInFlight), pending.size());
-    auto nearer = [](const Pending& a, const Pending& b) { return a.d2 < b.d2; };
+    auto nearer = [](const Pending& a, const Pending& b) { return a.d < b.d; };
     if (n < pending.size()) std::nth_element(pending.begin(), pending.begin() + n, pending.end(), nearer);
     for (size_t i = 0; i < n; i++) {
         ChunkCoord cc = pending[i].cc;
@@ -775,7 +777,40 @@ void UpdateCBuffer(const CBData& data) {
 // shadow); see-through parts are DrawTranslucent's.
 // `slice`/`slices`: draw only the chunks in one of `slices` interleaved
 // groups (the shadow map is redrawn a group per frame).
-static void DrawChunks(World& w, const Frustum& frustum, Vec3 eye, bool countStats, int slice = 0, int slices = 1) {
+// Hidden-chunk skipping (DESIGN.md 23.7): stamps every resident chunk the
+// visibility walk reaches from the camera's chunk with this frame's
+// number; the world pass then skips chunks in view that it didn't reach.
+// Not the shadow pass: the sun sees what the camera can't. Switched off
+// here (a testing aid; no setting, since it only ever saves work).
+static const bool g_hideSealedChunks = true;
+static uint32_t MarkSeenChunks(World& w, const Frustum& frustum, Vec3 eye) {
+    static uint32_t frame = 0;
+    if (++frame == 0) frame = 1; // 0 means "don't check"
+    struct Ctx { World* w; const Frustum* f; };
+    Ctx ctx{ &w, &frustum };
+    auto openings = [](const ChunkCoord& cc, void* u) -> int {
+        Chunk* c = ((Ctx*)u)->w->FindChunk(cc);
+        return c ? (int)c->openings : -1;
+    };
+    auto inView = [](const ChunkCoord& cc, void* u) {
+        Vec3 minB = { (float)(cc.x * CHUNK_SIZE) - 1, (float)(cc.y * CHUNK_SIZE) - 1, (float)(cc.z * CHUNK_SIZE) - 1 };
+        Vec3 maxB = { minB.x + CHUNK_SIZE + 2, minB.y + CHUNK_SIZE + 2, minB.z + CHUNK_SIZE + 2 };
+        return FrustumIntersectsAABB(*((Ctx*)u)->f, minB, maxB);
+    };
+    static std::vector<ChunkCoord> seen;
+    ChunkCoord cam{ FloorDiv16((int)floorf(eye.x)), FloorDiv16((int)floorf(eye.y)), FloorDiv16((int)floorf(eye.z)) };
+    // Rows above the highest ground hold nothing to draw; one clear row
+    // over it is all a line of sight over the hills needs.
+    int rows = 0;
+    for (auto& kv : w.chunks) rows = std::max(rows, kv.first.y + 2);
+    rows = std::min(rows, Y_MAX / CHUNK_SIZE + 1);
+    GroundVisibleChunks(cam, g_loadRadius + 1, rows, openings, inView, &ctx, seen);
+    for (const ChunkCoord& cc : seen)
+        if (Chunk* c = w.FindChunk(cc)) c->seenFrame = frame;
+    return frame;
+}
+
+static void DrawChunks(World& w, const Frustum& frustum, Vec3 eye, bool countStats, int slice = 0, int slices = 1, uint32_t seenFrame = 0) {
     UINT stride = sizeof(GroundVertex), offset = 0;
     for (auto& kv : w.chunks) {
         Chunk& c = *kv.second;
@@ -786,6 +821,11 @@ static void DrawChunks(World& w, const Frustum& frustum, Vec3 eye, bool countSta
         Vec3 maxB = { minB.x + CHUNK_SIZE, minB.y + CHUNK_SIZE, minB.z + CHUNK_SIZE };
         // Facets reach up to half a block past their chunk's cells.
         if (!FrustumIntersectsAABB(frustum, minB - Vec3{ 1, 1, 1 }, maxB + Vec3{ 1, 1, 1 })) continue;
+        // In view, but the visibility walk never reached it: sealed off.
+        if (seenFrame != 0 && c.seenFrame != seenFrame) {
+            if (countStats) ProfAddCounter(PCOUNT_CHUNKS_HIDDEN, 1);
+            continue;
+        }
         D3D11_MAPPED_SUBRESOURCE mapped;
         g_context->Map(g_chunkCBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         float* o = (float*)mapped.pData;
@@ -1199,7 +1239,7 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         // (b - a) x (c - a) points out of the ground, which D3D's default
         // (clockwise = front) takes as facing the camera (tested).
         g_context->RSSetState(g_cullBackRaster);
-        DrawChunks(w, frustum, eye, true);
+        DrawChunks(w, frustum, eye, true, 0, 1, g_hideSealedChunks ? MarkSeenChunks(w, frustum, eye) : 0);
         g_context->RSSetState(g_rasterState);
         // See-through blocks last: same shader, told by params.z to shade
         // as glass.

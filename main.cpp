@@ -17,6 +17,7 @@
 #include <windows.h>
 #include <d3d11.h>
 #include <cmath>
+#include <algorithm>
 
 #include "common.h"
 #include <mmsystem.h> // timeBeginPeriod
@@ -129,6 +130,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     struct Pose { float x, y, z, eyeHeight, roll, leanPitch; };
     auto poseOf = [](const Player& p) { return Pose{ p.x, p.y, p.z, p.eyeHeight, p.roll, p.leanPitch }; };
     Pose prevPose = poseOf(g_player);
+    // Where the player is heading (M1.11): where they look, pulled toward
+    // where they're moving once they move with purpose; ground ahead loads
+    // and meshes first. Motion is eased over ~10 ticks so a jiggle doesn't
+    // re-order the queues.
+    float headX = 0.0f, headZ = 0.0f, moveVX = 0.0f, moveVZ = 0.0f;
+    float headLastX = g_player.x, headLastZ = g_player.z;
 
     bool running = true;
     while (running) {
@@ -221,11 +228,23 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
                 // tracking its own independent notion of time.
                 g_dayTimeSeconds = fmodf(g_dayTimeSeconds + FIXED_DT, DAY_LENGTH_SECONDS);
 
+                {
+                    float stepX = g_player.x - headLastX, stepZ = g_player.z - headLastZ;
+                    headLastX = g_player.x; headLastZ = g_player.z;
+                    if (fabsf(stepX) + fabsf(stepZ) > 8.0f) stepX = stepZ = 0.0f; // a teleport or a load, not motion
+                    moveVX += (stepX / FIXED_DT - moveVX) * 0.1f;
+                    moveVZ += (stepZ / FIXED_DT - moveVZ) * 0.1f;
+                    float speed = sqrtf(moveVX * moveVX + moveVZ * moveVZ);
+                    float pull = speed > 0.5f ? std::min(1.0f, speed / 4.0f) * 1.5f / speed : 0.0f; // blocks/s -> weight
+                    float hx = sinf(g_player.yaw) + moveVX * pull, hz = cosf(g_player.yaw) + moveVZ * pull; // yaw 0 = north (+z)
+                    float len = sqrtf(hx * hx + hz * hz);
+                    headX = len > 1e-3f ? hx / len : 0.0f; headZ = len > 1e-3f ? hz / len : 0.0f;
+                }
                 int pcx = FloorDiv16((int)floor(g_player.x));
                 int pcz = FloorDiv16((int)floor(g_player.z));
                 {
                     ProfScope prof(PROF_TERRAIN);
-                    EnsureChunksLoaded(pcx, pcz);
+                    EnsureChunksLoaded(pcx, pcz, headX, headZ);
                     ProcessColumnGeneration(g_world);
                 }
                 {
@@ -270,7 +289,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
         {
             ProfScope prof(PROF_MESH);
             RebuildDirtyChunks(g_world, FloorDiv16((int)floorf(g_player.x)),
-                               FloorDiv16((int)floorf(g_player.y + g_player.eyeHeight)), FloorDiv16((int)floorf(g_player.z)));
+                               FloorDiv16((int)floorf(g_player.y + g_player.eyeHeight)), FloorDiv16((int)floorf(g_player.z)),
+                               headX, headZ);
         }
         ProfSetCounter(PCOUNT_CHUNKS_RESIDENT, (int64_t)g_world.chunks.size());
         ProfSetCounter(PCOUNT_DIRTY_WAITING, (int64_t)g_world.dirtyChunks.size());

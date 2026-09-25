@@ -47,6 +47,7 @@ enum ProfCounter {
     PCOUNT_MESHES_BUILDING,     // likewise (M1.5)
     PCOUNT_UPDATES_WAITING,
     PCOUNT_SHADOW_RENDERS,
+    PCOUNT_CHUNKS_HIDDEN,       // in view but sealed off by ground: not drawn (M1.11)
     PCOUNT_COUNT
 };
 

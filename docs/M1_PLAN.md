@@ -147,6 +147,8 @@ The footsteps first (D31): the palette's −21 dB ceiling (DESIGN 10.4) holds th
 
 - **Status: my part done (D44); yours waits for you.** Footstep clips: `tools/sound_demo.sh steps OUTDIR` writes grass, stone and sand walks over the midday music at three footstep ceilings (−21 today, −16, −11). The loudest step alone: −28 / −23 / −17 dBFS on grass, −27 / −23 / −18 on stone, −25 / −19 / −17 on sand. The game stays at −21 until you pick. Sand now has its own sound (a hiss where soils crunch), so T7's four grounds differ. Reflection, forecast review and ledger are written. Files changed: `sfx_synth.cpp/.h` (the footsteps' own ceiling; sand), `soundscape.cpp` (sand's material), `tools/sound_demo.cpp/.sh` (the steps mode), `tests/tests.cpp`, docs.
 
+The review page (pictures re-rendered with every M1 change, the clips, the saved questions): https://claude.ai/artifact/QJV6wQzH4izv54vU1TjzYM. The re-rendered hills show two artifacts to decide on: a row of evenly spaced stone "teeth" at the foot of sandstone mesas, and dirt showing through grass slopes in evenly spaced dark triangles.
+
 **The checklist: what I checked here, and what's yours.** Nothing below has been seen running: I can't run Direct3D here.
 
 | # | Checked here | Result here | Yours |

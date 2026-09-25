@@ -95,6 +95,24 @@ So:
 4. **A setting for fine-detail distance.** Graphics presets scale it down for lesser machines.
 5. **Measure before committing.** The CPU preview tool (M1's first deliverable) counts real triangles, including on dug-out ground. The band sizes are set from those counts, not from this estimate.
 
+### 4.3 Draw only what can be seen; load ahead what may be seen soon (D16)
+
+**What exists (Voxistics):**
+- chunks outside the view are skipped (frustum culling, per chunk);
+- the sun's shadow map redraws only when stale, from chunks inside the light's view;
+- ground loads one ring beyond the view distance, nearest first;
+- everything slow happens once at start-up (textures, shaders from cache).
+
+**What walkgrid adds:**
+
+| What | Where | Milestone |
+|---|---|---|
+| **Back faces not drawn** (surfaces facing away from the camera) | Renderer | M0 (0.15), if safe |
+| **Buried ground costs nothing:** the faceted mesh exists only where ground meets air, so a chunk that's solid or empty has no triangles | Mesher | M1 |
+| **Hidden-chunk skipping:** while meshing, each chunk records which of its sides connect through open space. Drawing walks outward from the camera's chunk only through open connections, so sealed caves and ground behind solid rock are skipped. It's CPU-side, cheap, and has no GPU readback stalls | Mesher and renderer | M1 |
+| **Ahead-of-time loading:** generation, meshing and the move up to finer detail are ordered by where you're looking and where you're heading (your position a second or two ahead), not just by distance. So what's about to come into view is ready before it does | Streaming | M1 |
+| **Hills hiding what's behind them:** occlusion queries using the previous frame's results | Renderer | Later, only if F3 shows the world pass needs it |
+
 ### 4.2 Other performance risks noted now
 
 - **Index size.** Voxistics uses 16-bit indices, which allow 65,536 vertices per chunk. Fine meshes on busy terrain can pass that. Fine chunks will use 32-bit indices; coarse ones stay at 16-bit.

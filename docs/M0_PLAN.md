@@ -2,7 +2,7 @@
 
 **Goal.** walkgrid runs exactly as Voxistics did, minus the Voxistics-only features. It also gains a few foundations: the walkgrid name, a screenshot key, raw mouse input, smooth motion above 60 fps, camera-relative rendering, and the layer check. **No new gameplay and no new looks.** The faceted world is M1.
 
-**Waiting on your approval.** Nothing below has been done.
+**Approved 2026-09-25.** Progress is ticked off below as steps land.
 
 ---
 
@@ -22,7 +22,7 @@ Each step is one commit. After every step the game builds and runs, and the chec
 
 | Step | What | Files |
 |---|---|---|
-| **0.1 Screenshot key** | F12 saves the frame as a PNG in the save folder (only when pressed; local file). Done first, so the after-M0 comparison can use it | `render.cpp/.h` (backbuffer read), `game.cpp` (key), `persist.cpp/.h` (folder) |
+| **0.1 Screenshot key** | F2 saves the frame as a PNG in the save folder (only when pressed; local file). Done first, so the after-M0 comparison can use it | `render.cpp/.h` (backbuffer read), `game.cpp` (key), `persist.cpp/.h` (folder) |
 | **0.2 Checks here** | `tools/check_mingw.sh` (the cross-compile, scripted) and `tools/check_layers.sh` (reports layer violations; it only starts failing once 0.4–0.8 have removed the known ones) | `tools/` (new files), `tests/run.sh` |
 | **0.3 Docs** | Archive the Voxistics docs, write the new `CLAUDE.md` (**shown to you before commit**), start walkgrid's `DESIGN.md` from the engine sections that carry over | `CLAUDE.md`, `DESIGN.md` → `docs/voxistics/DESIGN.md`, new `DESIGN.md`, `docs/REVIEW_2026-09.md` and `docs/SOUND_PALETTE.md` → `docs/voxistics/` (SOUND_PALETTE stays referenced: the palette carries over) |
 | **0.4 The game tick** | `main.cpp` calls one `GameTick(dt)`; the Line, pulse, flier and essence calls move behind it | `main.cpp`, `game.cpp/.h` |
@@ -53,7 +53,7 @@ The layer check starts passing, and joins `tests/run.sh` as a hard failure, once
 | # | Check |
 |---|---|
 | C1 | It builds in Visual Studio and opens as "walkgrid"; settings and saves live in `Documents\My Games\walkgrid\` |
-| C2 | Screenshots (F12) at the baseline spots and times match the baseline, apart from the removed features |
+| C2 | Screenshots (F2) at the baseline spots and times match the baseline, apart from the removed features |
 | C3 | Music, footsteps, place and remove sounds as before |
 | C4 | Menus and settings all work; save, quit, load gets you back where you were |
 | C5 | Mouse look feels at least as good (raw input) |

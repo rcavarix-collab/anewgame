@@ -19,3 +19,5 @@ One line per decision: what was decided, when, by whom, and why. A decision is o
 | D13 | 2026-09-25 | Foundations approved: working rules, layer rule, thread model, budgets, data decisions (fresh save format v1, 1-block cells, versioned generator, camera-relative rendering). | Owner | FOUNDATIONS.md |
 | D14 | 2026-09-25 | Scope is tracked with a fresh MoSCoW sheet (`docs/SCOPE_MOSCOW.xlsx`); only the owner sets Must. | Owner | |
 | D15 | 2026-09-25 | Reference machine: GTX 1060 3GB, 16 GB RAM (about six years old). Floor: 8 GB RAM, 2 GB graphics card. The game never reads the machine; these are for our budgets only. | Owner | FOUNDATIONS.md 4 |
+| D16 | 2026-09-25 | Render only what can be seen; preload what may be seen soon. | Owner | FOUNDATIONS.md 4.3 |
+| D17 | 2026-09-25 | M0 plan approved; work starts. Screenshot key is F2 (F12 breaks into the Visual Studio debugger). | Owner (F2: proposed) | M0_PLAN.md |

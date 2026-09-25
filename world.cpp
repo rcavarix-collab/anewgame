@@ -10,11 +10,14 @@
 #endif
 #include "world.h"
 #include "shapes.h"
+#include "terrain.h"
+#include "jobs.h"
 #include <d3d11.h>
 #include <cmath>
 #include <cfloat>
 #include <algorithm>
 #include <cstring>
+#include <memory>
 #include <queue>
 #include <windows.h> // QueryPerformanceCounter for new-world seeds
 
@@ -182,7 +185,7 @@ WorldGenParams g_worldGen;
 
 const char* WorldGenName(WorldGenType t) {
     switch (t) {
-    case GEN_HILLS: return "hills";
+    case GEN_WALKGRID: return "walkgrid-hills";
     case GEN_FLAT: return "flat";
     default: return "?";
     }
@@ -194,23 +197,19 @@ bool WorldGenFromName(const char* name, WorldGenType& out) {
 }
 uint32_t WorldGenLatestVersion(WorldGenType t) {
     switch (t) {
-    case GEN_HILLS: return 1;
+    case GEN_WALKGRID: return 1;
     case GEN_FLAT: return 2; // v2: the surface is a patchwork of three grounds (SurfaceBlockAt)
     default: return 0;
     }
 }
 
-// TEMPORARY, for testing: new worlds are dead flat (surface at y = 12,
-// every column a single chunk tall). Switch back to GEN_HILLS when
-// testing is done -- existing worlds keep the generator they were made
-// with either way, since it's stored in each save.
+// New worlds: walkgrid-hills (M1.4). Existing worlds keep the generator
+// they were made with, since it's stored in each save.
 WorldGenParams DefaultNewWorldGen() {
     WorldGenParams p;
-    p.type = GEN_FLAT;
+    p.type = GEN_WALKGRID;
     p.version = WorldGenLatestVersion(p.type);
-    // Nothing reads the seed yet (both generators are seedless), but
-    // every world gets one now so a seeded generator needs no format
-    // change. Mixed from the clock so worlds differ.
+    // Mixed from the clock so worlds differ.
     LARGE_INTEGER t; QueryPerformanceCounter(&t);
     uint64_t x = (uint64_t)t.QuadPart * 0x9E3779B97F4A7C15ull;
     x ^= x >> 31; x *= 0xBF58476D1CE4E5B9ull; x ^= x >> 29;
@@ -220,15 +219,11 @@ WorldGenParams DefaultNewWorldGen() {
 
 static const int FLAT_V1_HEIGHT = 12;
 
-int TerrainHeight(int wx, int wz) {
-    if (g_worldGen.type == GEN_FLAT) return FLAT_V1_HEIGHT;
-    // hills v1 -- the original terrain (every pre-v5 save was made with it).
-    double h = 40.0 + 6.0 * sin(wx * 0.15) + 4.0 * cos(wz * 0.13);
-    int ih = (int)h;
-    if (ih < 20) ih = 20;
-    if (ih > 60) ih = 60;
-    return ih;
+int TerrainHeight(const WorldGenParams& gen, int wx, int wz) {
+    if (gen.type == GEN_FLAT) return FLAT_V1_HEIGHT;
+    return HillsHeight(gen.seed, wx, wz);
 }
+int TerrainHeight(int wx, int wz) { return TerrainHeight(g_worldGen, wx, wz); }
 
 std::unordered_set<long long> g_residentColumns;
 std::unordered_map<ChunkCoord, std::unique_ptr<Chunk>, ChunkCoordHash> g_evictedChunks;
@@ -323,8 +318,9 @@ static double ValueNoise(double x, double z, uint64_t seed) {
     double c = LatticeValue(ix, iz + 1, seed), d = LatticeValue(ix + 1, iz + 1, seed);
     return (a + (b - a) * u) + ((c + (d - c) * u) - (a + (b - a) * u)) * v;
 }
-BlockID SurfaceBlockAt(int wx, int wz) {
-    const uint64_t s = g_worldGen.seed;
+BlockID SurfaceBlockAt(int wx, int wz) { return SurfaceBlockAt(g_worldGen.seed, wx, wz); }
+BlockID SurfaceBlockAt(uint64_t seed, int wx, int wz) {
+    const uint64_t s = seed;
     double n = 0.55 * ValueNoise(wx / 48.0, wz / 48.0, s)
              + 0.30 * ValueNoise(wx / 20.0, wz / 20.0, s ^ 0x5bd1e995ull)
              + 0.15 * ValueNoise(wx / 8.0, wz / 8.0, s ^ 0x27d4eb2full);
@@ -333,60 +329,39 @@ BlockID SurfaceBlockAt(int wx, int wz) {
     return kPatchSoft;
 }
 
-// Fills a column's terrain straight into fresh chunk arrays -- no
-// per-block World::Set (and its per-block hash lookups and dirty
-// marking), since nothing else can be in these chunks yet.
-static void GenerateColumnTerrain(World& w, int cx, int cz) {
-    int baseX = cx * CHUNK_SIZE, baseZ = cz * CHUNK_SIZE;
-
-    // Cached per column and reused for every vertical chunk level
-    // instead of re-running TerrainHeight once per level.
-    int heights[CHUNK_SIZE][CHUNK_SIZE];
-    BlockID surface[CHUNK_SIZE][CHUNK_SIZE];
-    const bool patchwork = g_worldGen.type == GEN_FLAT && g_worldGen.version >= 2;
-    int maxHeightInColumn = 0;
-    for (int lx = 0; lx < CHUNK_SIZE; lx++) {
-        for (int lz = 0; lz < CHUNK_SIZE; lz++) {
-            int h = TerrainHeight(baseX + lx, baseZ + lz);
-            heights[lx][lz] = h;
-            surface[lx][lz] = patchwork ? SurfaceBlockAt(baseX + lx, baseZ + lz) : BLOCK_DIRT;
-            if (h > maxHeightInColumn) maxHeightInColumn = h;
+// A column's terrain, from the generator's settings alone (a copy, never
+// g_worldGen: this runs on a job thread). Pure: same settings, same cells.
+static void ComputeColumn(const WorldGenParams& gen, int cx, int cz, TerrainColumn& out) {
+    if (gen.type == GEN_WALKGRID) { HillsColumn(gen.seed, cx, cz, out); return; }
+    // Flat (the test ground): FLAT_V1_HEIGHT everywhere, dirt over stone
+    // on a foundation floor; v2's top layer is the patchwork.
+    const bool patchwork = gen.version >= 2;
+    const int h = FLAT_V1_HEIGHT;
+    out.chunks = h / CHUNK_SIZE + 1;
+    out.present.assign(out.chunks, true);
+    out.cells.assign((size_t)out.chunks * CHUNK_CELLS, 0);
+    for (int lz = 0; lz < CHUNK_SIZE; lz++)
+        for (int lx = 0; lx < CHUNK_SIZE; lx++) {
+            BlockID top = patchwork ? SurfaceBlockAt(gen.seed, cx * CHUNK_SIZE + lx, cz * CHUNK_SIZE + lz) : BLOCK_DIRT;
+            for (int y = 0; y <= h; y++) {
+                BlockID b = TerrainBlockAt(y, h);
+                if (y == h && patchwork) b = top;
+                out.cells[(size_t)(y / CHUNK_SIZE) * CHUNK_CELLS + Chunk::LocalIndex(lx, y % CHUNK_SIZE, lz)] = (uint8_t)b;
+            }
         }
-    }
-
-    int maxCy = FloorDiv16(std::min(maxHeightInColumn, Y_MAX));
-    for (int cy = 0; cy <= maxCy; cy++) {
-        int chunkYLow = cy * CHUNK_SIZE;
-        // Chunks only exist when they hold real content (Section 2.1).
-        bool anyContent = false;
-        for (int lx = 0; lx < CHUNK_SIZE && !anyContent; lx++)
-            for (int lz = 0; lz < CHUNK_SIZE && !anyContent; lz++)
-                if (chunkYLow <= heights[lx][lz]) anyContent = true;
-        if (!anyContent) continue;
-
-        Chunk* c = w.GetOrCreateChunk({ cx, cy, cz });
-        for (int ly = 0; ly < CHUNK_SIZE; ly++) {
-            int wy = chunkYLow + ly;
-            for (int lz = 0; lz < CHUNK_SIZE; lz++)
-                for (int lx = 0; lx < CHUNK_SIZE; lx++) {
-                    int h = heights[lx][lz];
-                    if (wy > h) continue;
-                    BlockID b = TerrainBlockAt(wy, h);
-                    if (wy == h && patchwork) b = surface[lx][lz]; // the top layer: the patchwork
-                    c->blocks[Chunk::LocalIndex(lx, ly, lz)] = (uint8_t)b;
-                }
-        }
-    }
 }
 
-void GenerateColumn(World& w, int cx, int cz) {
-    long long key = ColumnKey(cx, cz);
-    if (g_residentColumns.count(key)) return; // already resident -- nothing to do
-    g_residentColumns.insert(key);
-
-    GenerateColumnTerrain(w, cx, cz);
-    // Whatever the player changed here (kept from an eviction, or read
-    // from the save) replaces the generated chunk wholesale.
+// Main thread: a computed column becomes resident. Chunks only exist
+// where they hold ground (Section 2.1); whatever the player changed here
+// (kept from an eviction, or read from the save) replaces the generated
+// chunk wholesale.
+static void ApplyColumn(World& w, int cx, int cz, const TerrainColumn& col) {
+    g_residentColumns.insert(ColumnKey(cx, cz));
+    for (int cy = 0; cy < col.chunks && cy < COLUMN_CHUNKS; cy++) {
+        if (!col.present[cy]) continue;
+        Chunk* c = w.GetOrCreateChunk({ cx, cy, cz });
+        memcpy(c->blocks, col.cells.data() + (size_t)cy * CHUNK_CELLS, CHUNK_CELLS);
+    }
     for (int cy = 0; cy < COLUMN_CHUNKS; cy++) {
         auto it = g_evictedChunks.find({ cx, cy, cz });
         if (it == g_evictedChunks.end()) continue;
@@ -394,6 +369,13 @@ void GenerateColumn(World& w, int cx, int cz) {
         g_evictedChunks.erase(it);
     }
     MarkColumnNeighborhoodDirty(w, cx, cz);
+}
+
+void GenerateColumn(World& w, int cx, int cz) {
+    if (g_residentColumns.count(ColumnKey(cx, cz))) return; // already resident -- nothing to do
+    TerrainColumn col;
+    ComputeColumn(g_worldGen, cx, cz, col);
+    ApplyColumn(w, cx, cz, col);
 }
 
 int g_lastPlayerChunkX = INT32_MIN, g_lastPlayerChunkZ = INT32_MIN;
@@ -458,17 +440,60 @@ void EnsureChunksLoaded(int playerChunkX, int playerChunkZ) {
     }
 }
 
+// Bumped by ResetColumnStreaming: a column generated for the world before
+// a New Game or Load is dropped when it arrives.
+static uint32_t g_streamEpoch = 0;
+static int g_columnsGenerating = 0;
+int ColumnsGenerating() { return g_columnsGenerating; }
+
+// Queued columns go to the job threads (a few per tick, a few in flight);
+// finished ones are made resident here on the main thread, which alone
+// writes the world. A column stays in g_pendingColumnSet until it lands,
+// so it's never queued twice.
 void ProcessColumnGeneration(World& w) {
-    int n = (int)std::min<size_t>(MAX_COLUMN_GENS_PER_TICK, g_pendingColumns.size());
-    for (int i = 0; i < n; i++) {
+    int submitted = 0;
+    while (!g_pendingColumns.empty() && submitted < MAX_COLUMN_GENS_PER_TICK && g_columnsGenerating < MAX_COLUMNS_IN_FLIGHT) {
         auto col = g_pendingColumns.front();
         g_pendingColumns.pop_front();
-        g_pendingColumnSet.erase(ColumnKey(col.first, col.second));
+        long long key = ColumnKey(col.first, col.second);
         // Queued back when the player was elsewhere and they've since
         // moved on: don't generate a column only to evict it again.
-        if (ColumnDistance(col.first, col.second, g_lastPlayerChunkX, g_lastPlayerChunkZ) > g_loadRadius + 1) continue;
-        GenerateColumn(w, col.first, col.second);
+        if (g_residentColumns.count(key) ||
+            ColumnDistance(col.first, col.second, g_lastPlayerChunkX, g_lastPlayerChunkZ) > g_loadRadius + 1) {
+            g_pendingColumnSet.erase(key);
+            continue;
+        }
+        auto result = std::make_shared<TerrainColumn>();
+        WorldGenParams gen = g_worldGen;   // a copy: the job never reads the live settings
+        uint32_t epoch = g_streamEpoch;
+        int cx = col.first, cz = col.second;
+        g_columnsGenerating++;
+        submitted++;
+        JobsSubmit(JOB_TERRAIN,
+            [result, gen, cx, cz] { ComputeColumn(gen, cx, cz, *result); },
+            [result, epoch, cx, cz, key, &w] {
+                if (epoch != g_streamEpoch) return;   // made for a world that's gone
+                g_columnsGenerating--;
+                g_pendingColumnSet.erase(key);
+                if (g_residentColumns.count(key)) return;
+                if (ColumnDistance(cx, cz, g_lastPlayerChunkX, g_lastPlayerChunkZ) > g_loadRadius + 1) return; // left behind
+                ApplyColumn(w, cx, cz, *result);
+            });
     }
+    JobsApply(JOB_TERRAIN, MAX_COLUMN_APPLIES_PER_TICK);
+}
+
+void ResetColumnStreaming() {
+    g_streamEpoch++;
+    g_columnsGenerating = 0;
+    g_residentColumns.clear();
+    g_evictedChunks.clear();
+    g_pendingColumns.clear();
+    g_pendingColumnSet.clear();
+    g_pendingEvictions.clear();
+    g_pendingEvictionSet.clear();
+    g_lastPlayerChunkX = INT32_MIN;
+    g_lastPlayerChunkZ = INT32_MIN;
 }
 
 void ProcessColumnEviction(World& w) {

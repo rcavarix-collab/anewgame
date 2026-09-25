@@ -560,7 +560,7 @@ Fliers: a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 ## Part XXII — Structure: layers, threads and budgets
 Summarised here; the full reasoning is in `docs/FOUNDATIONS.md`.
 - **Layers** (FOUNDATIONS.md 2): 1 base, 2 platform, 3 world, 4 presentation, 5 game, 6 app (`main.cpp`). Each file's layer is listed in `tools/layers.txt`.
-- **Threads** (FOUNDATIONS.md 3): the main thread owns the world, every D3D11 call and the UI. Job threads (2 today; they may be sized from the processor count, D21) build terrain and meshes from copies. Music and effects each have their own thread. Results are version-stamped; stale ones are dropped.
+- **Threads** (FOUNDATIONS.md 3): the main thread owns the world, every D3D11 call and the UI. Job threads (`jobs.h`, M1.4: processor count minus two, at least 1 and at most 4, D21) build terrain (and from M1.5 meshes) from copies; results are applied on the main thread. Music and effects each have their own thread. Results are version-stamped; stale ones are dropped.
 - **Budgets** (FOUNDATIONS.md 4): measured on the reference machine (GTX 1060 3GB, 16 GB), with a floor of 8 GB and a 2 GB graphics card.
 
 ## Part XXIII — The faceted world
@@ -576,3 +576,10 @@ Cells stay as they are: one material per 1-block cell. The surface is built thro
 - **Cost.** Linear in the surface faces meshed, with a per-corner cache. In the preview world (176 × 64 × 176): 90,400 base quads, 181,000 base triangles, 402,000 with near detail around one viewpoint. Within 96 blocks of the viewer: 308,000 (budget 1.5 million).
 - **Known and watched** (FORECASTS F17): about 0.08% of the surface faces away from the averaged normal at terrace corners, and a few dozen detail triangles in a scene fold slightly. They show as small dark slivers.
 - **Tuning** lives in `FacetShape` (jitter, sideways jitter, smoothing, lump frequency and thresholds); the preview tool (`tools/facet_preview.sh`) renders the same spots after any change.
+
+### 23.2 The test landscape: walkgrid-hills v1 (terrain.h, M1.4)
+New worlds are `walkgrid-hills` version 1, seeded (the seed is in the save). Rolling ground from three octaves of value noise (72, 26 and 11 blocks across; nothing finer, so rounding to whole cells leaves no lone pits), 15 to 45 cells high. A broad field raises sandstone plateaus 9 cells, their edges steep enough to be cliffs. Regions of meadow grass, dry turf and moss over dirt or loam; sand and gravel in the lowlands with clay at their edges; stone and slate outcrops; stone wherever the ground drops 3 or more cells to a neighbour; snow above 45. Three cells of soil under the top, then stone (sandstone under plateaus, slate in deep pockets), on a foundation floor at y = 0. No caves.
+- **Pure and pinned.** A function of (seed, x, z) only, in integer hashing and plain double arithmetic. A test pins a fingerprint of one column, so any change that alters the output fails the test and has to become version 2 (Section 2.5).
+- **Flat** stays as the test ground (the native tests stand on it, and worlds made before M1.4 use it). Voxistics' sine hills are gone (D37).
+- **On the job threads** (Part XXII, `jobs.h`). The main thread queues columns ring by ring as before, submits up to 4 per tick with up to 8 generating, and makes up to 4 finished columns resident per tick: a copy of their cells and the overlay of anything the player changed. A column generated for a world that has since been replaced (New Game, Load) is dropped on arrival: the streaming epoch changed. Generation measured 0.05 ms per column on the build machine; F3 shows COLUMNS GENERATING.
+- **Pictures:** `docs/pictures/m1_4/` (the preview tool's `hills` mode draws the real generator's output).

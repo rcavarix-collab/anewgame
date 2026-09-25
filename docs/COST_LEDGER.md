@@ -8,7 +8,7 @@ Every system, what it's allowed to cost (its budget), and what it was last measu
 
 | System | F3 row | Budget | Grows with | Measured | Notes |
 |---|---|---|---|---|---|
-| Terrain queueing and generation | TERRAIN | 0.8 ms | columns arriving (capped 4/tick) | 0.00 median, 0.49 worst | Moves to job threads in M1 |
+| Terrain queueing and generation | TERRAIN | 0.8 ms | columns arriving (capped 4/tick) | 0.00 median, 0.49 worst (M0, flat) | M1.4: generation on the job threads (0.05 ms a column there); the main thread submits and copies results in, 4 a tick. Awaiting a report |
 | Column eviction | EVICT | 0.2 ms | columns leaving (capped 4/tick) | 0.00, 0.01 worst | |
 | Player physics | PHYSICS | 0.2 ms | fixed | 0.00, 0.02 worst | |
 | Scheduled updates | UPDATES | 0.3 ms | updates due (capped 64/tick) | 0.00, 0.01 worst | Nothing schedules them in walkgrid yet |

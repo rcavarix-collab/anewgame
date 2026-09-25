@@ -79,6 +79,7 @@
 - **Files.** New: `terrain.cpp/.h` (layer 3), `jobs.cpp/.h` (layer 1: a small fixed pool, sized from the processor count per D21, capped). Changed: `world.cpp` (the Voxistics generators are removed, and generation is queued to jobs, applied on the main thread with version stamps).
 - **Cost.** TERRAIN on the main thread falls to applying results only.
 - **Checks here.** Generator determinism (same seed, same ground, forever); streaming tests.
+- **Status: built.** Flat is kept as the test ground (D37). Terrain pictures: `docs/pictures/m1_4/`. Tests: pinned fingerprint, purity, materials present, streaming on real threads matches inline generation, stale columns dropped after a reset.
 - **Your check.** Walking into new ground doesn't hitch. It still looks like cubes, and that's expected.
 
 ### 1.5 Faceted ground in the game

@@ -77,15 +77,9 @@ bool LoadGame(World& w, Player& p, int slot) {
     // overlays these onto them (Section 2.4), so loading costs only the
     // decode, however large the world.
     w.ClearChunks();
+    ResetColumnStreaming();   // before the store is filled: it empties it
     g_evictedChunks = std::move(d.chunks);
-    g_residentColumns.clear();
     ClearScheduledUpdates();
     RestoreScheduledUpdates(d.updates); // unknown kinds are dropped
-    g_pendingColumns.clear();
-    g_pendingColumnSet.clear();
-    g_pendingEvictions.clear();
-    g_pendingEvictionSet.clear();
-    g_lastPlayerChunkX = INT32_MIN;
-    g_lastPlayerChunkZ = INT32_MIN;
     return true;
 }

@@ -277,15 +277,8 @@ void ResetWorldForNewGame() {
     g_player.y = (float)(top + 1);
     g_dayTimeSeconds = 0.0f; // dawn -- first light in a land they've never seen (Section 13)
     g_player.hotbarIndex = 0;
-    g_residentColumns.clear();
-    g_evictedChunks.clear();
+    ResetColumnStreaming();
     ClearScheduledUpdates();
-    g_pendingColumns.clear();
-    g_pendingColumnSet.clear();
-    g_pendingEvictions.clear();
-    g_pendingEvictionSet.clear();
-    g_lastPlayerChunkX = INT32_MIN;
-    g_lastPlayerChunkZ = INT32_MIN;
 }
 
 // Shared tail end of both New Game and Load Game: leave the slot

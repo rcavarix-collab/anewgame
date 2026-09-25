@@ -288,7 +288,10 @@ bool OpenToSky(World& w, int x, int y, int z);
 // produced it. A generator's output must therefore be a pure function of
 // (params, coordinates), and a change to it that alters output needs a
 // new version number, with the old version kept for existing worlds.
-enum WorldGenType : uint8_t { GEN_HILLS = 0, GEN_FLAT = 1, GEN_TYPE_COUNT };
+// walkgrid-hills (terrain.h) is walkgrid's landscape; flat is the test
+// ground (tests, and worlds made before M1.4). Voxistics' sine hills went
+// in M1.4 (D37).
+enum WorldGenType : uint8_t { GEN_WALKGRID = 0, GEN_FLAT = 1, GEN_TYPE_COUNT };
 struct WorldGenParams {
     WorldGenType type = GEN_FLAT;
     uint32_t version = 1;
@@ -299,16 +302,25 @@ const char* WorldGenName(WorldGenType t);
 bool WorldGenFromName(const char* name, WorldGenType& out);
 // Highest generator version this build can reproduce, per type.
 uint32_t WorldGenLatestVersion(WorldGenType t);
-// New worlds use this. TEMPORARY: flat while testing (see world.cpp).
+// New worlds use this: walkgrid-hills, latest version, a fresh seed.
 WorldGenParams DefaultNewWorldGen();
 
 int TerrainHeight(int wx, int wz); // for g_worldGen
+int TerrainHeight(const WorldGenParams& gen, int wx, int wz);
 // Flat v2's top layer: grass, sand or pebbles in fractal patches (seeded).
 BlockID SurfaceBlockAt(int wx, int wz);
+BlockID SurfaceBlockAt(uint64_t seed, int wx, int wz);
 long long ColumnKey(int cx, int cz);
-// Makes a column resident: generates its terrain from g_worldGen, then
-// overlays any modified chunks held in g_evictedChunks for it.
+// Makes a column resident now: generates its terrain from g_worldGen, then
+// overlays any modified chunks held in g_evictedChunks for it. (Streaming
+// does the same through the job threads: ProcessColumnGeneration.)
 void GenerateColumn(World& w, int cx, int cz);
+// Forgets every column (resident, evicted, queued, generating) -- New
+// Game and Load. Terrain still being generated for the old world is
+// dropped when it arrives (the epoch changes).
+void ResetColumnStreaming();
+// Columns being generated on the job threads right now.
+int ColumnsGenerating();
 
 extern std::deque<std::pair<int, int>> g_pendingColumns;
 extern std::unordered_set<long long> g_pendingColumnSet;
@@ -316,7 +328,9 @@ extern std::unordered_set<long long> g_pendingColumnSet;
 // world, so the next EnsureChunksLoaded call re-scans from the
 // player's actual position instead of trusting stale pre-load state.
 extern int g_lastPlayerChunkX, g_lastPlayerChunkZ;
-static const int MAX_COLUMN_GENS_PER_TICK = 4;
+static const int MAX_COLUMN_GENS_PER_TICK = 4;   // submitted to the job threads per tick
+static const int MAX_COLUMNS_IN_FLIGHT = 8;      // generating at once
+static const int MAX_COLUMN_APPLIES_PER_TICK = 4; // finished columns made resident per tick
 
 // Columns currently backing real Chunk objects in World::chunks. Bounded
 // by roughly the loaded area rather than lifetime-explored area -- this

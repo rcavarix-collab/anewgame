@@ -27,6 +27,7 @@
 #include "worldsound.h"
 #include "game.h"
 #include "profiler.h"
+#include "jobs.h"
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     ProfBootMark("LAUNCH"); // Windows loading the exe and its DLLs, and static set-up
@@ -96,6 +97,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     InitAudio(); // a machine with no usable audio device still gets a silent but playable game (Section 10)
     BuildSkyMesh();
     ProfBootMark("AUDIO");
+    JobsStart(); // terrain (and from M1.5 meshes) build here, sized from the processor count (D21)
     bool firstFrame = true;
 
     // 1 ms timer resolution while running, so the frame cap's Sleep is precise.
@@ -261,6 +263,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
         ProfSetCounter(PCOUNT_CHUNKS_RESIDENT, (int64_t)g_world.chunks.size());
         ProfSetCounter(PCOUNT_DIRTY_WAITING, (int64_t)g_world.dirtyChunks.size());
         ProfSetCounter(PCOUNT_COLUMNS_WAITING, (int64_t)g_pendingColumns.size());
+        ProfSetCounter(PCOUNT_COLUMNS_GENERATING, (int64_t)ColumnsGenerating());
         ProfSetCounter(PCOUNT_UPDATES_WAITING, (int64_t)ScheduledUpdateCount());
         // The drawn pose: between the last two ticks (see Pose above). While
         // a menu is open the world is frozen, so the latest tick is shown
@@ -325,6 +328,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     }
 
     timeEndPeriod(1);
+    JobsStop(); // before the world goes: nothing may still be building from it
     ShutdownAudio();
     if (comInitialized) CoUninitialize();
     return 0;

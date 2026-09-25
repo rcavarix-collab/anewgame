@@ -19,6 +19,8 @@
 #include "../facetmesh.h"
 #include "../sky.h"
 #include "../vtex.h"
+#include "../terrain.h"
+#include "../blocks.h"
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -784,12 +786,62 @@ static int Sheets(const std::string& out) {
     return 0;
 }
 
+// ---------------------------------------------------------------------
+// walkgrid-hills v1 (M1.4): the game's own terrain, drawn with the picks.
+// ---------------------------------------------------------------------
+static int Hills(const std::string& out, uint64_t seed) {
+    struct M { int id; const char* name; const char* top; const char* side; float bump; };
+    const M ms[] = {
+        { BLOCK_MEADOW_GRASS, "meadow grass", "meadow_grass", "dirt", 0.07f }, { BLOCK_DRY_TURF, "dry turf", "dry_turf", "dirt", 0.06f },
+        { BLOCK_MOSS, "moss", "moss", "dirt", 0.06f }, { BLOCK_DIRT, "dirt", "dirt", "dirt", 0.05f },
+        { BLOCK_LOAM, "loam", "loam", "loam", 0.05f }, { BLOCK_CLAY, "clay", "clay", "clay", 0.03f },
+        { BLOCK_SAND, "sand", "sand", "sand", 0.012f }, { BLOCK_GRAVEL, "gravel", "gravel", "gravel", 0.035f },
+        { BLOCK_STONE, "stone", "stone", "stone", 0.045f }, { BLOCK_SLATE, "slate", "slate", "slate", 0.04f },
+        { BLOCK_SANDSTONE, "sandstone", "sandstone_top", "sandstone_layered", 0.015f }, { BLOCK_SNOW, "snow", "snow", "snow", 0.02f },
+        { BLOCK_FOUNDATION, "foundation", "stone", "stone", 0.0f },
+    };
+    for (auto& m : ms) if (!SetMaterial(m.id, m.name, m.top, m.side, m.bump)) return 1;
+    // A 12 x 12-chunk region from the column at (ox, oz).
+    const int CH = 12, ox = -6, oz = -6;
+    WX = CH * 16; WZ = CH * 16; WY = 72;
+    g_cells.assign((size_t)WX * WY * WZ, 0);
+    for (int cz = 0; cz < CH; cz++)
+        for (int cx = 0; cx < CH; cx++) {
+            TerrainColumn t; HillsColumn(seed, ox + cx, oz + cz, t);
+            for (int cy = 0; cy < t.chunks; cy++)
+                for (int ly = 0; ly < 16; ly++) {
+                    int y = cy * 16 + ly;
+                    if (y >= WY) continue;
+                    for (int lz = 0; lz < 16; lz++)
+                        for (int lx = 0; lx < 16; lx++)
+                            Cell(cx * 16 + lx, y, cz * 16 + lz) = t.cells[(size_t)cy * CHUNK_CELLS + (ly * 16 + lz) * 16 + lx];
+                }
+        }
+    // Cameras: a few spots, looking across; heights from the terrain.
+    auto groundAt = [&](int x, int z) { return (float)HillsHeight(seed, x + ox * 16, z + oz * 16); };
+    FILE* stats = fopen((out + "/hills_stats.txt").c_str(), "w");
+    if (!stats) return 1;
+    struct Spot { const char* name; float x, z, tx, tz, up, t; };
+    const Spot spots[] = {
+        { "hills_a_morning", 40, 40, 110, 120, 7, 500 }, { "hills_b_noon", 150, 40, 80, 130, 7, 1500 },
+        { "hills_c_evening", 96, 170, 90, 60, 7, 2750 }, { "hills_d_walk", 60, 100, 100, 110, 1.7f, 2300 },
+    };
+    for (auto& sp : spots) {
+        View v = { sp.name, sp.name, { sp.x, groundAt((int)sp.x, (int)sp.z) + sp.up, sp.z },
+                   { sp.tx, groundAt((int)sp.tx, (int)sp.tz) + 1, sp.tz }, sp.t, 0 };
+        Render(v, out, stats);
+    }
+    fclose(stats);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: facet_preview OUTDIR [view]\n"); return 1; }
     std::string out = argv[1], only = argc > 2 ? argv[2] : "";
     std::string texDir = TEXDIR;
     if (!LoadTextures(texDir)) return 1;
     if (only == "sheets") return Sheets(out);
+    if (only == "hills") return Hills(out, argc > 3 ? strtoull(argv[3], nullptr, 10) : 1);
     for (int i = 1; i < M_COUNT; i++)
         if (!SetMaterial(i, kMats[i].name, kMats[i].top, kMats[i].side, kMats[i].bump)) return 1;
     BuildWorld();

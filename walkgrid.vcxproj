@@ -97,6 +97,8 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="world.cpp" />
+    <ClCompile Include="terrain.cpp" />
+    <ClCompile Include="jobs.cpp" />
     <ClCompile Include="facetmesh.cpp" />
     <ClCompile Include="hud.cpp" />
     <ClCompile Include="menus.cpp" />
@@ -148,6 +150,8 @@
   <ItemGroup>
     <ClInclude Include="common.h" />
     <ClInclude Include="world.h" />
+    <ClInclude Include="terrain.h" />
+    <ClInclude Include="jobs.h" />
     <ClInclude Include="facetmesh.h" />
     <ClInclude Include="game_internal.h" />
     <ClInclude Include="savegame.h" />

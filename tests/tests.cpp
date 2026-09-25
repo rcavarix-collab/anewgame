@@ -21,6 +21,9 @@
 #include "../sfx_synth.h"
 #include "../soundscape.h"
 #include "../facetmesh.h"
+#include "../terrain.h"
+#include "../jobs.h"
+static const uint64_t HILLS_V1_FINGERPRINT = 0x24bcdc60e3a97b69ull; // walkgrid-hills v1, seed 1, column (0, 0)
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -35,12 +38,8 @@ static int g_failures = 0, g_checks = 0;
 
 static void ResetWorldState(World& w) {
     w = World();
-    g_residentColumns.clear();
-    g_evictedChunks.clear();
+    ResetColumnStreaming();
     ClearScheduledUpdates();
-    g_pendingColumns.clear(); g_pendingColumnSet.clear();
-    g_pendingEvictions.clear(); g_pendingEvictionSet.clear();
-    g_lastPlayerChunkX = g_lastPlayerChunkZ = INT32_MIN;
 }
 
 static void Stream(World& w, float px, float pz, int ticks) {
@@ -377,7 +376,7 @@ static void TestStreaming() {
     printf("streaming, eviction, regeneration\n");
     World w; ResetWorldState(w);
     g_loadRadius = 2;
-    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_HILLS;
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_WALKGRID;
     Stream(w, 8, 8, 40);
     CHECK(g_residentColumns.size() == 49); // (2*(2+1)+1)^2: one ring past the view radius
     CHECK(g_residentColumns.count(ColumnKey(0, 0)));
@@ -1425,6 +1424,90 @@ static void TestPatchwork() {
     g_worldGen = saved;
 }
 
+// ---- walkgrid-hills v1 (terrain.h, M1.4) ----
+static void TestHills() {
+    printf("walkgrid-hills terrain\n");
+    // Pure: the same seed gives the same column, bit for bit; another seed differs.
+    TerrainColumn a, b, c;
+    HillsColumn(42, 3, -7, a); HillsColumn(42, 3, -7, b); HillsColumn(43, 3, -7, c);
+    CHECK(a.chunks == b.chunks && a.cells == b.cells && a.present == b.present);
+    CHECK(a.cells != c.cells);
+    // Fingerprint of seed 1, column (0, 0): pins the generator's output. If
+    // this changes, the output changed, and that's a new version (DESIGN 2.5).
+    uint64_t h = 1469598103934665603ull;
+    TerrainColumn f; HillsColumn(1, 0, 0, f);
+    for (uint8_t x : f.cells) { h ^= x; h *= 1099511628211ull; }
+    printf("  fingerprint %016llx\n", (unsigned long long)h);
+    CHECK(h == HILLS_V1_FINGERPRINT);
+    // Every cell up to the surface is ground, above it air; the floor holds.
+    bool ok = true;
+    for (int lz = 0; lz < 16; lz += 5)
+        for (int lx = 0; lx < 16; lx += 5) {
+            int top = HillsHeight(1, lx, lz);
+            for (int y = 0; y < a.chunks * 16 && y < 80; y++) {
+                uint8_t m = f.cells[(size_t)(y / 16) * CHUNK_CELLS + Chunk::LocalIndex(lx, y % 16, lz)];
+                ok &= (y <= top) == (m != 0);
+            }
+            ok &= f.cells[Chunk::LocalIndex(lx, 0, lz)] == BLOCK_FOUNDATION;
+        }
+    CHECK(ok);
+    // Across many columns: the starting materials all appear, nothing else.
+    std::array<int, BLOCK_COUNT> seen{};
+    for (int cz = -12; cz < 12; cz += 3)
+        for (int cx = -12; cx < 12; cx += 3) {
+            TerrainColumn t; HillsColumn(7, cx, cz, t);
+            for (int lz = 0; lz < 16; lz++)
+                for (int lx = 0; lx < 16; lx++) {
+                    int y = HillsHeight(7, cx * 16 + lx, cz * 16 + lz);
+                    seen[t.cells[(size_t)(y / 16) * CHUNK_CELLS + Chunk::LocalIndex(lx, y % 16, lz)]]++;
+                }
+        }
+    int kinds = 0;
+    for (int i = 0; i < BLOCK_COUNT; i++) kinds += seen[i] > 0;
+    CHECK(seen[BLOCK_MEADOW_GRASS] > 0 && seen[BLOCK_DRY_TURF] > 0 && seen[BLOCK_SAND] > 0 && seen[BLOCK_STONE] > 0);
+    CHECK(kinds >= 7);
+    printf("  surface kinds in a 24x24-chunk sample: %d\n", kinds);
+}
+
+// ---- Job threads (jobs.h, M1.4) ----
+static void TestJobs() {
+    printf("job threads\n");
+    JobsStart();
+    CHECK(JobsThreadCount() >= 1 && JobsThreadCount() <= 4);
+    // Streaming on real threads lands the same ground as generating inline.
+    World w; ResetWorldState(w);
+    g_loadRadius = 2;
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_WALKGRID; g_worldGen.seed = 99;
+    for (int t = 0; t < 400 && (g_residentColumns.size() < 49 || ColumnsGenerating() > 0); t++) {
+        EnsureChunksLoaded(0, 0);
+        ProcessColumnGeneration(w);
+        if (t % 8 == 7) JobsWaitIdle();
+    }
+    CHECK(g_residentColumns.size() == 49 && ColumnsGenerating() == 0);
+    World ref; ResetWorldState(ref); // (keeps g_worldGen)
+    bool same = true;
+    for (int cz = -1; cz <= 1; cz++)
+        for (int cx = -1; cx <= 1; cx++) {
+            GenerateColumn(ref, cx, cz);
+            for (int cy = 0; cy < 4; cy++) {
+                Chunk* a = w.FindChunk({ cx, cy, cz }); Chunk* b = ref.FindChunk({ cx, cy, cz });
+                same &= (a == nullptr) == (b == nullptr);
+                if (a && b) same &= memcmp(a->blocks, b->blocks, CHUNK_CELLS) == 0;
+            }
+        }
+    CHECK(same);
+    // A column still generating when the world is reset is dropped on arrival.
+    World w2; ResetWorldState(w2);
+    EnsureChunksLoaded(40, 40);
+    ProcessColumnGeneration(w2);        // submits a few
+    ResetColumnStreaming();             // New Game / Load
+    JobsWaitIdle();
+    JobsApply(JOB_TERRAIN, 100);
+    CHECK(g_residentColumns.empty() && w2.chunks.empty());
+    JobsStop();
+    CHECK(JobsThreadCount() == 0);
+}
+
 // ---- The faceted ground (facetmesh.h, M1.2) ----
 // A test world: a lumpy blob of three materials with a dug pit, inside a
 // box of air. Returns the cells (index (y * nz + z) * nx + x).
@@ -1579,6 +1662,8 @@ int main() {
     TestSoundPalette();
     TestSoundscape();
     TestFacets();
+    TestHills();
+    TestJobs();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

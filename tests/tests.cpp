@@ -1078,7 +1078,7 @@ static void TestSoundscape() {
     CHECK(wild.Axes().positive > 0.2f);
     // Materials (M1.9): grassy ground soft, soils earthy, stones hard.
     CHECK(BlockSoundMaterial(BLOCK_MEADOW_GRASS) == MAT_PLANT && BlockSoundMaterial(BLOCK_MOSS) == MAT_PLANT);
-    CHECK(BlockSoundMaterial(BLOCK_DIRT) == MAT_EARTH && BlockSoundMaterial(BLOCK_SAND) == MAT_EARTH);
+    CHECK(BlockSoundMaterial(BLOCK_DIRT) == MAT_EARTH && BlockSoundMaterial(BLOCK_SAND) == MAT_SAND);
     CHECK(BlockSoundMaterial(BLOCK_STONE) == MAT_STONE && BlockSoundMaterial(BLOCK_GRAVEL) == MAT_STONE);
     CHECK(BlockSoundClass(BLOCK_CLAY) == SC_NATURAL && BlockSoundClass(BLOCK_FOUNDATION) == SC_NEUTRAL);
 }

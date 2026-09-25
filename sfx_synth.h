@@ -28,7 +28,9 @@ struct SoundAxes {
 // What a block sounds like when set, taken or walked on (the "material
 // tint", docs/SOUND_PALETTE.md 5.2).
 enum SoundMaterial : uint8_t {
-    MAT_NONE, MAT_EARTH, MAT_STONE, MAT_WOOD, MAT_PLANT, MAT_GLASS, MAT_METAL, MAT_FLESH, MAT_GENESIS, MAT_COUNT
+    MAT_NONE, MAT_EARTH, MAT_STONE, MAT_WOOD, MAT_PLANT, MAT_GLASS, MAT_METAL, MAT_FLESH, MAT_GENESIS,
+    MAT_SAND, // M1.12: loose grains -- a soft, bright hiss underfoot
+    MAT_COUNT
 };
 
 enum SoundId : uint8_t {
@@ -99,6 +101,10 @@ public:
     // as world.h's Player: forward = (sin yaw, cos yaw) on the ground).
     void SetListener(float x, float y, float z, float yaw);
     void SetMono(bool mono);               // Accessibility: everything centred
+    // The footsteps' own ceiling, dB (DESIGN 10.4 holds every sound to
+    // -21; whether footsteps may pass it is the owner's call, D29/D31).
+    // Default -21: the rule as it stands. Clips for the choice use others.
+    void SetFootstepCeiling(double db);
     // Footsteps on the beat (5.4 R1): 0 still / airborne / sliding, 1 crouch
     // (every other beat), 2 walk (every beat), 3 sprint (8ths), on `ground`.
     enum Gait { GAIT_NONE, GAIT_CROUCH, GAIT_WALK, GAIT_SPRINT };

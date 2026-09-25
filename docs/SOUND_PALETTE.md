@@ -177,7 +177,8 @@ Immediate (≤ ~25 ms), tier 1, and always harmonically current. **Material tint
 
 | Material | Tint |
 |---|---|
-| earth, sand, snow, moss | body filter ×0.7, noise grain lp 900 Hz, no metallic |
+| earth, snow, moss | body filter ×0.7, noise grain lp 900 Hz, no metallic |
+| sand (M1.12) | body filter ×0.5, noise grain 2,400 Hz, no metallic |
 | stone, basalt, ice | body τ ×0.7 (tighter), noise lp 1.6 kHz |
 | wood, logs | body through bp 900 Hz Q 1.2 (a hollow knock), τ ×1.2 |
 | plant, card | no thump, body → SINE, half level, +1 octave |
@@ -272,7 +273,7 @@ Tier 3, spent from the ambient budget, always on the grid. These make the world 
 
 **R1 · Footfall** — *on the beat*
 - Timing: the palette keeps time for the feet. While the player moves on the ground, steps land on the grid: **crouch** every other beat (quiet), **walk** every beat (the beat is close to a natural walking cadence: 2.03/s at 122 BPM), **sprint** on 8ths. Nothing while still, airborne or sliding (the slide and landing have their own sounds). A new gait starts on its own next grid line. Steps alternate ±12 % left/right, every other one 2 dB softer (a walk's lilt). Exempt from the ambient budget and from Music Intensity: they're the player's own.
-- Material, by **hardness** (0 yielding … 1 ringing: flesh 0.05, plants 0.1, earth/sand/snow 0.2, genesis 0.25, wood 0.6, stone 0.85, glass 0.95, metal 1): a noise scuff lowpassed at 700 + 1,700·hardness Hz, decaying over 28 → 8 ms (soft is dull and long, hard crisp and short); soft ground adds a second grain 12 ms later (the crunch of sand, snow, moss); a sub on the bass note, heavier on soft ground; hard ground (≥ 0.5) adds a very quiet knock on the current chord's root, then its 5th, alternating (soft triangle, sine for glass and metal, metallic partials on metal), so walking on stone taps along with the harmony. Level about −29 (soft) to −26 (hard) dB (raised after the first playtest: they must be heard), −4 dB crouching.
+- Material, by **hardness** (0 yielding … 1 ringing: flesh 0.05, plants 0.1, earth/sand/snow 0.2, genesis 0.25, wood 0.6, stone 0.85, glass 0.95, metal 1): a noise scuff lowpassed at 700 + 1,700·hardness Hz, decaying over 28 → 8 ms (soft is dull and long, hard crisp and short); soft ground adds a second grain 12 ms later (the crunch of snow, moss, grass, soil); sand (hardness 0.15, M1.12) instead adds a longer, brighter hiss 18 ms later with a slow 20 ms rise, the grains sliding, and sits 2.5 dB lower (the hiss reads louder than its level); a sub on the bass note, heavier on soft ground; hard ground (≥ 0.5) adds a very quiet knock on the current chord's root, then its 5th, alternating (soft triangle, sine for glass and metal, metallic partials on metal), so walking on stone taps along with the harmony. Level −13 + 3·hardness dB (the owner's pick, D29), −4 dB crouching, held to the footsteps' own ceiling: −21 dB like every sound until the owner decides whether they may pass it (D31, D44; `SoundPalette::SetFootstepCeiling`; clips from `tools/sound_demo.sh steps`).
 - Axes: M → brighter scuff and metal edges; P < 0 → darker (lowpass ×0.8).
 - Why it sits: steps are the quietest hi-hat in the mix, and on hard ground a whispered bass note — always on the grid, always in the chord.
 

@@ -145,3 +145,40 @@ Problems we expect before they happen: why we expect each one, the warning signs
 - **Why.** A border pixel within 64 blocks reads up to 27 texels (three materials × three projections × colour, surface and height), where M0's cube face read 3.
 - **Warning signs.** GPU WORLD in a Ctrl+F3 report above 3 ms at 1080p.
 - **Act.** Pull the blend distance in (64 → 32), drop the height texture's third projection, or give the setting a quality level.
+
+---
+
+## Review at the end of M1 (2026-09-25, before the owner's run)
+
+What M1 did to each forecast. "Awaiting" means only the owner's F3 / Ctrl+F3 report can settle it.
+
+| # | Where it stands |
+|---|---|
+| F1 Triangle count | Budget holds on paper: 308,000 triangles within 96 blocks (preview), against 1.5 million. The fine-detail setting (0–3 chunks) is the lever. Awaiting TRIANGLES in F3. |
+| F2 Cracks between levels | Designed out: boundary edges are always cut for the finest level (D40); 0 unmatched edges at every pairing, tested. Watch for holes in game. |
+| F3 Snagging on facets | 16 scripted walks: stuck 0, sank 0, view jumps 0 (D39). The feel is the owner's (T6). |
+| F4 Rebuild storms | A chunk of hysteresis on detail levels; only changed chunks rebuild, through the capped queue; meshes build on job threads. Awaiting MESHES BUILT / DIRTY WAITING while walking. |
+| F5 Blending cost on the GPU | One path for single-material pixels and beyond 64 blocks; up to 27 texture reads on border triangles near. Awaiting GPU WORLD. |
+| F6 / F18 Vertex memory | 16-byte vertices, 16-bit indices where they fit. Awaiting a report at the largest render distance. |
+| F7 Main thread fills up | Terrain and meshes on job threads (M1.4–1.5), effects on their own thread (M1.1). New on the main thread: the visibility walk (about 0.3 ms at most, less with the frustum) and heading sorts. Awaiting RENDER and the worst frame. |
+| F8 Game into the engine | Layer check: 0 violations throughout M1; no new hooks. |
+| F9 Save format churn | Unchanged (v1). Renumbering the registry changed nothing saved (saves store names). |
+| F10 Precision far out | Unchanged. |
+| F11 Effects voice starves | Addressed in M1.1 (its own thread and a mailbox; 48-voice cap). Awaiting WORLD SOUND worst in a report: the M0 baseline's 14.9 ms should be gone. |
+| F12 Music wears thin | Unchanged; not M1's subject. |
+| F13 Scope creep | M1 kept to its twelve steps; each step lists the files it touched beyond the plan's list, and why. Two things were added unasked and flagged as provisional: the test language (1.10) and sand's own footstep (1.12). |
+| F14 Docs drift | Docs were updated at every step, and the string check (1.10) now guards one more rule mechanically. The plan's file lists were often short: most steps touched two or three more files than listed. |
+| F15 Carried-over behaviour | Falling ground and grass die-back switched off (D41, as D12 asked). Carried and still on: Voxistics' menus, music, sky, the flat test ground. |
+| F16 Translation | Done (D42). |
+| F17 Dark slivers at terrace corners | Unchanged since M1.2 (about 0.08% of the surface). Waiting on whether the owner sees them in game. |
+| F19 Border pixel cost | Awaiting GPU WORLD with the camera over a patchwork of materials. |
+
+**New forecast from M1:**
+
+### F20. The visibility walk grows with how tall the world is
+- **Likelihood:** Medium (once caves or tall builds arrive). **Cost if ignored:** Medium.
+- **Why.** The walk visits every chunk in view up to one row above the highest ground, once per side it's entered by. On today's hills that's a few thousand steps; mountains, towers or deep caves multiply the rows.
+- **Warning signs.** RENDER rising with render distance while triangles don't; a Ctrl+F3 report with the walk's share over 0.5 ms.
+- **Act.** When a report shows it.
+- **Plan.** Walk only when the camera changes chunk or turns past a threshold, and reuse the result between; or walk columns of chunks rather than single chunks above the ground.
+

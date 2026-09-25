@@ -4,6 +4,29 @@ Looking back, honestly: what went well, what didn't, and what we'll do different
 
 ---
 
+## M1, built while the owner was away (steps 1.1–1.12), 2026-09-25
+
+Written before the owner's run, so it covers how it was built, not how it plays. The part that matters most (does it look, sound and feel right on Windows) is still unknown.
+
+**Went well**
+- **Pictures before engine work.** The preview tool (1.2) showed the look, the materials and the hills as stills before any of it reached the game, so problems were found where they were cheap: dirt stripes on every one-cell rise, one-cell pits from a noise octave, dark wedges from sideways jitter, folds from cutting quads bilinearly. Each was fixed in the preview, not in the game.
+- **Tests that measure, not just pass.** Seams checked at every pairing of detail levels; 16 scripted walks reporting sinks, lifts and jumps; 4,500 rays proving the visibility walk never hides ground an eye could see. Twice a first version of a test was vacuous (the seam test found no edges to check); both were caught by printing what the test actually counted.
+- **The cross-compile earned its place.** MinGW caught a missing include and a default hotbar still naming removed materials, which the native tests couldn't see.
+- **Autonomy with a record.** Every pick the owner would have made is logged as provisional (D34–D44) with the reason, so each can be undone on its own.
+
+**Didn't go well**
+- **Nothing has run on Windows since M0.** Eleven steps of engine change (a new mesher, shader, vertex format, collision, text, visibility) have only been compiled. That's the largest risk M1 carries into the owner's check, and it was accepted (D33) rather than avoided.
+- **The plan's file lists were short.** Most steps touched two or three files the plan didn't name (each step's status lists them). The plan named systems well but guessed files poorly.
+- **Edit-script slips again.** Python edits that matched the wrong span, and a module name (`strings.h`) that shadows a system header. The checks caught each before a commit; none reached the owner.
+- **One flaky test.** A job-thread race in a streaming test (a column landing before the reset); fixed by making the test clear its world first, then run eight times clean.
+
+**We'll do differently**
+- When the owner is away for a long run, stop after the first step that changes what's on screen (here 1.5) with a build ready, so a Windows check can happen mid-milestone even if it waits. *(Proposed for the SOP; the owner decides.)*
+- A plan's file list is a first guess: each step's hand-over lists the files actually touched, as M1's statuses do. *(Already practice; proposed as an SOP line.)*
+- Name new modules after checking system headers of the same name.
+
+---
+
 ## M0 on the owner's machine, 2026-09-25
 
 **What the first Windows run showed**

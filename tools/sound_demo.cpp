@@ -9,12 +9,18 @@
 //   tools/sound_demo.sh demo OUTDIR    WAV files: each category played over
 //                                      the day-cycle music, at contrasting
 //                                      axis settings, plus a solo version
+//   tools/sound_demo.sh steps OUTDIR   WAV files for the footstep ceiling
+//                                      (D29, D31): walking on grass, stone
+//                                      and sand over the midday music, with
+//                                      footsteps held to -21 dB (the rule
+//                                      today), -16 and -11
 //
 // Levels are reported on the music's own dB scale (the Part XIV layer
 // tables), i.e. with the day's master level and output scale divided out.
 
 #include "../sfx_synth.h"
 #include "../music_synth.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -279,10 +285,51 @@ static int Demo(const std::string& dir) {
     return 0;
 }
 
+// Footsteps past the ceiling (M1.12, D29/D31): the same walk at three
+// footstep ceilings, on grass and on stone, over Midday; and each walk's
+// loudest step alone, on the music's dB scale.
+static int Steps(const std::string& dir) {
+    const double t0 = ChordTime(MUSIC_DM9, 1300);
+    const double ceilings[3] = { -21.0, -16.0, -11.0 };
+    const char* names[3] = { "1_ceiling_21_today", "2_ceiling_16", "3_ceiling_11" };
+    struct Ground { SoundMaterial m; const char* name; } grounds[3] = { { MAT_PLANT, "grass" }, { MAT_STONE, "stone" }, { MAT_SAND, "sand" } };
+    for (const Ground& gr : grounds)
+        for (int k = 0; k < 3; k++)
+            for (int withMusic = 1; withMusic >= 0; withMusic--) {
+                SoundPalette p;
+                p.SetFootstepCeiling(ceilings[k]);
+                p.SetAmbientEnabled(true);
+                MusicState ms; ResetMusicState(&ms);
+                const double seconds = 12.0;
+                int n = (int)(seconds * SR);
+                std::vector<float> out(n, 0.0f);
+                const int blk = 512;
+                std::vector<int16_t> pcm(blk);
+                for (int i = 0; i + blk <= n; i += blk) {
+                    double t = t0 + (double)i / SR;
+                    // Two seconds of the music alone, then walking.
+                    p.SetGait(i > 2 * SR ? SoundPalette::GAIT_WALK : SoundPalette::GAIT_NONE, gr.m);
+                    p.Render(out.data() + i, blk, t, true);
+                    if (withMusic) {
+                        GenerateMusicChunk(t, blk, 1.0, &ms, pcm.data());
+                        for (int j = 0; j < blk; j++) out[i + j] += pcm[j] / 32767.0f;
+                    }
+                }
+                if (withMusic) {
+                    WriteWav(dir + "/footsteps_" + gr.name + "_" + names[k] + ".wav", out);
+                } else {
+                    float peak = 0; for (float v : out) peak = std::max(peak, std::fabs(v));
+                    printf("  %-6s ceiling %4.0f dB: loudest step %6.1f dBFS\n", gr.name, ceilings[k], 20 * std::log10(std::max(1e-9f, peak)));
+                }
+            }
+    return 0;
+}
+
 int main(int argc, char** argv) {
     std::string mode = argc > 1 ? argv[1] : "analyze";
     if (mode == "analyze") return Analyze();
     if (mode == "demo") return Demo(argc > 2 ? argv[2] : ".");
-    printf("usage: sound_demo analyze | demo OUTDIR\n");
+    if (mode == "steps") return Steps(argc > 2 ? argv[2] : ".");
+    printf("usage: sound_demo analyze | demo OUTDIR | steps OUTDIR\n");
     return 2;
 }

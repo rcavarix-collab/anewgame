@@ -145,6 +145,26 @@
 ### 1.12 The first functional test
 The footsteps first (D31): the palette's −21 dB ceiling (DESIGN 10.4) holds them to about +5 dB of the raise you picked, so I'll make clips of footsteps allowed past it, on the new ground, for you to choose from. Then the whole checklist, T1–T13, on your machine. Then the M1 reflection, the forecast review and the ledger.
 
+- **Status: my part done (D44); yours waits for you.** Footstep clips: `tools/sound_demo.sh steps OUTDIR` writes grass, stone and sand walks over the midday music at three footstep ceilings (−21 today, −16, −11). The loudest step alone: −28 / −23 / −17 dBFS on grass, −27 / −23 / −18 on stone, −25 / −19 / −17 on sand. The game stays at −21 until you pick. Sand now has its own sound (a hiss where soils crunch), so T7's four grounds differ. Reflection, forecast review and ledger are written. Files changed: `sfx_synth.cpp/.h` (the footsteps' own ceiling; sand), `soundscape.cpp` (sand's material), `tools/sound_demo.cpp/.sh` (the steps mode), `tests/tests.cpp`, docs.
+
+**The checklist: what I checked here, and what's yours.** Nothing below has been seen running: I can't run Direct3D here.
+
+| # | Checked here | Result here | Yours |
+|---|---|---|---|
+| T1 | It builds (MinGW cross-compile, 0 warnings; MSVC-rejected calls: none) | Builds; never run | Start it; new game on faceted ground |
+| T2 | Pictures (`docs/pictures/m1_2`); seams at every pairing of detail levels | 0 unmatched edges at every pairing | Look near and far; any cracks or holes |
+| T3 | Pictures of every material pairing (`docs/pictures/m1_3/pairs.jpg`) | Ragged borders in the pictures | The same in game |
+| T4 | Every shader variant compiles (13) | Compiles; the sky is Voxistics' own, unchanged | Sun, shadows, sky, night |
+| T5 | Sky-light tests | Flat 1.00, pit floor 0.19, under a roof 0.08, cliff face 0.64 | Pits and overhangs darker |
+| T6 | 16 scripted walks over hills (455 blocks) | Sank 0, lifted 0, view jumps 0, stuck 0 | The feel |
+| T7 | Offline renders; steps on the beat (tests) | Grass, soil, stone and sand differ (clips) | Listen; pick the ceiling |
+| T8 | 120 picking rays | 119 hits, 0 wrong (a ray meeting nothing within the 8-block reach is a miss, not an error) | Place and remove |
+| T9 | `sound_demo.sh analyze` | Clean except "works", which was already bright before M1 | Listen |
+| T10 | Music code unchanged since M0 | — | Listen |
+| T11 | Save round trip; every word in the string table | Pass | Every menu and setting |
+| T12 | — | — | F3 and a Ctrl+F3 report |
+| T13 | — | — | Smoothness above 60 fps |
+
 ---
 
 ## Questions for you

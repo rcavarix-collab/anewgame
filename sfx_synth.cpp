@@ -230,6 +230,8 @@ struct SoundPalette::Impl {
     AmbientScene scene;
     float intensity = 1;
     bool ambientOn = false;
+    double stepCeilingDb = kCeilingDb; // SetFootstepCeiling
+    double CeilingFor(SoundId id) const { return id == SND_FOOTFALL ? stepCeilingDb : kCeilingDb; }
     MusicHarmony h = {};
     bool haveH = false;
     double musicTime = 0;            // at `now`
@@ -389,7 +391,7 @@ struct SoundPalette::Impl {
         x->id = b.id; x->tier = b.tier; x->group = b.group; x->note = note;
         x->hz = x->hzFrom = x->curHz = hz;
         x->start = b.at + Samples(std::max(0.0, delaySec));
-        x->gain = (float)Db(std::min(levelDb + b.levelAdj, kCeilingDb));
+        x->gain = (float)Db(std::min(levelDb + b.levelAdj, CeilingFor(b.id)));
         x->seed = Mix64(b.ev * 0x9E3779B97F4A7C15ULL + (uint64_t)(x - v) * 7919 + 1);
         if (Tonal(wave) && wave != W_THUMP) LogNote(b.id, hz, x->start);
         return x;
@@ -453,7 +455,7 @@ struct SoundPalette::Impl {
             }
             worst = std::max(worst, sum);
         }
-        double ceiling = Db(kCeilingDb - 1.5); // margin for the echo's return
+        double ceiling = Db(CeilingFor(b.id) - 1.5); // margin for the echo's return
         if (worst > ceiling)
             for (auto& x : v) if (x.on && x.group == b.group) x.gain *= (float)(ceiling / worst);
         lastOnset[b.id] = b.at;
@@ -475,6 +477,7 @@ struct SoundPalette::Impl {
         if (!body) return;
         switch (mat) {
         case MAT_EARTH: body->pluck0 *= 0.7f; body->pluck1 *= 0.7f; if (grain) grain->bp0 = 900; body->metal = 0; break;
+        case MAT_SAND: body->pluck0 *= 0.5f; body->pluck1 *= 0.5f; if (grain) grain->bp0 = 2400; body->metal = 0; break;
         case MAT_STONE: body->tau *= 0.7f; if (grain) grain->bp0 = 1600; break;
         case MAT_WOOD: body->lp0 = body->lp1 = 900; body->q = 1.2f; body->tau *= 1.2f; break;
         case MAT_PLANT:
@@ -989,6 +992,7 @@ static double Hardness(SoundMaterial m) {
     switch (m) {
     case MAT_FLESH: return 0.05;
     case MAT_PLANT: return 0.1;
+    case MAT_SAND: return 0.15;
     case MAT_EARTH: return 0.2;
     case MAT_GENESIS: return 0.25;
     case MAT_WOOD: return 0.6;
@@ -1014,6 +1018,7 @@ void SoundPalette::Impl::Footfall(const SoundCue& c) {
     // Owner: they must be heard. -29 sat about 20 dB under the music and
     // was lost; -13 is the owner's pick from mixed clips (D29).
     double lvl = -13 + 3 * hard - ((c.key & 1) ? 2 : 0) + 20 * std::log10(std::max(0.2f, c.strength));
+    if (c.material == MAT_SAND) lvl -= 2.5; // its bright hiss reads louder than its level; kept even with grass
     // The scuff: soft ground dull, low and long; hard ground crisp and short.
     // Soft ground starts at 1100 Hz, not 700: below that the scuff sat
     // inside the music's pads and vanished (D29).
@@ -1021,7 +1026,10 @@ void SoundPalette::Impl::Footfall(const SoundCue& c) {
     double tau = 0.028 - 0.020 * hard;
     Voice* g = Grain(delay, lvl, lp, tau);
     if (g) { g->pan = (c.key & 1) ? 0.12f : -0.12f; g->panSet = true; }
-    if (hard < 0.3) { // snow, sand, moss: a second grain just after, the crunch
+    if (c.material == MAT_SAND) { // sand: the foot sinks and the grains slide -- a longer, brighter hiss, no crunch
+        Voice* g2 = Grain(delay + 0.018, lvl - 8, 2600, 0.07);
+        if (g2) { g2->pan = g ? g->pan : 0; g2->panSet = true; g2->atk = 0.02f; }
+    } else if (hard < 0.3) { // snow, moss, grass, soil: a second grain just after, the crunch
         Voice* g2 = Grain(delay + 0.012, lvl - 5, lp * 0.8, tau * 0.8);
         if (g2) { g2->pan = g ? g->pan : 0; g2->panSet = true; }
     }
@@ -1903,6 +1911,7 @@ void SoundPalette::Render(float* out, int n, double musicTime, bool running) {
 }
 void SoundPalette::SetListener(float x, float y, float z, float yaw) { m->lx = x; m->ly = y; m->lz = z; m->lyaw = yaw; }
 void SoundPalette::SetMono(bool mono) { m->mono = mono; }
+void SoundPalette::SetFootstepCeiling(double db) { m->stepCeilingDb = db; }
 void SoundPalette::SetGait(int gait, SoundMaterial ground) {
     if (gait != m->gait) m->nextStepBeat = -1; // a new gait starts on its own next grid line
     m->gait = gait; m->gaitGround = ground;

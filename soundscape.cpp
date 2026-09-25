@@ -7,14 +7,16 @@
 
 // The twelve materials (M1.9, D36): what each sounds like underfoot and
 // when set or taken. Grassy ground is the softest (a second grain, the
-// crunch, in Footfall), soils next, stones hard. Sand sounds like soil for
-// now: its own sound needs a new palette material (M1.12's footstep work).
+// crunch, in Footfall), soils next, stones hard. Sand has its own: a soft,
+// bright hiss (M1.12, provisional).
 SoundMaterial BlockSoundMaterial(BlockID id) {
     switch (id) {
     case BLOCK_MEADOW_GRASS: case BLOCK_DRY_TURF: case BLOCK_MOSS:
         return MAT_PLANT;
-    case BLOCK_DIRT: case BLOCK_LOAM: case BLOCK_CLAY: case BLOCK_SAND: case BLOCK_SNOW:
+    case BLOCK_DIRT: case BLOCK_LOAM: case BLOCK_CLAY: case BLOCK_SNOW:
         return MAT_EARTH;
+    case BLOCK_SAND:
+        return MAT_SAND;
     case BLOCK_GRAVEL: case BLOCK_STONE: case BLOCK_SLATE: case BLOCK_SANDSTONE: case BLOCK_FOUNDATION:
         return MAT_STONE;
     default:

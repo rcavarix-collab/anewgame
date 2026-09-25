@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds and runs tools/sound_demo.cpp (host compiler; no Windows needed).
-# Usage: tools/sound_demo.sh analyze | demo OUTDIR
+# Usage: tools/sound_demo.sh analyze | demo OUTDIR | steps OUTDIR
 set -e
 cd "$(dirname "$0")"
 OUT="${TMPDIR:-/tmp}/walkgrid_sound_demo"

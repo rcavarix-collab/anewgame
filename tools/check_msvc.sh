@@ -12,4 +12,39 @@ if [ -n "$HITS" ]; then
     echo "$HITS"
     exit 1
 fi
-echo "ok   no MSVC-deprecated CRT calls"
+# Words <windows.h> defines as macros (rpcndr.h: small is char; minwindef.h:
+# near, far; objbase.h: interface), so as names they break the MSVC build
+# but not MinGW's, which doesn't pull those headers in the same way. Code
+# only: comments and string literals are skipped.
+MACROS=$(python3 - $SRCS *.h <<'PY'
+import re, sys
+bad = re.compile(r'\b(small|near|far|hyper|interface|pascal|cdecl)\b')
+for path in sys.argv[1:]:
+    try: lines = open(path, encoding='utf-8-sig', errors='replace').read().split('\n')
+    except OSError: continue
+    block = False
+    for n, line in enumerate(lines, 1):
+        code, i, q = '', 0, False
+        while i < len(line):
+            c = line[i]
+            if block:
+                if line.startswith('*/', i): block = False; i += 2; continue
+                i += 1; continue
+            if q:
+                if c == '\\': i += 2; continue
+                if c == '"': q = False
+                i += 1; continue
+            if line.startswith('//', i): break
+            if line.startswith('/*', i): block = True; i += 2; continue
+            if c == '"': q = True; i += 1; continue
+            if c == "'" and i + 2 < len(line): j = line.find("'", i + 1); i = (j + 1) if j > 0 else i + 1; continue
+            code += c; i += 1
+        if bad.search(code): print('%s:%d: %s' % (path, n, line.strip()))
+PY
+)
+if [ -n "$MACROS" ]; then
+    echo "Names <windows.h> defines as macros (MSVC fails on these; rename them):"
+    echo "$MACROS"
+    exit 1
+fi
+echo "ok   no MSVC-deprecated CRT calls, no Windows macro names"

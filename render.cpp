@@ -619,13 +619,13 @@ static void UploadGroundMesh(World& w, const ChunkCoord& cc, uint64_t version, i
         // 16-bit indices where they fit (most chunks), 32-bit past 65,536
         // vertices (fine detail on busy ground: FOUNDATIONS 4.2).
         c.index32 = m.verts.size() > 65535;
-        static std::vector<uint16_t> small; // reused: no per-upload allocation once warm
+        static std::vector<uint16_t> idx16; // reused: no per-upload allocation once warm
         const void* idata = m.idx.data();
         UINT isize = (UINT)(m.idx.size() * sizeof(uint32_t));
         if (!c.index32) {
-            small.resize(m.idx.size());
-            for (size_t i = 0; i < m.idx.size(); i++) small[i] = (uint16_t)m.idx[i];
-            idata = small.data(); isize = (UINT)(small.size() * sizeof(uint16_t));
+            idx16.resize(m.idx.size());
+            for (size_t i = 0; i < m.idx.size(); i++) idx16[i] = (uint16_t)m.idx[i];
+            idata = idx16.data(); isize = (UINT)(idx16.size() * sizeof(uint16_t));
         }
         D3D11_BUFFER_DESC ibd = {};
         ibd.Usage = D3D11_USAGE_IMMUTABLE;

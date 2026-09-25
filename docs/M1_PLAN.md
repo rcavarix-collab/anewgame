@@ -40,6 +40,7 @@
 - **Files.** New: `facetmesh.cpp/.h` (the mesher itself, layer 4; the game uses the same code from 1.5), `tools/facet_preview.cpp`, `tools/facet_preview.sh`. Its tests go in `tests/tests.cpp`.
 - **Cost.** None in the game yet.
 - **Checks here.** Mesher tests: closed surfaces, consistent winding, no holes, stable output.
+- **Also tests T7:** the existing square-tiling textures, projected from the world, on slopes and cliffs, including one directional texture on purpose.
 - **Your check.** The look. **This is the checkpoint for the new direction:** we tune facet size, jitter and blending on these pictures until you're happy, before the engine changes.
 
 ### 1.3 The starting materials and the texture direction

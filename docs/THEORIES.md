@@ -41,3 +41,10 @@ Ideas we believe but haven't proven. Each says why we believe it, how we'll test
 - **Test.** Offline renders with the voice cap at its limit (`tools/sound_demo.sh`), and then busy moments in play.
 - **If wrong.** Lower the voice cap, add ducking, or give each sound tier its own frequency band.
 - **Status:** Open (matters most when action arrives).
+
+### T7. The existing square-tiling textures work unchanged on faceted ground
+- **Why we believe it.** Textures are projected from the world (top and two sides, blended by slope), not mapped per triangle, so triangle shape doesn't matter. Every generated texture already wraps seamlessly on its tile.
+- **Where it could fail.** On slopes between floor and wall, a plain blend of the projections smears; textures with a strong direction (planks, bricks, strata, bark) stay aligned to the world, not the facet.
+- **Test.** M1 step 1.2 and 1.3 pictures: slopes, cliffs and borders with the real textures, including one directional texture on purpose.
+- **If wrong.** A sharp, height-guided blend between projections (shader only); keep directional textures for built pieces placed on axis-aligned faces later.
+- **Status:** Open.

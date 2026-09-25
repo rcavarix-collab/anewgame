@@ -44,6 +44,7 @@ enum ProfCounter {
     PCOUNT_DIRTY_WAITING,
     PCOUNT_COLUMNS_WAITING,
     PCOUNT_COLUMNS_GENERATING,  // on the job threads right now (M1.4)
+    PCOUNT_MESHES_BUILDING,     // likewise (M1.5)
     PCOUNT_UPDATES_WAITING,
     PCOUNT_SHADOW_RENDERS,
     PCOUNT_COUNT

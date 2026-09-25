@@ -141,7 +141,11 @@ void RenderEmptyScene();
 // Capped per-frame chunk mesh rebuild (Section 4.2/4-perf) -- see
 // render.cpp for the full reasoning; this is the single entry point
 // the game loop calls once per frame.
+// Starts dirty chunks' ground meshes on the job threads (nearest first,
+// capped) and uploads finished ones (capped). Once per frame.
 void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz);
+// Chunk meshes being built on the job threads right now (F3).
+int MeshesBuilding();
 // GPU timing (profiler.h PROF_GPU_*): bracket the frame's passes with
 // timestamp queries; results two frames old are added to the profiler.
 void GpuFrameBegin();

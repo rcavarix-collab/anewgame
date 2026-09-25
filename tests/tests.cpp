@@ -23,6 +23,7 @@
 #include "../facetmesh.h"
 #include "../terrain.h"
 #include "../jobs.h"
+#include "../groundmesh.h"
 static const uint64_t HILLS_V1_FINGERPRINT = 0x24bcdc60e3a97b69ull; // walkgrid-hills v1, seed 1, column (0, 0)
 #include <cstdio>
 #include <cstring>
@@ -1508,6 +1509,100 @@ static void TestJobs() {
     CHECK(JobsThreadCount() == 0);
 }
 
+// ---- The ground mesh (groundmesh.h, M1.5) ----
+static void TestGroundMesh() {
+    printf("ground mesh\n");
+    BlockTextureSet t; BuildBlockTextures(VtexSet(), t);
+    InitGroundMaterials(t.faceLayer);
+    World w; ResetWorldState(w);
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_WALKGRID; g_worldGen.seed = 5;
+    for (int cz = -2; cz <= 2; cz++) for (int cx = -2; cx <= 2; cx++) GenerateColumn(w, cx, cz);
+    // The copy matches the world, margin included; under the floor is solid.
+    GroundCells gc; CopyGroundCells(w, { 0, 1, 0 }, gc);
+    bool same = true;
+    for (int y = 0; y < GROUND_GRID; y++) for (int z = 0; z < GROUND_GRID; z++) for (int x = 0; x < GROUND_GRID; x++)
+        same &= gc.cells[(y * GROUND_GRID + z) * GROUND_GRID + x] == (uint8_t)w.Get(x - FACET_PAD, 16 + y - FACET_PAD, z - FACET_PAD);
+    CHECK(same);
+    GroundCells g0; CopyGroundCells(w, { 0, 0, 0 }, g0);
+    CHECK(g0.cells[0] == BLOCK_FOUNDATION); // y = -2
+    // Two neighbouring chunks' meshes meet exactly, once unpacked to world
+    // positions: every edge left open by chunk (0, y, 0) along the seam at
+    // x = 16 (corners sit within half a block of it) is closed by chunk
+    // (1, y, 0)'s reverse edge.
+    typedef std::array<int64_t, 3> P3;
+    auto meshEdges = [&](int cx, std::map<std::array<int64_t, 6>, int>& edges) {
+        for (int cy = 0; cy <= 3; cy++) {
+            ChunkCoord cc{ cx, cy, 0 };
+            GroundCells cells; CopyGroundCells(w, cc, cells);
+            GroundMesh m; BuildGroundMesh(cells, nullptr, nullptr, m);
+            std::vector<P3> pts;
+            for (auto& v : m.verts)
+                pts.push_back({ (int64_t)v.x + (int64_t)cc.x * 16 * 2048, (int64_t)v.y + (int64_t)cc.y * 16 * 2048, (int64_t)v.z + (int64_t)cc.z * 16 * 2048 });
+            for (size_t i = 0; i < m.idx.size(); i += 3)
+                for (int k = 0; k < 3; k++) {
+                    P3 a = pts[m.idx[i + k]], b = pts[m.idx[i + (k + 1) % 3]];
+                    edges[{ a[0], a[1], a[2], b[0], b[1], b[2] }]++;
+                }
+        }
+    };
+    std::map<std::array<int64_t, 6>, int> eA, eB;
+    meshEdges(0, eA); meshEdges(1, eB);
+    auto world = [](int64_t q) { return q / 2048.0 - 2.0; };
+    int seam = 0, unmatched = 0;
+    for (auto& kv : eA) {
+        const auto& e = kv.first;
+        if (eA.count({ e[3], e[4], e[5], e[0], e[1], e[2] })) continue; // closed within A
+        bool nearSeam = true;
+        for (int k : { 0, 3 }) nearSeam &= world(e[k]) > 15.4 && world(e[k]) < 16.6 && world(e[k + 2]) > 1.0 && world(e[k + 2]) < 15.0;
+        if (!nearSeam) continue;
+        seam++;
+        if (!eB.count({ e[3], e[4], e[5], e[0], e[1], e[2] })) unmatched++;
+    }
+    CHECK(seam > 0);
+    CHECK(unmatched == 0);
+    printf("  open edges along the seam: %d, unmatched: %d\n", seam, unmatched);
+    // Winding agrees with the old cube mesher, whose back-face culling is
+    // known to work: seen from above through the game's own matrices, an
+    // up-facing triangle from each turns the same way on screen.
+    {
+        World f; ResetWorldState(f);
+        g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
+        for (int cz = -1; cz <= 1; cz++) for (int cx = -1; cx <= 1; cx++) GenerateColumn(f, cx, cz);
+        memcpy(g_blockFaceLayer, t.faceLayer, sizeof(g_blockFaceLayer));
+        Mat4 vp = MatMul(MatLookToLH({ 8, 30, 8 }, { 0.05f, -1, 0.02f }, { 0, 0, 1 }), MatPerspectiveFovLH(1.0f, 1.5f, 0.1f, 500));
+        auto screenSign = [&](Vec3 a, Vec3 b, Vec3 c) {
+            float sx[3], sy[3]; Vec3 q[3] = { a, b, c };
+            for (int i = 0; i < 3; i++) {
+                float x = q[i].x * vp.m[0][0] + q[i].y * vp.m[1][0] + q[i].z * vp.m[2][0] + vp.m[3][0];
+                float y = q[i].x * vp.m[0][1] + q[i].y * vp.m[1][1] + q[i].z * vp.m[2][1] + vp.m[3][1];
+                float ww = q[i].x * vp.m[0][3] + q[i].y * vp.m[1][3] + q[i].z * vp.m[2][3] + vp.m[3][3];
+                sx[i] = x / ww; sy[i] = -y / ww; // D3D screen: y down
+            }
+            float area = (sx[1] - sx[0]) * (sy[2] - sy[0]) - (sx[2] - sx[0]) * (sy[1] - sy[0]);
+            return area > 0 ? 1 : -1;
+        };
+        std::vector<Vertex> cv; std::vector<uint16_t> ci;
+        BuildChunkMesh(f, { 0, 0, 0 }, *f.FindChunk({ 0, 0, 0 }), cv, ci);
+        int cubeSign = 0;
+        for (size_t i = 0; i < ci.size() && !cubeSign; i += 3)
+            if (VertexFace(cv[ci[i]]) == FACE_POS_Y) {
+                auto P = [&](const Vertex& v) { return Vec3{ v.x / 8.0f, v.y / 8.0f, v.z / 8.0f }; };
+                cubeSign = screenSign(P(cv[ci[i]]), P(cv[ci[i + 1]]), P(cv[ci[i + 2]]));
+            }
+        GroundCells fc; CopyGroundCells(f, { 0, 0, 0 }, fc);
+        GroundMesh fm; BuildGroundMesh(fc, nullptr, nullptr, fm);
+        int facetSign = 0, agree = 0, total = 0;
+        for (size_t i = 0; i < fm.idx.size(); i += 3) {
+            auto P = [&](const GroundVertex& v) { return Vec3{ v.x / 2048.0f - 2, v.y / 2048.0f - 2, v.z / 2048.0f - 2 }; };
+            Vec3 a = P(fm.verts[fm.idx[i]]), b = P(fm.verts[fm.idx[i + 1]]), c = P(fm.verts[fm.idx[i + 2]]);
+            if (Cross(b - a, c - a).y <= 0) continue; // up-facing only
+            int sgn = screenSign(a, b, c);
+            facetSign = sgn; total++; agree += sgn == cubeSign;
+        }
+        CHECK(cubeSign != 0 && facetSign != 0 && total > 0 && agree == total);
+    }
+}
+
 // ---- The faceted ground (facetmesh.h, M1.2) ----
 // A test world: a lumpy blob of three materials with a dug pit, inside a
 // box of air. Returns the cells (index (y * nz + z) * nx + x).
@@ -1664,6 +1759,7 @@ int main() {
     TestFacets();
     TestHills();
     TestJobs();
+    TestGroundMesh();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

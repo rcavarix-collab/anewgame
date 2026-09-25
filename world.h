@@ -22,6 +22,9 @@
 #include <unordered_set>
 #include <utility>
 
+// Stamps chunk versions (Chunk::meshVersion); only ever grows.
+extern uint64_t g_chunkVersionCounter;
+
 // Forward-declared rather than #include <d3d11.h> -- Chunk only ever
 // stores pointers to these, never calls a method on them directly in
 // this header (the destructor that does is defined in world.cpp, where
@@ -65,6 +68,12 @@ struct Chunk {
     // memory or disk.
     bool modified = false;
     bool dirty = true;
+    // Stamped from g_chunkVersionCounter whenever the chunk is created or
+    // dirtied: a mesh built on a job thread lands only if the stamp still
+    // matches (a newer edit, or a different chunk object at the same
+    // place, means a newer build is coming). M1.5.
+    uint64_t meshVersion = 0;
+    bool index32 = false; // the mesh needs 32-bit indices (fine detail can pass 65,536 vertices)
     ID3D11Buffer* vb = nullptr;
     ID3D11Buffer* ib = nullptr;
     unsigned int indexCount = 0; // UINT, spelled out so this header doesn't need <windows.h>
@@ -106,6 +115,7 @@ public:
     // Replaces any chunk already at cc.
     void AdoptChunk(const ChunkCoord& cc, std::unique_ptr<Chunk> c) {
         c->dirty = true; // new to the world: needs a mesh
+        c->meshVersion = ++g_chunkVersionCounter;
         chunks[cc] = std::move(c);
         edits++;
         dirtyChunks.insert(cc);
@@ -134,6 +144,7 @@ public:
         auto it = chunks.find(cc);
         if (it != chunks.end()) return it->second.get();
         auto chunk = std::make_unique<Chunk>();
+        chunk->meshVersion = ++g_chunkVersionCounter;
         Chunk* ptr = chunk.get();
         chunks.emplace(cc, std::move(chunk));
         dirtyChunks.insert(cc); // born dirty: no mesh yet
@@ -167,13 +178,13 @@ public:
     }
 
     // Marks the owning chunk dirty, plus every neighbour -- face, edge
-    // or corner -- whose mesh this cell can affect: face culling reaches
-    // across a shared face, and ambient occlusion (Section 4.2) reaches
-    // across edges and corners too.
+    // or corner -- whose mesh this cell can affect. The faceted surface
+    // reads two cells out (facetmesh.h FACET_PAD: corners, openness), so a
+    // cell within two of a border touches the chunk across it.
     void MarkDirtyForEdit(const ChunkCoord& cc, int lx, int ly, int lz) {
-        int x0 = lx == 0 ? -1 : 0, x1 = lx == CHUNK_SIZE - 1 ? 1 : 0;
-        int y0 = ly == 0 ? -1 : 0, y1 = ly == CHUNK_SIZE - 1 ? 1 : 0;
-        int z0 = lz == 0 ? -1 : 0, z1 = lz == CHUNK_SIZE - 1 ? 1 : 0;
+        int x0 = lx < 2 ? -1 : 0, x1 = lx > CHUNK_SIZE - 3 ? 1 : 0;
+        int y0 = ly < 2 ? -1 : 0, y1 = ly > CHUNK_SIZE - 3 ? 1 : 0;
+        int z0 = lz < 2 ? -1 : 0, z1 = lz > CHUNK_SIZE - 3 ? 1 : 0;
         for (int dy = y0; dy <= y1; dy++)
             for (int dz = z0; dz <= z1; dz++)
                 for (int dx = x0; dx <= x1; dx++)
@@ -185,7 +196,7 @@ public:
     // and this is how it gets back in.
     void MarkChunkDirty(const ChunkCoord& cc) {
         Chunk* c = FindChunk(cc);
-        if (c) { c->dirty = true; dirtyChunks.insert(cc); }
+        if (c) { c->dirty = true; c->meshVersion = ++g_chunkVersionCounter; dirtyChunks.insert(cc); }
     }
 
     // Bulk path (falls, and anything else that must not trigger live

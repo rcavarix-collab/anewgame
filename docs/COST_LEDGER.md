@@ -15,7 +15,7 @@ Every system, what it's allowed to cost (its budget), and what it was last measu
 | Music synthesis | MUSIC | ~0 (own thread) | fixed | 0.00, 0.03 worst | |
 | Effects rendering (own thread, M1.1) | — (off the frame) | ~0 on the main thread | sounds playing (capped 48 voices) | Build machine: 0.6 ms median, 1.1 ms p95 per 11.6 ms buffer at the cap | Sleeps when silent |
 | Soundscape and effects | WORLD SOUND | 0.5 ms | sounds playing (capped) | **0.54 median, 4.68 p95, 14.93 worst: over budget** (M0) | Rendering moved to its own thread in M1.1: the row is now the census and posting. Awaiting a new report |
-| Mesh rebuild and upload | MESH | 1.5 ms | dirty chunks (capped 6/frame) | 0.00 median, 2.35 worst | Building moves to job threads in M1 |
+| Mesh rebuild and upload | MESH | 1.5 ms | dirty chunks (capped: 8 submitted, 8 uploaded a frame) | 0.00 median, 2.35 worst (M0, cubes) | M1.5: building on the job threads; the main thread copies 20³ cells per chunk and uploads. Awaiting a report |
 | Shadow map (when stale) | SHADOW MAP | 0.5 ms | chunks in the light's view (sliced over 4 frames) | 0.00, 0.07 worst | |
 | World draw submission | WORLD DRAW | 0.8 ms | chunks in view | 0.02, 0.78 worst | |
 | Post pass submission | POST | 0.1 ms | fixed | 0.01, 0.04 worst | |

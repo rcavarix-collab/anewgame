@@ -92,6 +92,7 @@
 - **Files.** Changed: `render.cpp/.h`, `world.cpp` (mesh queue). Removed from the build: `mesher.*`.
 - **Cost.** MESH on the main thread falls to uploads only. Triangles are counted in F3.
 - **Checks here.** Shader check; mesher tests; winding test; cross-compile.
+- **Status: built.** New file `groundmesh.cpp/.h` (D38); `mesher.*` stays until 1.9 (the icons use it). Tests: the cell copy, chunk seams closed exactly, winding agrees with the old cube mesher on screen. Not run here: Direct3D.
 - **Your check.** Screenshots: faceted, not cubes.
 
 ### 1.6 Blending and sky light

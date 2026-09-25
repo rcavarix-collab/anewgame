@@ -12,6 +12,9 @@
 #include "gamefiles.h" // ShaderCacheDirectory
 #include "vtex.h"
 #include "glowlight.h"
+#include "groundmesh.h"
+#include "jobs.h"
+#include <memory>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -112,6 +115,7 @@ static bool g_glowLit = false; // the grid holds at least one light
 static ID3D11BlendState* g_translucentBlend = nullptr;       // alpha blend; keeps the glow mask in dest alpha
 static ID3D11DepthStencilState* g_depthNoWriteState = nullptr; // depth tested, not written
 static ID3D11RasterizerState* g_cullBackRaster = nullptr;
+static ID3D11Buffer* g_matCB = nullptr; // each material's texture layers (world shader b3)
 // Bumped when a chunk mesh inside the shadow map's area is rebuilt: the
 // map re-renders only when geometry it actually covers has changed, not
 // for every far-off chunk streaming in.
@@ -183,20 +187,24 @@ static const char* g_atmosphereSrc =
     "    return pow(x, 1.0f / 2.2f);\n"
     "}\n";
 
-// World pass shader (Section 4.2 / 4.8). Vertices arrive packed
-// (mesher.h): chunk-local position plus a per-draw chunk origin, a
-// texture-array layer, and bits for u/v, ambient occlusion and shade
-// class. Lighting runs in linear light: hemisphere ambient (sky above,
-// bounce below) darkened by AO, plus sun and moon by the face's facing,
-// the sun shadowed when shadows are on; then distance fog into the sky
-// colour and a filmic tonemap. The output alpha marks what glows (the
-// bloom pass reads it). Compiled once as-is and, should that fail on some
-// driver, again with NO_SHADOWS, so a shadow problem can never cost the
-// world.
+// World pass shader (DESIGN.md 23.3; Section 4.8). Vertices arrive packed
+// (groundmesh.h GroundVertex): chunk-local position plus a per-draw chunk
+// origin, the smooth normal, openness, sky light and the triangle's
+// materials. Textures are projected from the world (top/bottom and two
+// sides, weighted by the smooth normal), so triangle shape never matters
+// (T7); a slope shows its material's top texture up to ~50 degrees, its
+// side texture when steeper. Facets are lit by their true, flat normal
+// (the screen derivatives of position). Lighting runs in linear light:
+// hemisphere ambient (sky above, bounce below) darkened by openness, plus
+// sun and moon, the sun shadowed when shadows are on; then distance fog
+// into the sky colour and a filmic tonemap. The output alpha marks what
+// glows (the bloom pass reads it). Compiled once as-is and, should that
+// fail on some driver, again with NO_SHADOWS, so a shadow problem can
+// never cost the world.
 static const char* g_shaderSrc =
     "// uses atmosphere\n"
     "cbuffer CB : register(b0) { row_major matrix mvp; row_major matrix lightViewProj; float4 params; float4 glowDrive; float4 glowGrid; };\n"
-    // params: x shadows on, y shadow half-texel, z 1 while drawing see-through blocks (4.11).
+    // params: x shadows on, y shadow half-texel.
     // glowDrive: x the music level now (music blocks follow it), yzw unused.
     // glowGrid: xyz the glow-light grid's world origin, w 1 when it holds any light (4.12).
     // chunkOrigin: the chunk's world position; chunkRel: the same minus the
@@ -204,34 +212,21 @@ static const char* g_shaderSrc =
     // the view has no translation, so however far from the start the
     // player is, no large numbers meet in the vertex transform.
     "cbuffer ChunkCB : register(b1) { float4 chunkOrigin; float4 chunkRel; };\n"
-    "struct VSIn { uint4 pos:POSITION; uint layer:TEXCOORD0; uint2 uv:TEXCOORD1; };\n"
-    "struct PSIn { float4 pos:SV_POSITION; float3 uvl:TEXCOORD0; float2 aoBias:TEXCOORD1; float3 wpos:TEXCOORD2; float4 glowInfo:TEXCOORD3; nointerpolation float round:TEXCOORD4; };\n"
-    // A light touch of the old fixed per-direction shading keeps two faces
-    // at the same angle to the sun from reading as one flat surface.
-    "static const float faceBias[8] = { 0.94f, 0.94f, 1.00f, 0.90f, 0.88f, 0.88f, 1.00f, 0.92f };\n"
-    "static const float3 faceNormal[8] = { float3(1,0,0), float3(-1,0,0), float3(0,1,0), float3(0,-1,0),\n"
-    "                                      float3(0,0,1), float3(0,0,-1), float3(0,0.8f,0.6f), float3(0,-0.8f,0.6f) };\n"
-    "static const float aoCurve[4] = { 0.42f, 0.62f, 0.82f, 1.00f };\n"
+    // Each material's texture layers: x top, y side, z bottom (groundmesh.h).
+    "cbuffer MatCB : register(b3) { uint4 matLayers[256]; };\n"
+    "struct VSIn { uint4 pos:POSITION; float4 nrm:NORMAL; uint4 mat:TEXCOORD0; };\n"
+    "struct PSIn { float4 pos:SV_POSITION; float3 wpos:TEXCOORD0; float3 nrm:TEXCOORD1; float2 aoSky:TEXCOORD2;\n"
+    "              nointerpolation uint3 mats:TEXCOORD3; float3 wts:TEXCOORD4; };\n"
     "PSIn VSMain(VSIn i) {\n"
     "    PSIn o;\n"
-    "    float3 p = float3(i.pos.xyz) * 0.125f + chunkRel.xyz;\n"      // 1/8-block fixed point, relative to the eye
-    "    uint face = (i.pos.w >> 2) & 7u;\n"
-    "    bool card = (i.layer & 0x8000u) != 0u;\n"
-    // Plant cards (4.14): all four corners arrive at the plant's base; spread
-    // them into a one-block quad turned (about the vertical) to face the eye.
-    "    if (card) {\n"
-    "        float2 toEye = -p.xz;\n"
-    "        float2 side = normalize(float2(-toEye.y, toEye.x) + float2(1e-5f, 0.0f));\n"
-    "        float cu = float(i.uv.x) * 0.125f - 0.5f, cv = 1.0f - float(i.uv.y) * 0.125f;\n"
-    "        p += float3(side.x * cu, cv, side.y * cu);\n"
-    "    }\n"
+    "    float3 p = float3(i.pos.xyz) * (1.0f / 2048.0f) - 2.0f + chunkRel.xyz;\n"   // GROUND_POS_SCALE, GROUND_POS_BIAS
     "    o.pos = mul(float4(p, 1.0f), mvp);\n"
-    "    o.uvl = float3(float2(i.uv) * 0.125f, (float)(i.layer & 0x3FFFu));\n"
-    "    o.round = (i.layer & 0x4000u) != 0u ? 1.0f : 0.0f;\n"          // a pipe's tube face (PIPE_ROUND_BIT)
-    "    o.aoBias = float2(aoCurve[i.pos.w & 3u], card ? -1.0f : faceBias[face]);\n"    // negative: a card (cut out in the pixel shader)
-    "    float3 n = face >= 6u ? float3(0.0f, 0.0f, 0.0f) : faceNormal[face];\n" // slanted facets: found per pixel below
-    "    o.wpos = p + fCamPos.xyz + n * 0.08f;\n"                     // world position; normal offset (> 1 shadow texel): no acne
-    "    o.glowInfo = float4((float)((i.pos.w >> 5) & 7u), n);\n"   // glow kind, face normal
+    "    o.wpos = p + fCamPos.xyz;\n"
+    "    o.nrm = i.nrm.xyz * 2.0f - 1.0f;\n"
+    "    o.aoSky = float2(i.nrm.w, float(i.mat.w) / 255.0f);\n"
+    "    o.mats = i.mat.xyz;\n"
+    "    float w0 = float(i.pos.w & 255u) / 255.0f, w1 = float(i.pos.w >> 8) / 255.0f;\n"
+    "    o.wts = float3(w0, w1, max(0.0f, 1.0f - w0 - w1));\n"
     "    return o;\n"
     "}\n"
     "Texture2DArray tex0 : register(t0);\n"
@@ -239,7 +234,7 @@ static const char* g_shaderSrc =
     "Texture3D glowTex : register(t2);\n"
     "SamplerState glowSamp : register(s2);\n"
     "Texture2DArray surfTex : register(t3);\n"                      // normal xy, shine, glow (4.13)
-    "SamplerState softSamp : register(s3);\n"                      // anisotropic: distant surfaces
+    "SamplerState softSamp : register(s3);\n"                      // smooth: trilinear, anisotropic (D8)
     // Large-scale variation (4.16): a slow drift of value and warmth across
     // the world, from the pixel's world position -- a few ALU ops, no data.
     "float VHash(float2 p) { p = frac(p * float2(0.1031f, 0.1030f)); p += dot(p, p.yx + 33.33f); return frac((p.x + p.y) * p.x); }\n"
@@ -253,61 +248,62 @@ static const char* g_shaderSrc =
     "    float warm = 0.10f * (VNoise(q / 31.0f + 5.1f) - 0.5f);\n"
     "    return float3(val * (1.0f + warm), val, val * (1.0f - warm));\n"
     "}\n"
+    // One material, projected from the world: colour, and the surface map
+    // (relief as a world-space nudge to the normal, shine, glow).
+    "struct Mat { float3 col; float3 bump; float shine; float glow; };\n"
+    "void SampleProj(float2 uv, float layer, inout Mat m, float wgt, float3 tanU, float3 tanV) {\n"
+    "    float3 c = tex0.Sample(softSamp, float3(uv, layer)).rgb;\n"
+    "    float4 s = surfTex.Sample(softSamp, float3(uv, layer));\n"
+    "    m.col += c * wgt;\n"
+    "    float2 t = s.xy * 2.0f - 1.0f;\n"
+    "    m.bump += (tanU * t.x + tanV * t.y) * wgt;\n"
+    "    m.shine += s.b * wgt; m.glow += s.a * wgt;\n"
+    "}\n"
+    "Mat SampleMaterial(uint id, float3 w, float3 pw, float topness, bool up) {\n"
+    "    uint4 L = matLayers[id];\n"
+    "    Mat m = (Mat)0;\n"
+    "    if (pw.y > 0.001f) SampleProj(w.xz, (float)(up ? L.x : L.z), m, pw.y, float3(1, 0, 0), float3(0, 0, 1));\n"
+    // Sides: v runs down the texture, so world y up is -v. Steep ground
+    // shows the side texture; gentle slopes keep the top's.
+    "    float sideLayer = (float)L.y, topLayer = (float)(up ? L.x : L.z);\n"
+    "    if (pw.x > 0.001f) {\n"
+    "        if (topness < 0.999f) SampleProj(float2(w.z, -w.y), sideLayer, m, pw.x * (1.0f - topness), float3(0, 0, 1), float3(0, -1, 0));\n"
+    "        if (topness > 0.001f) SampleProj(float2(w.z, -w.y), topLayer, m, pw.x * topness, float3(0, 0, 1), float3(0, -1, 0));\n"
+    "    }\n"
+    "    if (pw.z > 0.001f) {\n"
+    "        if (topness < 0.999f) SampleProj(float2(w.x, -w.y), sideLayer, m, pw.z * (1.0f - topness), float3(1, 0, 0), float3(0, -1, 0));\n"
+    "        if (topness > 0.001f) SampleProj(float2(w.x, -w.y), topLayer, m, pw.z * topness, float3(1, 0, 0), float3(0, -1, 0));\n"
+    "    }\n"
+    "    return m;\n"
+    "}\n"
     "#ifndef NO_SHADOWS\n"
     "Texture2D<float> shadowMap : register(t1);\n"
     "SamplerComparisonState shadowSamp : register(s1);\n"
     "#endif\n"
     "float4 PSMain(PSIn i) : SV_TARGET {\n"
-    // Crisp pixels up close; with distance the read fades into smooth
-    // (anisotropic, trilinear) filtering, so far ground doesn't sparkle.
-    "    float farBlend = saturate((length(i.wpos - fCamPos.xyz) - 10.0f) / 22.0f);\n"
-    "    float4 texel = lerp(tex0.Sample(samp0, i.uvl), tex0.Sample(softSamp, i.uvl), farBlend);\n" // sRGB view: already linear
-    "    if (i.aoBias.y < 0.0f) clip(texel.a - 0.5f);\n"               // plant card: see-through pixels are cut out
-    "    float4 surf = surfTex.Sample(samp0, i.uvl);\n"
-    "    float3 albedo = texel.rgb;\n"
-    // Large-scale variation (4.16): a slow world-scale drift breaks up the
-    // repetition of a tiled material. (The colour bleed tried beside it read
-    // as a halo in play, and was dropped.)
-    "    albedo *= WorldVariation(i.wpos);\n"
-    "    float3 nGeo = i.glowInfo.yzw;\n"                              // the face itself
-    // A slanted facet (ramps, pyramids, the faceted props of 4.15) is lit by
-    // its true, flat normal: the cross product of the position's screen
-    // derivatives, turned toward the viewer. Free, and exactly faceted.
-    "    float3 wpos = i.wpos;\n"
-    "    if (dot(nGeo, nGeo) < 0.25f) {\n"
-    "        nGeo = normalize(cross(ddy(i.wpos), ddx(i.wpos)));\n"
-    "        if (dot(nGeo, fCamPos.xyz - i.wpos) < 0.0f) nGeo = -nGeo;\n"
-    "        wpos += nGeo * 0.08f;\n"
-    "    }\n"
-    // Per-pixel normal (4.13): the surface map's tangent-space normal, in
-    // a frame built from screen-space derivatives of position and texture
-    // coordinates -- right for every face and every shape, with no
-    // tangent data in the vertex.
-    "    float3 dp1 = ddx(i.wpos), dp2 = ddy(i.wpos);\n"
-    "    float2 duv1 = ddx(i.uvl.xy), duv2 = ddy(i.uvl.xy);\n"
-    "    float3 dp2perp = cross(dp2, nGeo), dp1perp = cross(nGeo, dp1);\n"
-    "    float3 T = dp2perp * duv1.x + dp1perp * duv2.x;\n"
-    "    float3 B = dp2perp * duv1.y + dp1perp * duv2.y;\n"
-    "    float frameScale = rsqrt(max(max(dot(T, T), dot(B, B)), 1e-20f));\n"
-    // A pipe's tube face is flat, but shades as if round: its v runs 3..5
-    // across it, so lean the normal toward whichever edge the pixel is
-    // nearer, up to 45 degrees at the edge -- where the next face leans the
-    // same 45 back, so a square tube's faces meet in one smooth curve.
-    "    float3 nBase = nGeo;\n"
-    "    if (i.round > 0.5f) {\n"
-    "        float across = clamp((i.uvl.y - 0.5f) * 8.0f, -1.0f, 1.0f);\n"
-    "        float3 Bn = B * rsqrt(max(dot(B, B), 1e-20f));\n"
-    "        Bn = normalize(Bn - nGeo * dot(Bn, nGeo));\n"
-    "        float th = across * 0.785398f;\n"
-    "        nBase = normalize(nGeo * cos(th) + Bn * sin(th));\n"
-    "    }\n"
-    "    float2 nxy = (surf.xy * 2.0f - 1.0f) * (1.0f - farBlend);\n"   // bumps flatten with distance (no glittering)
-    "    float3 n = normalize((T * nxy.x + B * nxy.y) * frameScale + nBase * sqrt(saturate(1.0f - dot(nxy, nxy))));\n"
-    "    float ao = i.aoBias.x;\n"
+    "    float3 v = i.wpos - fCamPos.xyz;\n"
+    "    float dist = length(v);\n"
+    "    float3 view = v / max(dist, 1e-3f);\n"
+    // The facet's own flat normal: the cross product of the position's
+    // screen derivatives, turned toward the viewer. Free, and exactly faceted.
+    "    float3 nGeo = normalize(cross(ddy(i.wpos), ddx(i.wpos)));\n"
+    "    if (dot(nGeo, -view) < 0.0f) nGeo = -nGeo;\n"
+    "    float3 ns = normalize(i.nrm);\n"
+    // Projection weights, sharpened so a slope takes mostly one projection.
+    "    float3 pw = ns * ns; pw *= pw; pw /= max(pw.x + pw.y + pw.z, 1e-5f);\n"
+    "    float topness = smoothstep(0.45f, 0.70f, ns.y);\n"
+    "    Mat m = SampleMaterial(i.mats.x, i.wpos, pw, topness, ns.y >= 0.0f);\n"   // one material per facet (M1.5); blending in M1.6
+    "    float3 albedo = m.col * WorldVariation(i.wpos);\n"
+    // The relief tilts the facet's normal, fading with distance (no glitter).
+    "    float farBlend = saturate((dist - 10.0f) / 22.0f);\n"
+    "    float3 bump = m.bump - nGeo * dot(m.bump, nGeo);\n"
+    "    float3 n = normalize(nGeo + bump * (1.0f - farBlend));\n"
+    "    float3 wpos = i.wpos + nGeo * 0.08f;\n"                         // normal offset (> 1 shadow texel): no acne
+    "    float ao = i.aoSky.x;\n"
     "    float shadow = 1.0f;\n"
     // Softened falloff (sqrt of N.L): a faked wrap so a low sun still
     // lights flat ground enough for its long shadows to read at dawn/dusk.
-    // The face itself must face the sun too, so bumps never light a side
+    // The facet itself must face the sun too, so bumps never light a side
     // turned away from it.
     "    float facing = saturate(dot(nGeo, fSunDir.xyz) * 8.0f);\n"
     "    float sunLit = sqrt(saturate(dot(n, fSunDir.xyz))) * facing;\n"
@@ -331,56 +327,26 @@ static const char* g_shaderSrc =
     "    float3 ambient = lerp(fAmbientDown.rgb, fAmbientUp.rgb, n.y * 0.5f + 0.5f) * ao;\n"
     "    float3 direct = fSunColor.rgb * sunLit * (0.55f + 0.45f * ao)\n"
     "                  + fMoonColor.rgb * saturate(dot(n, fMoonDir.xyz)) * ao;\n"
-    "    float3 col = albedo * (ambient + direct) * abs(i.aoBias.y);\n"
-    "    float3 v = i.wpos - fCamPos.xyz;\n"
-    "    float dist = length(v);\n"
-    "    float3 view = v / max(dist, 1e-3f);\n"
+    "    float3 col = albedo * (ambient + direct);\n"
     // Shine (4.13): a sun glint and a faint sheen of sky where the surface
-    // map says the material is glossy (ice, wet stone, metal); matte
-    // elsewhere at no cost beyond the multiply.
-    "    if (surf.b > 0.004f) {\n"
+    // map says the material is glossy; matte elsewhere.
+    "    if (m.shine > 0.004f) {\n"
     "        float3 rv = reflect(view, n);\n"
     "        float fres = 0.04f + 0.96f * pow(1.0f - saturate(dot(-view, n)), 5.0f);\n"
-    "        col += (fSunColor.rgb * shadow * facing * pow(saturate(dot(rv, fSunDir.xyz)), 60.0f) * 1.5f + SkyColor(rv) * fres * 0.35f) * surf.b;\n"
+    "        col += (fSunColor.rgb * shadow * facing * pow(saturate(dot(rv, fSunDir.xyz)), 60.0f) * 1.5f + SkyColor(rv) * fres * 0.35f) * m.shine;\n"
     "    }\n"
-    // Light from glowing blocks nearby (4.12): one lookup in the light
-    // grid, at the centre of the open cell this face looks into, so a wall
-    // between a light and a surface leaves the surface dark. Driven light
-    // follows glowDrive.x (the music); steady light (magma) doesn't change.
+    // Light from glowing blocks nearby (4.12): one lookup in the light grid,
+    // just off the facet, so a wall between a light and a surface leaves the
+    // surface dark.
     "    if (glowGrid.w > 0.5f) {\n"
     "        float3 gl = glowTex.SampleLevel(glowSamp, (i.wpos + nGeo * 0.42f - glowGrid.xyz) / 64.0f, 0).rgb;\n"
     "        float3 emitted = gl.r * glowDrive.x * float3(1.0f, 0.62f, 0.25f) + gl.g * float3(1.0f, 0.45f, 0.15f);\n"
-    "        col += albedo * emitted * 1.5f * ao * (0.6f + 0.4f * saturate(n.y * 0.5f + 0.5f + dot(n, nGeo) - 1.0f));\n" // bumps catch it a little
+    "        col += albedo * emitted * 1.5f * ao;\n"
     "    }\n"
-    // Reactive blocks (blocks.h BlockGlow): 1 = GLOW_DRIVEN, following glowDrive.x.
-    // They emit light of their own.
-    "    float glow = 0.0f;\n"
-    "    float3 glowCol = float3(1.0f, 0.62f, 0.25f);\n"
-    "    if (i.glowInfo.x > 0.5f && i.glowInfo.x < 1.5f) glow = glowDrive.x;\n"
-    "    col += glow * (albedo * 1.2f + glowCol * 0.8f);\n"
-    // The texture's own glow map (4.13): veins, cores, runes light up by
-    // themselves, whatever the lighting, and bloom.
-    // GLOW_BREATHE blocks breathe it slowly: a smooth 0.4 Hz swell, never
-    // below a third -- far under the 3-per-second flash limit.
-    "    float texGlow = surf.a;\n"
-    "    if (i.glowInfo.x > 2.5f && i.glowInfo.x < 3.5f) texGlow *= 0.35f + 0.65f * (0.5f + 0.5f * sin(fCamPos.w * 2.5133f));\n"
-    "    col += albedo * texGlow * 2.5f;\n"
-    "    float outAlpha = saturate(max(glow, texGlow));\n"              // opaque pass: the bloom mask
-    // See-through blocks (4.11), faked: the tinted body lets the world
-    // behind show through by the texture's alpha; toward grazing angles it
-    // turns into a mirror of the sky (Schlick's Fresnel) and grows more
-    // opaque, and the sun leaves a hard glint unless shadowed. No
-    // refraction, no second scene render.
-    "    if (params.z > 0.5f) {\n"
-    "        float3 r = reflect(view, n);\n"
-    "        float fres = 0.04f + 0.96f * pow(1.0f - saturate(dot(-view, n)), 5.0f);\n"
-    "        float3 refl = SkyColor(r) * lerp(0.35f, 1.0f, saturate(r.y * 2.0f + 0.5f));\n" // the ground reflects darker than the sky
-    "        float3 glint = fSunColor.rgb * shadow * pow(saturate(dot(r, fSunDir.xyz)), 400.0f) * 6.0f;\n"
-    "        col = lerp(col, refl, fres) + glint;\n"
-    "        outAlpha = saturate(lerp(texel.a, 1.0f, fres) + dot(glint, float3(0.3f, 0.5f, 0.2f)));\n"
-    "    }\n"
+    // The texture's own glow map (4.13): what lights up by itself, and blooms.
+    "    col += albedo * m.glow * 2.5f;\n"
     "    col = lerp(col, SkyColor(view), FogAmount(dist));\n"
-    "    return float4(ToDisplay(col), outAlpha);\n"
+    "    return float4(ToDisplay(col), saturate(m.glow));\n"
     "}\n";
 
 // Depth-only pass into the shadow map, from the sun (Section 4.8).
@@ -388,9 +354,9 @@ static const char* g_shaderSrc =
 static const char* g_shadowShaderSrc =
     "cbuffer ShadowCB : register(b0) { row_major matrix lightViewProj; };\n"
     "cbuffer ChunkCB : register(b1) { float4 chunkOrigin; float4 chunkRel; };\n"
-    "struct VSIn { uint4 pos:POSITION; uint layer:TEXCOORD0; uint2 uv:TEXCOORD1; };\n"
+    "struct VSIn { uint4 pos:POSITION; float4 nrm:NORMAL; uint4 mat:TEXCOORD0; };\n"   // groundmesh.h GroundVertex
     "float4 VSMain(VSIn i) : SV_POSITION {\n"
-    "    float3 p = float3(i.pos.xyz) * 0.125f + chunkOrigin.xyz;\n"
+    "    float3 p = float3(i.pos.xyz) * (1.0f / 2048.0f) - 2.0f + chunkOrigin.xyz;\n"
     "    return mul(float4(p, 1.0f), lightViewProj);\n"
     "}\n";
 
@@ -600,87 +566,100 @@ static const char* g_skyShaderSrc =
     "    return float4(ToDisplay(col), sunGlow * (1.0f - cloud));\n"
     "}\n";
 
-// Emits one cube face (4 verts + 6 indices) for the given corners.
-static void RebuildChunkMesh(World& w, const ChunkCoord& cc, Chunk& c) {
-    static std::vector<Vertex> verts;     // reused across rebuilds: no per-rebuild allocation once warm
-    static std::vector<uint16_t> indices;
-    size_t translucentFirst = 0;
-    BuildChunkMesh(w, cc, c, verts, indices, &translucentFirst);
-
+// ---- Ground meshes (DESIGN.md 23.3): built on the job threads ----
+// A finished mesh lands here, on the main thread: uploaded if the chunk is
+// still the one it was built for (same version stamp), dropped otherwise.
+static void UploadGroundMesh(World& w, const ChunkCoord& cc, uint64_t version, GroundMesh& m) {
+    Chunk* cp = w.FindChunk(cc);
+    if (!cp || cp->meshVersion != version) return; // edited again or replaced: a newer build is coming
+    Chunk& c = *cp;
     if (c.vb) { c.vb->Release(); c.vb = nullptr; }
     if (c.ib) { c.ib->Release(); c.ib = nullptr; }
     c.indexCount = 0; c.opaqueIndexCount = 0;
-
-    if (!verts.empty()) {
+    if (!m.verts.empty()) {
         D3D11_BUFFER_DESC vbd = {};
         vbd.Usage = D3D11_USAGE_IMMUTABLE;
-        vbd.ByteWidth = (UINT)(verts.size() * sizeof(Vertex));
+        vbd.ByteWidth = (UINT)(m.verts.size() * sizeof(GroundVertex));
         vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
         D3D11_SUBRESOURCE_DATA vinit = {};
-        vinit.pSysMem = verts.data();
+        vinit.pSysMem = m.verts.data();
         g_device->CreateBuffer(&vbd, &vinit, &c.vb);
-
+        // 16-bit indices where they fit (most chunks), 32-bit past 65,536
+        // vertices (fine detail on busy ground: FOUNDATIONS 4.2).
+        c.index32 = m.verts.size() > 65535;
+        static std::vector<uint16_t> small; // reused: no per-upload allocation once warm
+        const void* idata = m.idx.data();
+        UINT isize = (UINT)(m.idx.size() * sizeof(uint32_t));
+        if (!c.index32) {
+            small.resize(m.idx.size());
+            for (size_t i = 0; i < m.idx.size(); i++) small[i] = (uint16_t)m.idx[i];
+            idata = small.data(); isize = (UINT)(small.size() * sizeof(uint16_t));
+        }
         D3D11_BUFFER_DESC ibd = {};
         ibd.Usage = D3D11_USAGE_IMMUTABLE;
-        ibd.ByteWidth = (UINT)(indices.size() * sizeof(uint16_t));
+        ibd.ByteWidth = isize;
         ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
         D3D11_SUBRESOURCE_DATA iinit = {};
-        iinit.pSysMem = indices.data();
+        iinit.pSysMem = idata;
         g_device->CreateBuffer(&ibd, &iinit, &c.ib);
-
-        c.indexCount = (UINT)indices.size();
-        c.opaqueIndexCount = (UINT)translucentFirst;
+        c.indexCount = (UINT)m.idx.size();
+        c.opaqueIndexCount = c.indexCount; // no see-through ground
     }
-
     c.dirty = false;
+    ProfAddCounter(PCOUNT_MESHES_BUILT, 1);
     if (ChunkAffectsGlow(g_glowGrid, cc, c)) g_glowDirty = true;
     float cx = (cc.x + 0.5f) * CHUNK_SIZE, cz = (cc.z + 0.5f) * CHUNK_SIZE;
     float reach = g_shadowAreaHalf + CHUNK_SIZE; // a chunk overlapping the area's edge counts
     if (g_shadowAreaHalf < 0 || (fabsf(cx - g_shadowAreaX) < reach && fabsf(cz - g_shadowAreaZ) < reach)) g_meshVersion++;
 }
 
-// Capped the same way block updates (MAX_UPDATES_PER_TICK) and column generation
-// (MAX_COLUMN_GENS_PER_TICK) already are: entering a large unexplored
-// area can generate several new columns in a single tick (each up to a
-// few vertical chunks tall, per GenerateColumn), all newly dirty at
-// once -- rebuilding all of them here in the same frame means several
-// full 4096-cell mesh passes *and* several pairs of synchronous GPU
-// CreateBuffer calls back to back, which is exactly the kind of
-// single-frame spike that shows up as a stutter when moving into new
-// terrain. Capping it spreads that same total work across a handful of
-// frames (a burst of ~16 chunks at this cap resolves in ~3 frames, well
-// under 60ms) instead of paying for all of it at once; any chunk left
-// dirty this frame simply isn't drawn yet (the world draw loop already
-// skips a zero-index-count chunk) and gets its turn next frame.
-static const int MAX_CHUNK_REBUILDS_PER_FRAME = 6;
+// Capped like everything else that can grow (SOP 2.3): at most this many
+// chunks start building per frame and this many are building at once;
+// at most this many finished meshes are uploaded per frame (each is two
+// CreateBuffer calls). New ground, a load or a render-distance change
+// fills in outward from the player over a few frames instead of in one.
+static const int MAX_MESH_SUBMITS_PER_FRAME = 8;
+static const int MAX_MESHES_IN_FLIGHT = 24;
+static const int MAX_MESH_UPLOADS_PER_FRAME = 8;
+static int g_meshesInFlight = 0;
+int MeshesBuilding() { return g_meshesInFlight; }
+
 // Nearest-first: of the chunks waiting (w.dirtyChunks -- nothing to scan
-// at all while the world is static), rebuild the few closest to the
-// camera. New ground, a load, or a render-distance change then fills in
-// outward from the player instead of in hash-map order, and the chunk
-// being edited under the cursor is never queued behind distant ones.
+// at all while the world is static), the few closest to the camera start
+// building. The copy of their cells is taken here, on the main thread;
+// the build runs on a job thread from that copy alone.
 void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz) {
-    if (w.dirtyChunks.empty()) return;
+    JobsApply(JOB_MESH, MAX_MESH_UPLOADS_PER_FRAME);
+    if (w.dirtyChunks.empty() || g_meshesInFlight >= MAX_MESHES_IN_FLIGHT) return;
     struct Pending { long long d2; ChunkCoord cc; };
     static std::vector<Pending> pending; // reused: no per-frame allocation once warm
     pending.clear();
     for (auto it = w.dirtyChunks.begin(); it != w.dirtyChunks.end();) {
         const ChunkCoord& cc = *it;
-        // A chunk's mesh reads all 8 neighbouring columns (culling, AO);
-        // until they exist it waits outside the set, still flagged dirty,
-        // and GenerateColumn re-queues it when the last neighbour arrives.
-        // One build per chunk instead of one per neighbour arrival.
+        // A chunk's mesh reads the columns around it (FACET_PAD cells); until
+        // they exist it waits outside the set, still flagged dirty, and the
+        // last neighbour's arrival re-queues it.
         if (!ColumnNeighborhoodResident(cc.x, cc.z)) { it = w.dirtyChunks.erase(it); continue; }
         long long dx = cc.x - camCx, dy = cc.y - camCy, dz = cc.z - camCz;
         pending.push_back({ dx * dx + dy * dy + dz * dz, cc });
         ++it;
     }
-    size_t n = std::min<size_t>(MAX_CHUNK_REBUILDS_PER_FRAME, pending.size());
+    size_t n = std::min<size_t>(std::min(MAX_MESH_SUBMITS_PER_FRAME, MAX_MESHES_IN_FLIGHT - g_meshesInFlight), pending.size());
     auto nearer = [](const Pending& a, const Pending& b) { return a.d2 < b.d2; };
     if (n < pending.size()) std::nth_element(pending.begin(), pending.begin() + n, pending.end(), nearer);
     for (size_t i = 0; i < n; i++) {
-        const ChunkCoord& cc = pending[i].cc;
+        ChunkCoord cc = pending[i].cc;
         w.dirtyChunks.erase(cc);
-        if (Chunk* c = w.FindChunk(cc)) { RebuildChunkMesh(w, cc, *c); ProfAddCounter(PCOUNT_MESHES_BUILT, 1); }
+        Chunk* c = w.FindChunk(cc);
+        if (!c) continue;
+        auto cells = std::make_shared<GroundCells>();
+        CopyGroundCells(w, cc, *cells);
+        auto mesh = std::make_shared<GroundMesh>();
+        uint64_t version = c->meshVersion;
+        g_meshesInFlight++;
+        JobsSubmit(JOB_MESH,
+            [cells, mesh] { BuildGroundMesh(*cells, nullptr, nullptr, *mesh); },
+            [cells, mesh, cc, version, &w] { g_meshesInFlight--; UploadGroundMesh(w, cc, version, *mesh); });
     }
 }
 
@@ -748,7 +727,7 @@ void UpdateCBuffer(const CBData& data) {
 // `slice`/`slices`: draw only the chunks in one of `slices` interleaved
 // groups (the shadow map is redrawn a group per frame).
 static void DrawChunks(World& w, const Frustum& frustum, Vec3 eye, bool countStats, int slice = 0, int slices = 1) {
-    UINT stride = sizeof(Vertex), offset = 0;
+    UINT stride = sizeof(GroundVertex), offset = 0;
     for (auto& kv : w.chunks) {
         Chunk& c = *kv.second;
         if (c.opaqueIndexCount == 0) continue;
@@ -756,7 +735,8 @@ static void DrawChunks(World& w, const Frustum& frustum, Vec3 eye, bool countSta
         if (slices > 1 && ((cc.x * 7 + cc.y * 13 + cc.z * 31) % slices + slices) % slices != slice) continue;
         Vec3 minB = { (float)(cc.x * CHUNK_SIZE), (float)(cc.y * CHUNK_SIZE), (float)(cc.z * CHUNK_SIZE) };
         Vec3 maxB = { minB.x + CHUNK_SIZE, minB.y + CHUNK_SIZE, minB.z + CHUNK_SIZE };
-        if (!FrustumIntersectsAABB(frustum, minB, maxB)) continue;
+        // Facets reach up to half a block past their chunk's cells.
+        if (!FrustumIntersectsAABB(frustum, minB - Vec3{ 1, 1, 1 }, maxB + Vec3{ 1, 1, 1 })) continue;
         D3D11_MAPPED_SUBRESOURCE mapped;
         g_context->Map(g_chunkCBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         float* o = (float*)mapped.pData;
@@ -764,7 +744,7 @@ static void DrawChunks(World& w, const Frustum& frustum, Vec3 eye, bool countSta
         o[4] = minB.x - eye.x; o[5] = minB.y - eye.y; o[6] = minB.z - eye.z; o[7] = 0.0f; // chunkRel
         g_context->Unmap(g_chunkCBuffer, 0);
         g_context->IASetVertexBuffers(0, 1, &c.vb, &stride, &offset);
-        g_context->IASetIndexBuffer(c.ib, DXGI_FORMAT_R16_UINT, 0);
+        g_context->IASetIndexBuffer(c.ib, c.index32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
         g_context->DrawIndexed(c.opaqueIndexCount, 0, 0);
         if (countStats) {
             ProfAddCounter(PCOUNT_CHUNKS_DRAWN, 1);
@@ -799,7 +779,7 @@ static void DrawTranslucent(World& w, const Frustum& frustum, Vec3 eye) {
     g_context->OMSetBlendState(g_translucentBlend, blendFactor, 0xFFFFFFFF);
     g_context->OMSetDepthStencilState(g_depthNoWriteState, 0);
     g_context->RSSetState(g_cullBackRaster);
-    UINT stride = sizeof(Vertex), offset = 0;
+    UINT stride = sizeof(GroundVertex), offset = 0;
     for (const Item& e : order) {
         Chunk& c = *e.c;
         D3D11_MAPPED_SUBRESOURCE mapped;
@@ -807,7 +787,7 @@ static void DrawTranslucent(World& w, const Frustum& frustum, Vec3 eye) {
         memcpy(mapped.pData, e.origin, sizeof(e.origin));
         g_context->Unmap(g_chunkCBuffer, 0);
         g_context->IASetVertexBuffers(0, 1, &c.vb, &stride, &offset);
-        g_context->IASetIndexBuffer(c.ib, DXGI_FORMAT_R16_UINT, 0);
+        g_context->IASetIndexBuffer(c.ib, c.index32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
         g_context->DrawIndexed(c.indexCount - c.opaqueIndexCount, c.opaqueIndexCount, 0);
         ProfAddCounter(PCOUNT_TRIANGLES_DRAWN, (c.indexCount - c.opaqueIndexCount) / 3);
     }
@@ -1164,8 +1144,14 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         g_context->PSSetSamplers(0, 4, samplers);
         ID3D11ShaderResourceView* srvs[4] = { g_blockTexSRV, shadows ? g_shadowSRV[g_shadowFront] : nullptr, g_glowSRV, g_surfaceSRV };
         g_context->PSSetShaderResources(0, 4, srvs);
+        g_context->PSSetConstantBuffers(3, 1, &g_matCB);
         Frustum frustum = ExtractFrustum(viewProj);
+        // Back faces aren't drawn: facetmesh winds every triangle so
+        // (b - a) x (c - a) points out of the ground, which D3D's default
+        // (clockwise = front) takes as facing the camera (tested).
+        g_context->RSSetState(g_cullBackRaster);
         DrawChunks(w, frustum, eye, true);
+        g_context->RSSetState(g_rasterState);
         // See-through blocks last: same shader, told by params.z to shade
         // as glass.
         cb.params[2] = 1.0f;
@@ -1571,10 +1557,10 @@ bool InitD3D(HWND hwnd) {
     g_device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &g_vs);
     g_device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &g_ps);
 
-    D3D11_INPUT_ELEMENT_DESC layoutDesc[] = { // mesher.h's packed Vertex
-        { "POSITION", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // x, y, z, aoFace
-        { "TEXCOORD", 0, DXGI_FORMAT_R16_UINT, 0, 4, D3D11_INPUT_PER_VERTEX_DATA, 0 },      // layer
-        { "TEXCOORD", 1, DXGI_FORMAT_R8G8_UINT, 0, 6, D3D11_INPUT_PER_VERTEX_DATA, 0 },     // u, v
+    D3D11_INPUT_ELEMENT_DESC layoutDesc[] = { // groundmesh.h's GroundVertex
+        { "POSITION", 0, DXGI_FORMAT_R16G16B16A16_UINT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }, // x, y, z, weights
+        { "NORMAL", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0 },      // smooth normal, openness
+        { "TEXCOORD", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },    // materials, sky light
     };
     g_device->CreateInputLayout(layoutDesc, 3, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &g_layout);
     vsBlob->Release();
@@ -1654,7 +1640,7 @@ bool InitD3D(HWND hwnd) {
     tb.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
     tb.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
     g_device->CreateBlendState(&tb, &g_translucentBlend);
-    rastDesc.CullMode = D3D11_CULL_BACK; // mesher.cpp winds every cube face clockwise seen from outside (tested)
+    rastDesc.CullMode = D3D11_CULL_BACK; // facetmesh winds every triangle clockwise seen from outside (tested)
     g_device->CreateRasterizerState(&rastDesc, &g_cullBackRaster);
 
     // --- UI pass pipeline objects (Section 4.6: a second pass, its own
@@ -1898,6 +1884,20 @@ bool InitTextures(std::string& problemSummary) {
                          " - SEE ASSETS\\TEXTURES\\_ERRORS.TXT";
     memcpy(g_blockFaceLayer, set.faceLayer, sizeof(g_blockFaceLayer));
     RenderBlockIcons(set); // hotbar icons from the real meshes (needs the face layers above)
+    // The ground's materials: what's solid, how lumpy, which layers each
+    // shows (groundmesh.h), and the same layers for the world shader (b3).
+    InitGroundMaterials(set.faceLayer);
+    {
+        uint32_t layers[256][4] = {};
+        for (int i = 0; i < 256; i++) { layers[i][0] = g_groundLayers[i].top; layers[i][1] = g_groundLayers[i].side; layers[i][2] = g_groundLayers[i].bottom; }
+        D3D11_BUFFER_DESC md = {};
+        md.Usage = D3D11_USAGE_IMMUTABLE;
+        md.ByteWidth = sizeof(layers);
+        md.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        D3D11_SUBRESOURCE_DATA mi = {}; mi.pSysMem = layers;
+        if (g_matCB) { g_matCB->Release(); g_matCB = nullptr; }
+        g_device->CreateBuffer(&md, &mi, &g_matCB);
+    }
 
     // Block faces: one Texture2DArray, a layer per distinct face texture,
     // full mip chain uploaded from the CPU-built mips.

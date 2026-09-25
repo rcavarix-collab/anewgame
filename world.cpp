@@ -26,6 +26,7 @@ Chunk::~Chunk() {
     if (ib) ib->Release();
 }
 
+uint64_t g_chunkVersionCounter = 0;
 int g_loadRadius = 3; // chunks, horizontal only (Section 2.4); a Graphics Settings slider now [1,8]
 
 World g_world;

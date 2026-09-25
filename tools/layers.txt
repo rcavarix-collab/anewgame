@@ -37,6 +37,8 @@ terrain.cpp     3
 
 mesher.h        4
 mesher.cpp      4
+groundmesh.h    4
+groundmesh.cpp  4
 vtex.h          4
 vtex.cpp        4
 blocktex.h      4

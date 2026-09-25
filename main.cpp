@@ -264,6 +264,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
         ProfSetCounter(PCOUNT_DIRTY_WAITING, (int64_t)g_world.dirtyChunks.size());
         ProfSetCounter(PCOUNT_COLUMNS_WAITING, (int64_t)g_pendingColumns.size());
         ProfSetCounter(PCOUNT_COLUMNS_GENERATING, (int64_t)ColumnsGenerating());
+        ProfSetCounter(PCOUNT_MESHES_BUILDING, (int64_t)MeshesBuilding());
         ProfSetCounter(PCOUNT_UPDATES_WAITING, (int64_t)ScheduledUpdateCount());
         // The drawn pose: between the last two ticks (see Pose above). While
         // a menu is open the world is frozen, so the latest tick is shown

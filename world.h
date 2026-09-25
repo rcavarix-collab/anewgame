@@ -12,6 +12,7 @@
 #pragma once
 
 #include "common.h"
+#include "blocks.h" // the registry: BlockID, g_blocks (Part III)
 #include <cstdint>
 #include <cfloat>
 #include <vector>

@@ -340,14 +340,14 @@ static const char* g_shaderSrc =
     "    }\n"
     // Light from glowing blocks nearby (4.12): one lookup in the light
     // grid, at the centre of the open cell this face looks into, so a wall
-    // between a light and a surface leaves the surface dark. Music light
-    // follows the music; ember light (magma) is steady.
+    // between a light and a surface leaves the surface dark. Driven light
+    // follows glowDrive.x (the music); steady light (magma) doesn't change.
     "    if (glowGrid.w > 0.5f) {\n"
     "        float3 gl = glowTex.SampleLevel(glowSamp, (i.wpos + nGeo * 0.42f - glowGrid.xyz) / 64.0f, 0).rgb;\n"
-    "        float3 emitted = gl.r * glowDrive.x * float3(1.0f, 0.62f, 0.25f) + gl.b * float3(1.0f, 0.45f, 0.15f);\n"
+    "        float3 emitted = gl.r * glowDrive.x * float3(1.0f, 0.62f, 0.25f) + gl.g * float3(1.0f, 0.45f, 0.15f);\n"
     "        col += albedo * emitted * 1.5f * ao * (0.6f + 0.4f * saturate(n.y * 0.5f + 0.5f + dot(n, nGeo) - 1.0f));\n" // bumps catch it a little
     "    }\n"
-    // Reactive blocks (blocks.h BlockGlow): 1 = the music playing now.
+    // Reactive blocks (blocks.h BlockGlow): 1 = GLOW_DRIVEN, following glowDrive.x.
     // They emit light of their own.
     "    float glow = 0.0f;\n"
     "    float3 glowCol = float3(1.0f, 0.62f, 0.25f);\n"
@@ -355,7 +355,7 @@ static const char* g_shaderSrc =
     "    col += glow * (albedo * 1.2f + glowCol * 0.8f);\n"
     // The texture's own glow map (4.13): veins, cores, runes light up by
     // themselves, whatever the lighting, and bloom.
-    // GLOW_PULSE blocks breathe it slowly: a smooth 0.4 Hz swell, never
+    // GLOW_BREATHE blocks breathe it slowly: a smooth 0.4 Hz swell, never
     // below a third -- far under the 3-per-second flash limit.
     "    float texGlow = surf.a;\n"
     "    if (i.glowInfo.x > 2.5f && i.glowInfo.x < 3.5f) texGlow *= 0.35f + 0.65f * (0.5f + 0.5f * sin(fCamPos.w * 2.5133f));\n"
@@ -1616,7 +1616,7 @@ bool InitD3D(HWND hwnd) {
         D3D11_TEXTURE3D_DESC gd = {};
         gd.Width = gd.Height = gd.Depth = GLOW_GRID;
         gd.MipLevels = 1;
-        gd.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // R music, G unused, B embers
+        gd.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // R driven (music), G steady (magma)
         gd.Usage = D3D11_USAGE_DEFAULT;
         gd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         if (SUCCEEDED(g_device->CreateTexture3D(&gd, nullptr, &g_glowTex)))

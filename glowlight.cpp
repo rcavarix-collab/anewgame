@@ -67,7 +67,7 @@ void BuildGlowGrid(World& w, int ox, int oy, int oz, GlowGrid& g) {
                             solid[Cell(gx, gy, gz)] = BlockOpaqueCube(id) ? 1 : 0;
                             BlockGlow glow = g_blocks[id].glow;
                             if (GlowCastsLight(glow))
-                                g.emitters.push_back({ ox + gx, oy + gy, oz + gz, (uint8_t)(glow == GLOW_MUSIC ? 0 : 2) });
+                                g.emitters.push_back({ ox + gx, oy + gy, oz + gz, (uint8_t)(glow == GLOW_DRIVEN ? 0 : 1) });
                         }
             }
 

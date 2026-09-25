@@ -1,7 +1,8 @@
 // common.h
 //
 // Shared foundation for every other file in the project: minimal linear
-// algebra, world-size constants, and (via blocks.h) the block registry.
+// algebra and world-size constants. Layer 1 (base): it includes nothing
+// from the project -- the block registry is blocks.h, in the world layer.
 // No Windows/D3D/XAudio2 dependency here on purpose -- this is the one
 // header every other module includes, so it stays free of anything that
 // would force an unrelated module to pull in a graphics or audio API it
@@ -140,6 +141,6 @@ static const int CHUNK_CELLS = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 static const int Y_MIN = 0;
 static const int Y_MAX = 255;
 
-// The block registry (IDs, names, flags, per-face textures) lives in
-// blocks.h -- one row per block type (Part III).
-#include "blocks.h"
+// The block registry (IDs, names, flags, per-face textures) is blocks.h,
+// in the world layer: world.h includes it. This base header can't, or
+// every file in the project would depend on the game's roster.

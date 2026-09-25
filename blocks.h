@@ -187,16 +187,18 @@ enum BlockShape : uint8_t {
 };
 
 // Blocks that light up on their own (world shader, Section 4.2): the
-// kind rides in spare vertex bits, the driving value is one per-frame
-// constant, so a glowing block costs nothing on the CPU.
+// kind rides in spare vertex bits (mesher.h, 3 bits: up to 8 kinds), the
+// driving value is one per-frame constant, so a glowing block costs
+// nothing on the CPU. The kinds are engine-generic: what drives GLOW_DRIVEN
+// is the game's choice (today, the music's note onsets).
 enum BlockGlow : uint8_t {
     GLOW_NONE = 0,
-    GLOW_MUSIC,       // pulses with the music actually playing
-    GLOW_EMBER,       // a steady warm light source (magma); what glows on it is the texture's glow map (4.13)
-    GLOW_PULSE,       // its texture's glow map breathes slowly (well under 1 Hz: flash-safe); casts no light
+    GLOW_DRIVEN,      // follows one per-frame level the game supplies (render.cpp glowDrive.x: the music)
+    GLOW_STEADY,      // a steady warm light source (magma); what glows on it is the texture's glow map (4.13)
+    GLOW_BREATHE,     // its texture's glow map breathes slowly (well under 1 Hz: flash-safe); casts no light
 };
 // Whether a glow kind lights the world around it (glowlight.h).
-static inline bool GlowCastsLight(BlockGlow g) { return g == GLOW_MUSIC || g == GLOW_EMBER; }
+static inline bool GlowCastsLight(BlockGlow g) { return g == GLOW_DRIVEN || g == GLOW_STEADY; }
 
 // How placement sets the state byte.
 enum PlaceRule : uint8_t {
@@ -270,7 +272,7 @@ inline const BlockDef g_blocks[BLOCK_COUNT] = {
     { "stone_funnel",       true,  true,  true,  false, false, SHAPE_FUNNEL,       PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
     { "stone_funnel_half",  true,  true,  true,  false, false, SHAPE_FUNNEL_HALF,  PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
     // Reactive blocks: plain cubes that light up on their own.
-    { "music_block",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_MUSIC, false,       TEX("music_block", nullptr, nullptr, nullptr, nullptr) },
+    { "music_block",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_DRIVEN, false,       TEX("music_block", nullptr, nullptr, nullptr, nullptr) },
     // See-through blocks (DESIGN.md 4.11): clear glass and a tinted crystal.
     { "glass",              true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, true,         TEX("glass", nullptr, nullptr, nullptr, nullptr) },
     { "crystal",            true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, true,         TEX("crystal", nullptr, nullptr, nullptr, nullptr) },
@@ -282,7 +284,7 @@ inline const BlockDef g_blocks[BLOCK_COUNT] = {
     { "cracked_earth",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("cracked_earth", nullptr, nullptr, nullptr, nullptr) },
     { "clay",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("clay", nullptr, nullptr, nullptr, nullptr) },
     { "basalt",             true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("basalt", nullptr, nullptr, nullptr, nullptr) },
-    { "magma_rock",         true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_EMBER, false,       TEX("magma_rock", nullptr, nullptr, nullptr, nullptr) },
+    { "magma_rock",         true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_STEADY, false,       TEX("magma_rock", nullptr, nullptr, nullptr, nullptr) },
     { "log",                true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX(nullptr, "log_top", "log_top", "log_bark", nullptr) },
     { "moss",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("moss", nullptr, nullptr, nullptr, nullptr) },
     // More natural materials (the second art batch), then the dark set and
@@ -302,13 +304,13 @@ inline const BlockDef g_blocks[BLOCK_COUNT] = {
     { "coastal_sand",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("coastal_sand", nullptr, nullptr, nullptr, nullptr) },
     { "veined_flesh",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("veined_flesh", nullptr, nullptr, nullptr, nullptr) },
     { "flesh_wound",       true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("flesh_wound", nullptr, nullptr, nullptr, nullptr) },
-    { "pulsing_membrane",  true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_PULSE,     false,       TEX("pulsing_membrane", nullptr, nullptr, nullptr, nullptr) },
+    { "pulsing_membrane",  true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_BREATHE,     false,       TEX("pulsing_membrane", nullptr, nullptr, nullptr, nullptr) },
     { "weeping_sore",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("weeping_sore", nullptr, nullptr, nullptr, nullptr) },
     { "corrupted_flesh",   true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("corrupted_flesh", nullptr, nullptr, nullptr, nullptr) },
     { "genesis_soil",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("genesis_soil", nullptr, nullptr, nullptr, nullptr) },
     { "seedling_sprout",   true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("seedling_sprout", nullptr, nullptr, nullptr, nullptr) },
     { "dawn_light",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("dawn_light", nullptr, nullptr, nullptr, nullptr) },
-    { "star_forge",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_EMBER,     false,       TEX("star_forge", nullptr, nullptr, nullptr, nullptr) },
+    { "star_forge",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_STEADY,     false,       TEX("star_forge", nullptr, nullptr, nullptr, nullptr) },
     { "new_log",           true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX(nullptr, "log_top", "log_top", "new_bark", nullptr) },
     // The custodian set: void ground, the lattice, a raw ore, archival masonry.
     { "void_static_ground", true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("void_static_ground", nullptr, nullptr, nullptr, nullptr) },
@@ -318,7 +320,7 @@ inline const BlockDef g_blocks[BLOCK_COUNT] = {
     // Plants: cards that turn to face the viewer (4.14). Walk-through, but targetable.
     { "wildflower_yellow",   false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("wildflower_yellow", nullptr, nullptr, nullptr, nullptr) },
     { "wildflower_blue",     false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("wildflower_blue", nullptr, nullptr, nullptr, nullptr) },
-    { "glow_mushroom_cluster", false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_EMBER,     false,       TEX("glow_mushroom_cluster", nullptr, nullptr, nullptr, nullptr) },
+    { "glow_mushroom_cluster", false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_STEADY,     false,       TEX("glow_mushroom_cluster", nullptr, nullptr, nullptr, nullptr) },
     { "fern_frond",          false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("fern_frond", nullptr, nullptr, nullptr, nullptr) },
     { "thorn_bramble",       false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("thorn_bramble", nullptr, nullptr, nullptr, nullptr) },
     { "reed_grass",          false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("reed_grass", nullptr, nullptr, nullptr, nullptr) },
@@ -334,11 +336,11 @@ inline const BlockDef g_blocks[BLOCK_COUNT] = {
     { "coral_node",            true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("coral_reef", nullptr, nullptr, nullptr, nullptr) },
     { "sore_bulb",             true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("weeping_sore", nullptr, nullptr, nullptr, nullptr) },
     { "corrupted_bulb",        true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("corrupted_flesh", nullptr, nullptr, nullptr, nullptr) },
-    { "membrane_sac",          true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_PULSE, false, TEX("pulsing_membrane", nullptr, nullptr, nullptr, nullptr) },
+    { "membrane_sac",          true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_BREATHE, false, TEX("pulsing_membrane", nullptr, nullptr, nullptr, nullptr) },
     { "snow_drift",            true,  true,  true,  false, false, SHAPE_SWELL_BOULDER, PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("snow", nullptr, nullptr, nullptr, nullptr) },
     { "stone_shard",           true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("stone", nullptr, nullptr, nullptr, nullptr) },
     { "basalt_shard",          true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("basalt", nullptr, nullptr, nullptr, nullptr) },
-    { "magma_shard",           true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_EMBER, false, TEX("magma_rock", nullptr, nullptr, nullptr, nullptr) },
+    { "magma_shard",           true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_STEADY, false, TEX("magma_rock", nullptr, nullptr, nullptr, nullptr) },
     { "sandstone_shard",       true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX(nullptr, "sandstone_top", "sandstone_top", "sandstone_layered", nullptr) },
     { "moss_stone_shard",      true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("moss_stone", nullptr, nullptr, nullptr, nullptr) },
     { "ore_shard",             true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("raw_fragment_ore", nullptr, nullptr, nullptr, nullptr) },

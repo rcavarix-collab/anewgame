@@ -588,7 +588,7 @@ static void TestMesher() {
     World wg; wg.Set(1, 1, 1, BLOCK_MUSIC); wg.Set(3, 1, 1, BLOCK_MAGMA_ROCK); wg.Set(5, 1, 1, BLOCK_STONE);
     BuildChunkMesh(wg, { 0, 0, 0 }, *wg.FindChunk({ 0, 0, 0 }), v, idx);
     int glowMusic = 0, glowEmber = 0, glowNone = 0;
-    for (auto& x : v) { int g = VertexGlow(x); if (g == GLOW_MUSIC) glowMusic++; else if (g == GLOW_EMBER) glowEmber++; else glowNone++; }
+    for (auto& x : v) { int g = VertexGlow(x); if (g == GLOW_DRIVEN) glowMusic++; else if (g == GLOW_STEADY) glowEmber++; else glowNone++; }
     CHECK(glowMusic == 24 && glowEmber == 24 && glowNone == 24);
 
     // Every cube face is wound clockwise seen from outside (the D3D front
@@ -902,7 +902,7 @@ static void TestGlowLight() {
     GlowGrid g; BuildGlowGrid(w, ox, oy, oz, g);
     auto at = [&](int x, int y, int z, int ch) { return (int)g.texels[((size_t)(((z - oz) * GLOW_GRID + (y - oy)) * GLOW_GRID + (x - ox))) * 4 + ch]; };
     CHECK(g.emitters.size() == 1 && g.texels.size() == (size_t)GLOW_GRID * GLOW_GRID * GLOW_GRID * 4);
-    CHECK(at(11, 11, 10, 0) > 150 && at(11, 11, 10, 1) == 0);     // beside it: bright, music channel only
+    CHECK(at(11, 11, 10, 0) > 150 && at(11, 11, 10, 1) == 0);     // beside it: bright, driven channel only
     CHECK(at(7, 11, 10, 0) > 0 && at(7, 11, 10, 0) < at(9, 11, 10, 0)); // falls off with distance
     CHECK(at(15, 11, 10, 0) == 0);                                  // behind the wall: in its shadow
     CHECK(at(14, 16, 10, 0) > 0);                                   // over the top of the wall: lit again
@@ -914,9 +914,9 @@ static void TestGlowLight() {
     CHECK(ChunkAffectsGlow(g, { 1, 0, 0 }, *w.FindChunk({ 1, 0, 0 })));
     Chunk empty;
     CHECK(!ChunkAffectsGlow(g, { 6, 0, 6 }, empty));
-    w.Set(20, 11, 3, BLOCK_MAGMA_ROCK); // an ember: the third channel
+    w.Set(20, 11, 3, BLOCK_MAGMA_ROCK); // steady light: the second channel
     BuildGlowGrid(w, ox, oy, oz, g);
-    CHECK(g.emitters.size() == 2 && at(21, 11, 3, 2) > 150 && at(21, 11, 3, 0) == 0 && at(21, 11, 3, 1) == 0);
+    CHECK(g.emitters.size() == 2 && at(21, 11, 3, 1) > 150 && at(21, 11, 3, 0) == 0 && at(21, 11, 3, 2) == 0);
     // No emitters, no texels.
     World none; none.Set(0, 0, 0, BLOCK_STONE);
     BuildGlowGrid(none, ox, oy, oz, g);

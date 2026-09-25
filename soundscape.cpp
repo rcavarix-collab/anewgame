@@ -131,7 +131,7 @@ void Soundscape::CensusStep(World& w, int px, int py, int pz) {
                 if (id == BLOCK_GLOW_MUSHROOM_CLUSTER || id == BLOCK_PULSING_MEMBRANE) cur.glow++;
                 if (id == BLOCK_MACHINE || id == BLOCK_TUBE) cur.machines++;
                 if (id == BLOCK_RAW_FRAGMENT_ORE) cur.ore++;
-                if (g_blocks[id].glow == GLOW_EMBER || g_blocks[id].glow == GLOW_PULSE || id == BLOCK_GLOW_MUSHROOM_CLUSTER || id == BLOCK_DAWN_LIGHT)
+                if (g_blocks[id].glow == GLOW_STEADY || g_blocks[id].glow == GLOW_BREATHE || id == BLOCK_GLOW_MUSHROOM_CLUSTER || id == BLOCK_DAWN_LIGHT)
                     cur.emissive++;
                 if (id == BLOCK_MUSIC) {
                     int dx = wx - px, dy = y - py, dz = wz - pz, d2 = dx * dx + dy * dy + dz * dz;

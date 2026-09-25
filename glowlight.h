@@ -8,10 +8,9 @@
 // so walls and pillars cast real shadows from it. Hardware trilinear
 // filtering softens the one-block steps into soft shadow edges.
 //
-// Three channels, because the glow kinds are driven differently each
-// frame: R = music blocks (scaled by the music playing now), G =
-// timestream blocks (scaled by how near The Line passes), B = embers
-// (magma: steady). Rebuilt only
+// Two channels, because the glow kinds are driven differently each frame:
+// R = GLOW_DRIVEN blocks (scaled in the shader by the level the game
+// supplies -- the music), G = GLOW_STEADY blocks (magma). Rebuilt only
 // when the grid moves (the player crossed a chunk) or a block changes
 // near a light -- never per frame. No D3D here; tested natively.
 
@@ -24,13 +23,13 @@
 static const int GLOW_GRID = 64;       // cells per side (a 64-block cube)
 static const int GLOW_RADIUS = 8;      // how far a glowing block's light reaches, blocks
 
-struct GlowEmitter { int x, y, z; uint8_t channel; }; // world cell; 0 = music (R), 2 = ember (B); G is unused
+struct GlowEmitter { int x, y, z; uint8_t channel; }; // world cell; 0 = driven (R), 1 = steady (G)
 
 struct GlowGrid {
     int ox = 0, oy = 0, oz = 0;        // world position of the grid's minimum corner (chunk-aligned)
     bool valid = false;
     std::vector<GlowEmitter> emitters; // every glowing block inside the grid
-    std::vector<uint8_t> texels;       // GLOW_GRID^3 x 4 (R, G, B, unused A), x fastest then y then z; empty when there are no emitters
+    std::vector<uint8_t> texels;       // GLOW_GRID^3 x 4 (R driven, G steady, B and A unused), x fastest then y then z; empty when there are no emitters
 };
 
 // Where the grid should sit for an eye at (x, y, z): chunk-aligned so it

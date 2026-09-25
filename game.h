@@ -58,6 +58,11 @@ void GameTick(float dt);
 bool IsActionDown(GameAction a);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+// Raw mouse input for looking around (input.cpp): register once the window
+// exists; each frame, take the movement summed since the last take. False
+// if raw input isn't available (look then falls back to the cursor).
+void RegisterRawMouse(HWND hwnd);
+bool TakeMouseLookDelta(int& dx, int& dy);
 
 // Second (orthographic, depth-off) render pass: crosshair, hotbar, all
 // menus, toasts, FPS counter. Assumes the world pass already ran this

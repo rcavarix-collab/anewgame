@@ -62,6 +62,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
                             nullptr, nullptr, hInstance, nullptr);
     if (!g_hwnd) return -1;
     ShowWindow(g_hwnd, nCmdShow);
+    RegisterRawMouse(g_hwnd); // mouse look reads the mouse itself (input.cpp)
     ProfBootMark("WINDOW");
 
     RegisterGameSettings(); // the game's own settings.cfg keys (hotbar, render distance)
@@ -161,7 +162,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
             RECT rc; GetClientRect(g_hwnd, &rc);
             POINT center = { (rc.right - rc.left) / 2, (rc.bottom - rc.top) / 2 };
             ClientToScreen(g_hwnd, &center);
-            int dx = cursor.x - center.x, dy = cursor.y - center.y;
+            // Raw mouse movement when available; the cursor's offset from
+            // the centre otherwise. The cursor is recentred either way, so
+            // the hidden pointer never reaches a screen edge.
+            int dx, dy;
+            if (!TakeMouseLookDelta(dx, dy)) { dx = cursor.x - center.x; dy = cursor.y - center.y; }
             float sensX = BASE_MOUSE_SENS * g_sensitivityMultX;
             float sensY = BASE_MOUSE_SENS * g_sensitivityMultY;
             g_player.yaw += (g_invertX ? -dx : dx) * sensX;

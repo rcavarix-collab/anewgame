@@ -8,8 +8,34 @@
 #include "game_internal.h"
 
 // Captures and hides the cursor, re-centering it, to enter FPS look mode.
+// ---- Raw mouse input (M0.14) ----
+// Mouse look reads the mouse itself (WM_INPUT), not the cursor: no Windows
+// pointer acceleration, no precision lost to screen pixels, and nothing
+// fighting high-polling mice or remote-desktop tools. Movement is summed
+// as messages arrive and taken once a frame (TakeMouseLookDelta). If
+// Windows refuses the registration, look falls back to the cursor, as
+// Voxistics did. One small message per mouse movement; nothing per frame.
+static bool g_rawMouse = false;
+static long g_rawDX = 0, g_rawDY = 0;
+
+void RegisterRawMouse(HWND hwnd) {
+    RAWINPUTDEVICE rid = {};
+    rid.usUsagePage = 0x01; // generic desktop controls
+    rid.usUsage = 0x02;     // mouse
+    rid.hwndTarget = hwnd;  // delivered while the window is in front (no RIDEV_INPUTSINK)
+    g_rawMouse = RegisterRawInputDevices(&rid, 1, sizeof(rid)) != FALSE;
+}
+
+bool TakeMouseLookDelta(int& dx, int& dy) {
+    if (!g_rawMouse) return false;
+    dx = (int)g_rawDX; dy = (int)g_rawDY;
+    g_rawDX = g_rawDY = 0;
+    return true;
+}
+
 void CaptureMouseForPlay() {
     g_mouseCaptured = true;
+    g_rawDX = g_rawDY = 0; // movement from before play resumed doesn't turn the view
     ShowCursor(FALSE);
     SetCapture(g_hwnd);
     RECT rc; GetClientRect(g_hwnd, &rc);
@@ -205,6 +231,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         // fullscreen); a minimised window keeps its old size.
         if (wParam != SIZE_MINIMIZED) ResizeRenderTargets((int)LOWORD(lParam), (int)HIWORD(lParam));
         return 0;
+    case WM_INPUT: {
+        // Relative motion only (a pen or remote desktop can send absolute
+        // positions: those are ignored here and the cursor fallback isn't
+        // needed for them), and only while looking around.
+        RAWINPUT ri;
+        UINT size = sizeof(ri);
+        if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, &ri, &size, sizeof(RAWINPUTHEADER)) != (UINT)-1 &&
+            ri.header.dwType == RIM_TYPEMOUSE && !(ri.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) && g_mouseCaptured) {
+            g_rawDX += ri.data.mouse.lLastX;
+            g_rawDY += ri.data.mouse.lLastY;
+        }
+        return DefWindowProcW(hwnd, msg, wParam, lParam); // lets Windows release the input's buffer
+    }
     case WM_MOUSEMOVE:
         g_mouseX = (int)(short)LOWORD(lParam);
         g_mouseY = (int)(short)HIWORD(lParam);

@@ -20,6 +20,7 @@
 #include "../music_synth.h"
 #include "../sfx_synth.h"
 #include "../soundscape.h"
+#include "../facetmesh.h"
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -27,6 +28,7 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <map>
 
 static int g_failures = 0, g_checks = 0;
 #define CHECK(cond) do { g_checks++; if (!(cond)) { g_failures++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
@@ -1423,6 +1425,137 @@ static void TestPatchwork() {
     g_worldGen = saved;
 }
 
+// ---- The faceted ground (facetmesh.h, M1.2) ----
+// A test world: a lumpy blob of three materials with a dug pit, inside a
+// box of air. Returns the cells (index (y * nz + z) * nx + x).
+static std::vector<uint8_t> FacetTestCells(int n, uint32_t seed) {
+    std::vector<uint8_t> c((size_t)n * n * n, 0);
+    for (int y = 0; y < n; y++)
+        for (int z = 0; z < n; z++)
+            for (int x = 0; x < n; x++) {
+                if (x < 3 || y < 3 || z < 3 || x >= n - 3 || y >= n - 3 || z >= n - 3) continue;
+                uint32_t h = (uint32_t)(x * 73856093) ^ (uint32_t)(y * 19349663) ^ (uint32_t)(z * 83492791) ^ seed;
+                h ^= h >> 13; h *= 0x5bd1e995u; h ^= h >> 15;
+                float ground = n * 0.5f + 2.5f * sinf(x * 0.5f) + 2.0f * cosf(z * 0.4f + x * 0.1f);
+                bool pit = x > n / 2 - 2 && x < n / 2 + 2 && z > n / 2 - 2 && z < n / 2 + 2 && y > ground - 4;
+                bool speck = (h & 31) == 0 && y < ground + 1; // loose single cells, diagonal contacts included
+                if ((y < ground && !pit) || speck) c[((size_t)y * n + z) * n + x] = (uint8_t)(1 + (h >> 20) % 3);
+            }
+    return c;
+}
+static int FacetTestBand(Vec3 p, void* user) {
+    // Bands that change every few cells, so every stitch case appears.
+    (void)user;
+    int k = ((int)floorf(p.x / 3.0f) + 2 * (int)floorf(p.z / 5.0f) + (int)floorf(p.y / 4.0f)) % 3;
+    return k < 0 ? k + 3 : k;
+}
+// Watertight and consistently wound: every directed edge a->b (by exact
+// position) is matched by exactly as many b->a. A crack or a T-junction
+// between detail levels leaves an edge unmatched.
+static bool FacetWatertight(const FacetMesh& m, int* unmatched) {
+    std::map<std::array<uint32_t, 6>, int> e;
+    auto key = [&](uint32_t a, uint32_t b) {
+        std::array<uint32_t, 6> k;
+        memcpy(&k[0], &m.verts[a].pos, 12); memcpy(&k[3], &m.verts[b].pos, 12);
+        return k;
+    };
+    for (size_t t = 0; t < m.idx.size(); t += 3)
+        for (int i = 0; i < 3; i++) {
+            uint32_t a = m.idx[t + i], b = m.idx[t + (i + 1) % 3];
+            e[key(a, b)]++;
+        }
+    int bad = 0;
+    for (auto& kv : e) {
+        std::array<uint32_t, 6> r = { kv.first[3], kv.first[4], kv.first[5], kv.first[0], kv.first[1], kv.first[2] };
+        auto it = e.find(r);
+        if (it == e.end() || it->second != kv.second) bad++;
+    }
+    *unmatched = bad;
+    return bad == 0;
+}
+static void TestFacets() {
+    printf("faceted ground\n");
+    const int n = 24;
+    FacetMaterial mats[256];
+    mats[1] = { true, 0.08f }; mats[2] = { true, 0.0f }; mats[3] = { true, 0.03f };
+    std::vector<uint8_t> cells = FacetTestCells(n, 7);
+    FacetGrid g; g.nx = g.ny = g.nz = n; g.cells = cells.data(); g.mats = mats;
+    // Flat ground stays level before the jitter: every corner of a plane at
+    // y = 5 sits at y = 5 when the jitter is off.
+    {
+        std::vector<uint8_t> flat((size_t)n * n * n, 0);
+        for (int y = 0; y < 5; y++) for (int z = 0; z < n; z++) for (int x = 0; x < n; x++) flat[((size_t)y * n + z) * n + x] = 2;
+        FacetGrid fg = g; fg.cells = flat.data();
+        FacetShape s; s.jitter = 0; s.jitterSide = 0;
+        Vec3 c; bool on = FacetCorner(fg, s, 10, 5, 10, &c);
+        CHECK(on && c.y == 5.0f && c.x == 10.0f);
+        CHECK(!FacetCorner(fg, s, 10, 8, 10, &c)); // in the air: no corner
+        FacetBuildParams bp; bp.bx0 = bp.by0 = bp.bz0 = 2; bp.bx1 = bp.by1 = bp.bz1 = n - 2;
+        FacetMesh fm; FacetBuild(fg, bp, fm);
+        int up = 0, tris = fm.triangles();
+        for (size_t t = 0; t < fm.idx.size(); t += 3) {
+            Vec3 a = fm.verts[fm.idx[t]].pos, b = fm.verts[fm.idx[t + 1]].pos, cc = fm.verts[fm.idx[t + 2]].pos;
+            if (Cross(b - a, cc - a).y > 0) up++;
+        }
+        CHECK(tris > 0 && up == tris); // wound out of the ground
+    }
+    // Watertight at every mix of detail levels, whole and cut into boxes.
+    FacetBuildParams bp; bp.bx0 = bp.by0 = bp.bz0 = 0; bp.bx1 = bp.by1 = bp.bz1 = n;
+    bp.band = FacetTestBand;
+    FacetMesh whole; FacetBuild(g, bp, whole);
+    int bad = 0;
+    CHECK(FacetWatertight(whole, &bad));
+    if (bad) printf("  %d unmatched edges\n", bad);
+    CHECK(whole.quadsAtLevel[0] > 0 && whole.quadsAtLevel[1] > 0 && whole.quadsAtLevel[2] > 0);
+    bp.selective = false;
+    FacetMesh blanket; FacetBuild(g, bp, blanket);
+    CHECK(FacetWatertight(blanket, &bad));
+    CHECK(blanket.baseQuads == whole.baseQuads);
+    {   // One smooth material: only creases are cut, so it costs less.
+        std::vector<uint8_t> smooth = cells;
+        for (auto& c : smooth) if (c) c = 2;
+        FacetGrid sg = g; sg.cells = smooth.data();
+        FacetMesh sel, all;
+        FacetBuildParams sp = bp; FacetBuild(sg, sp, all);
+        sp.selective = true; FacetBuild(sg, sp, sel);
+        CHECK(all.triangles() > sel.triangles());
+        CHECK(FacetWatertight(sel, &bad));
+    }
+    bp.selective = true;
+    // Cut into eight boxes (as chunks are): together, the same triangles.
+    std::vector<std::array<float, 9>> a, b;
+    auto collect = [](const FacetMesh& m, std::vector<std::array<float, 9>>& out) {
+        for (size_t t = 0; t < m.idx.size(); t += 3) {
+            std::array<float, 9> tri;
+            for (int i = 0; i < 3; i++) { Vec3 q = m.verts[m.idx[t + i]].pos; tri[i * 3] = q.x; tri[i * 3 + 1] = q.y; tri[i * 3 + 2] = q.z; }
+            out.push_back(tri);
+        }
+    };
+    collect(whole, a);
+    FacetMesh parts;
+    for (int k = 0; k < 8; k++) {
+        FacetBuildParams q = bp;
+        q.bx0 = (k & 1) ? n / 2 : 0; q.bx1 = (k & 1) ? n : n / 2;
+        q.by0 = (k & 2) ? n / 2 : 0; q.by1 = (k & 2) ? n : n / 2;
+        q.bz0 = (k & 4) ? n / 2 : 0; q.bz1 = (k & 4) ? n : n / 2;
+        FacetMesh m; FacetBuild(g, q, m);
+        collect(m, b);
+        for (size_t i = 0; i < m.idx.size(); i++) parts.idx.push_back(m.idx[i] + (uint32_t)parts.verts.size());
+        parts.verts.insert(parts.verts.end(), m.verts.begin(), m.verts.end());
+    }
+    std::sort(a.begin(), a.end()); std::sort(b.begin(), b.end());
+    CHECK(a == b);
+    CHECK(FacetWatertight(parts, &bad));
+    // Stable: the same cells give the same mesh.
+    FacetMesh again; FacetBuild(g, bp, again);
+    CHECK(again.verts.size() == whole.verts.size() && again.idx == whole.idx);
+    CHECK(memcmp(again.verts.data(), whole.verts.data(), whole.verts.size() * sizeof(FacetVertex)) == 0);
+    // Weights sum to 255 and materials are real.
+    bool okW = true;
+    for (auto& v : whole.verts) okW &= (v.w[0] + v.w[1] + v.w[2] == 255) && v.mat[0] >= 1 && v.mat[0] <= 3;
+    CHECK(okW);
+}
+
 int main() {
     TestVtex();
     TestBlockTextures();
@@ -1445,6 +1578,7 @@ int main() {
     TestMusicHarmony();
     TestSoundPalette();
     TestSoundscape();
+    TestFacets();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

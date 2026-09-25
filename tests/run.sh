@@ -11,6 +11,6 @@ if grep -in '"[^"]*voxistics' ../*.cpp ../*.h; then echo "FAIL: the old name in 
 OUT="${TMPDIR:-/tmp}/walkgrid_tests"
 g++ -std=c++17 -O1 -Wall -Wextra -Istub -I.. \
     tests.cpp ../world.cpp ../glowlight.cpp ../worldfile.cpp ../vtex.cpp ../blocktex.cpp ../mesher.cpp ../shapes.cpp ../icons.cpp \
-    ../music_synth.cpp ../sfx_synth.cpp ../soundscape.cpp \
+    ../music_synth.cpp ../sfx_synth.cpp ../soundscape.cpp ../facetmesh.cpp \
     -o "$OUT"
 "$OUT"

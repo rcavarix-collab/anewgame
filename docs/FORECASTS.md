@@ -126,3 +126,15 @@ Problems we expect before they happen: why we expect each one, the warning signs
 - **Warning signs.** A section describing something that isn't there.
 - **Act.** Every step.
 - **Plan.** Docs are part of done (SOP section 5); a check script flags code references to design sections that don't exist.
+
+### F17. Small dark slivers at terrace corners
+- **Likelihood:** High (seen in the M1.2 pictures). **Cost if ignored:** Low.
+- **Why.** Where a terrace turns an inner corner, the corner rule makes a steep little pocket; about 0.08% of the surface faces away from its surroundings, and a few dozen detail triangles per scene fold slightly.
+- **Warning signs.** Dark specks on smooth, terraced ground (sand), more when the sun is low.
+- **Act.** If the owner notices them in game: a second, weaker smoothing pass only where neighbours disagree, or smoothing the terrain generator's steps.
+
+### F18. Vertex memory with fine detail
+- **Likelihood:** Medium. **Cost if ignored:** Medium (the 2 GB-card floor).
+- **Why.** Detail vertices are per material triple, so borders duplicate them; the preview world's near detail is about 250,000 vertices around one viewpoint.
+- **Warning signs.** GPU memory in a Ctrl+F3 report approaching 1 GB.
+- **Act.** 1.8's fine-detail distance setting; pack the vertex to 20 bytes (1.5).

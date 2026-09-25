@@ -1,0 +1,8 @@
+meadow	Rolling meadow, noon	triangles 402196	within 96 blocks 308193	base quads 90386	cut 1x1 66744, 2x2 20530, 4x4 3112	vertices 252120
+meadow_late	The same, late afternoon	triangles 402196	within 96 blocks 308193	base quads 90386	cut 1x1 66744, 2x2 20530, 4x4 3112	vertices 252120
+cliff_dawn	Sandstone cliff and overhang, dawn	triangles 486176	within 96 blocks 434499	base quads 90386	cut 1x1 60181, 2x2 25286, 4x4 4919	vertices 298138
+pit	A dug pit	triangles 473022	within 96 blocks 404559	base quads 90386	cut 1x1 61349, 2x2 24396, 4x4 4641	vertices 291198
+borders	Where materials meet, close up	triangles 426336	within 96 blocks 347161	base quads 90386	cut 1x1 65944, 2x2 20575, 4x4 3867	vertices 263186
+detail_selective	Triangles: cut only where it shows	triangles 402196	within 96 blocks 308193	base quads 90386	cut 1x1 66744, 2x2 20530, 4x4 3112	vertices 252120
+detail_blanket	Triangles: cut everywhere near	triangles 411736	within 96 blocks 317733	base quads 90386	cut 1x1 66744, 2x2 20056, 4x4 3586	vertices 257871
+cubes	The old look, same spot, for comparison	triangles 180772	within 96 blocks 86942	base quads 90386	cut 1x1 90386, 2x2 0, 4x4 0	vertices 123717

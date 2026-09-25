@@ -35,7 +35,7 @@ Every system, what it's allowed to cost (its budget), and what it was last measu
 | What | Budget | Measured |
 |---|---|---|
 | Worst single frame while walking into new ground or editing | ≤ 16.7 ms | 26.4 ms work (41.3 ms frame): **over**, from WORLD SOUND |
-| Visible ground triangles (default settings) | ≤ 1.5 million | Awaiting (M1 preview counts first) |
+| Visible ground triangles (default settings) | ≤ 1.5 million | Preview (M1.2): 308,000 within 96 blocks of one viewpoint, with near detail; base facets alone about 2 per surface face |
 | Process memory | ≤ 1.5 GB | Awaiting |
 | GPU memory | ≤ 1 GB | Awaiting |
 | Start-up to first frame | ≤ the M0 baseline | 0.99 s (cold shader cache): this is the baseline |

@@ -10,19 +10,19 @@ Ideas we believe but haven't proven. Each says why we believe it, how we'll test
 - **Why we believe it.** Sharp, flat-shaded facets with a seeded jitter sit between Minecraft's cubes and Astroneer's smooth surfaces.
 - **Test.** Still images from the M1 preview tool of rolling ground, a cliff and a dug pit, judged by the owner before the engine changes.
 - **If wrong.** Tune the jitter and facet size; failing that, reopen the grid choice (B: hex columns; C: 12-sided cells).
-- **Status:** Open.
+- **Status:** Testing. Pictures made (M1.2, `docs/pictures/m1_2/`), including the same spot as cubes. Claude's read: it reads as its own look, strongest under a low sun; at noon facets are faint. Awaiting the owner.
 
 ### T2. Subdividing only where detail shows cuts near triangles 3 to 5 times against blanket subdivision, with no visible loss
 - **Why we believe it.** Most ground is flat and single-material, and only borders, bumps and silhouettes show fine detail.
 - **Test.** The preview tool counts triangles both ways on the same terrain (including dug-out ground) and renders both for comparison.
 - **If wrong.** Shrink the near band, or subdivide by screen size instead of distance.
-- **Status:** Open.
+- **Status:** Fails as stated (M1.2). Near ground is almost all lumpy material (grass, dirt, gravel, stone), and lumps are the only reason to cut, so "only where it shows" saved 2% (402,000 against 412,000 triangles), not 3–5×. It saves on smooth materials only (sand, sandstone, snow). The budget holds anyway: 308,000 triangles within 96 blocks against 1.5 million. Consequence: the fine-detail distance setting (1.8) is the real lever for lesser machines.
 
 ### T3. Height-based blending looks natural where grass meets dirt, not muddy
 - **Why we believe it.** Each material's height map decides which one shows through, so borders come out ragged and crisp. This is common practice in terrain rendering.
 - **Test.** Preview images of every pairing of the starting materials, judged by the owner; then the same spot in the game.
 - **If wrong.** Add a transition mask texture, or hand-tune per pair.
-- **Status:** Open.
+- **Status:** Testing. Preview pictures show ragged borders (grass tufts over gravel, sand into grass); borders read soft at a distance. Awaiting the owner, then the game (1.6).
 
 ### T4. Rendering between ticks removes stutter above 60 fps with no felt input delay
 - **Why we believe it.** Mouse look is applied every frame; only the body is blended, and it's at most one tick (16.7 ms) behind.
@@ -47,4 +47,4 @@ Ideas we believe but haven't proven. Each says why we believe it, how we'll test
 - **Where it could fail.** On slopes between floor and wall, a plain blend of the projections smears; textures with a strong direction (planks, bricks, strata, bark) stay aligned to the world, not the facet.
 - **Test.** M1 step 1.2 and 1.3 pictures: slopes, cliffs and borders with the real textures, including one directional texture on purpose.
 - **If wrong.** A sharp, height-guided blend between projections (shader only); keep directional textures for built pieces placed on axis-aligned faces later.
-- **Status:** Open.
+- **Status:** Holds on the pictures (M1.2). Sandstone's strata stay level along a wandering cliff, and the square textures show no stretching on slopes. One rule was needed: a slope shows its material's top texture up to about 50° and its side texture only when steeper; otherwise every one-cell rise in a meadow showed a stripe of dirt.

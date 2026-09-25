@@ -28,6 +28,8 @@ worldfile.h     3
 worldfile.cpp   3
 shapes.h        3
 shapes.cpp      3
+facetmesh.h     3
+facetmesh.cpp   3
 
 mesher.h        4
 mesher.cpp      4

@@ -123,8 +123,9 @@ static const MatDef kMats[M_COUNT] = {
     { "snow", "snow", "snow", 0.02f },
 };
 static std::map<std::string, Tex> g_tex;
-static const Tex* g_top[M_COUNT];
-static const Tex* g_side[M_COUNT];
+static const Tex* g_top[256];
+static const Tex* g_side[256];
+static std::string g_matName[256];
 static bool g_cubeLook = false;  // the old look, for comparison: corners on the lattice
 
 static bool LoadTextures(const std::string& dir) {
@@ -136,11 +137,15 @@ static bool LoadTextures(const std::string& dir) {
         ParseVtex(ss.str(), f, set);
     }
     for (auto& t : set.textures) g_tex[t.name] = MakeTex(t);
-    for (int m = 1; m < M_COUNT; m++) {
-        auto a = g_tex.find(kMats[m].top), b = g_tex.find(kMats[m].side);
-        if (a == g_tex.end() || b == g_tex.end()) { fprintf(stderr, "missing texture for %s\n", kMats[m].name); return false; }
-        g_top[m] = &a->second; g_side[m] = &b->second;
-    }
+    return true;
+}
+static FacetMaterial g_fm[256];
+// Material `id` of the world being drawn: its textures and lumpiness.
+static bool SetMaterial(int id, const std::string& name, const std::string& top, const std::string& side, float bump) {
+    auto a = g_tex.find(top), b = g_tex.find(side);
+    if (a == g_tex.end() || b == g_tex.end()) { fprintf(stderr, "missing texture for %s\n", name.c_str()); return false; }
+    g_top[id] = &a->second; g_side[id] = &b->second; g_matName[id] = name;
+    g_fm[id] = { true, bump };
     return true;
 }
 
@@ -149,7 +154,7 @@ static bool LoadTextures(const std::string& dir) {
 // outcrops, a sandy hollow, a sandstone cliff with an overhang, and a pit
 // dug into the meadow.
 // ---------------------------------------------------------------------
-static const int WX = 176, WY = 64, WZ = 176;
+static int WX = 176, WY = 64, WZ = 176;
 static std::vector<uint8_t> g_cells;
 static uint8_t& Cell(int x, int y, int z) { return g_cells[((size_t)y * WZ + z) * WX + x]; }
 static float H2(int x, int z, uint32_t s) {
@@ -251,7 +256,6 @@ static int BandOf(Vec3 p, void* u) {
     float d = sqrtf(dx * dx + dy * dy + dz * dz);
     return d < b->nearR ? 2 : d < b->midR ? 1 : 0;
 }
-static FacetMaterial g_fm[256];
 static FacetMesh BuildMesh(Vec3 eye, bool selective, bool detail, const FacetShape& shape) {
     FacetGrid g; g.nx = WX; g.ny = WY; g.nz = WZ; g.cells = g_cells.data(); g.mats = g_fm;
     FacetBuildParams p;
@@ -457,8 +461,8 @@ static Surface Material(Vec3 p, Vec3 nSmooth, Vec3 nGeo, const uint8_t mat[3], c
 
 static void WritePNG(const std::string& path, int W, int H, const std::vector<uint8_t>& rgb);
 
-static void Render(const View& v, const std::string& outDir, FILE* stats) {
-    const int W = 1280, H = 720, SS = 2; // 2x2 supersampling
+static void Render(const View& v, const std::string& outDir, FILE* stats, int W = 1280, int H = 720) {
+    const int SS = 2; // 2x2 supersampling
     const int RW = W * SS, RH = H * SS;
     g_cubeLook = v.cubes;
     FacetShape shape;
@@ -483,7 +487,7 @@ static void Render(const View& v, const std::string& outDir, FILE* stats) {
     Vec3 sR = Normalize(Cross(fabsf(sun.y) > 0.99f ? Vec3{ 0, 0, 1 } : kUp, sF));
     Vec3 sU = Cross(sF, sR);
     Vec3 centre = { WX * 0.5f, 24.0f, WZ * 0.5f };
-    const float ext = 130.0f;
+    const float ext = std::max(WX, WZ) * 0.75f;
     Raster shadow{ SM, SM, {} };
     shadow.Clear();
     auto toLight = [&](Vec3 p, float& x, float& y, float& z) {
@@ -694,12 +698,100 @@ static void WritePNG(const std::string& path, int W, int H, const std::vector<ui
     fclose(f);
 }
 
+// ---------------------------------------------------------------------
+// Contact sheets (M1.3): every candidate material alone on a small
+// faceted mound with a cliff, then each pair of the picks meeting.
+// ---------------------------------------------------------------------
+struct Candidate { const char* name; const char* top; const char* side; float bump; };
+static const Candidate kCandidates[] = {
+    { "meadow grass", "meadow_grass", "dirt", 0.07f }, { "heather turf", "heather_turf", "loam", 0.07f },
+    { "dry turf", "dry_turf", "dirt", 0.06f },           { "frost turf", "frost_turf", "dirt", 0.06f },
+    { "moss", "moss", "dirt", 0.06f },                   { "dirt", "dirt", "dirt", 0.05f },
+    { "loam", "loam", "loam", 0.05f },                   { "dark humus", "dark_humus", "dark_humus", 0.05f },
+    { "clay", "clay", "clay", 0.03f },                   { "cracked earth", "cracked_earth", "cracked_earth", 0.02f },
+    { "wet mud", "wet_mud", "wet_mud", 0.02f },          { "peat bog", "peat_bog", "peat_bog", 0.03f },
+    { "sand", "sand", "sand", 0.012f },                  { "coastal sand", "coastal_sand", "coastal_sand", 0.012f },
+    { "coarse sand", "coarse_sand", "coarse_sand", 0.015f }, { "silt", "silt", "silt", 0.01f },
+    { "gravel", "gravel", "gravel", 0.035f },            { "river pebble", "river_pebble", "river_pebble", 0.035f },
+    { "mossy gravel", "mossy_gravel", "mossy_gravel", 0.04f }, { "stone", "stone", "stone", 0.045f },
+    { "granite", "granite", "granite", 0.045f },         { "slate", "slate", "slate", 0.04f },
+    { "limestone", "limestone", "limestone", 0.04f },    { "chalk", "chalk", "chalk", 0.03f },
+    { "basalt", "basalt", "basalt", 0.045f },            { "moss stone", "moss_stone", "moss_stone", 0.045f },
+    { "sandstone", "sandstone_top", "sandstone_layered", 0.015f }, { "snow", "snow", "snow", 0.02f },
+    { "salt flat", "salt_flat", "salt_flat", 0.01f },    { "volcanic ash", "volcanic_ash", "volcanic_ash", 0.02f },
+    { "autumn leaf litter", "autumn_leaf_litter", "dirt", 0.05f }, { "clay bank", "clay_bank", "clay_bank", 0.03f },
+};
+static const int kCandidateCount = (int)(sizeof(kCandidates) / sizeof(kCandidates[0]));
+// The provisional picks (D36), by candidate name.
+static const char* kPicks[] = { "meadow grass", "dry turf", "moss", "dirt", "loam", "clay", "sand", "gravel",
+                                "stone", "slate", "sandstone", "snow" };
+static const int kPickCount = (int)(sizeof(kPicks) / sizeof(kPicks[0]));
+
+static const int PLOT = 30;
+// One plot: a mound with a two-cell cliff on its far side. `b` > 0 makes
+// the plot's far half material b, meeting a along a wavy line.
+static void Plot(int px, int pz, int a, int b) {
+    for (int z = 0; z < PLOT; z++)
+        for (int x = 0; x < PLOT; x++) {
+            float dx = x - 13.0f, dz = z - 13.0f, r = sqrtf(dx * dx + dz * dz);
+            float h = 8 + 5.0f * std::max(0.0f, 1 - r / 11.0f) + 1.2f * (VN(x / 4.0f + px, z / 4.0f + pz, 3) - 0.5f);
+            if (x + z > 36) h += 3;   // the cliff
+            int top = (int)floorf(h);
+            bool farHalf = b > 0 && (x - z + 3.0f * sinf(z * 0.45f) + 2.0f * sinf(x * 0.3f)) > 0;
+            for (int y = 1; y <= top; y++) Cell(px + x, y, pz + z) = (uint8_t)(farHalf ? b : a);
+        }
+}
+static int Sheets(const std::string& out) {
+    // Sheet 1: every candidate, one plot each.
+    int cols = 8, rows = (kCandidateCount + cols - 1) / cols;
+    WX = cols * PLOT; WZ = rows * PLOT; WY = 24;
+    g_cells.assign((size_t)WX * WY * WZ, 0);
+    for (int i = 0; i < kCandidateCount; i++) {
+        if (!SetMaterial(i + 1, kCandidates[i].name, kCandidates[i].top, kCandidates[i].side, kCandidates[i].bump)) return 1;
+        Plot((i % cols) * PLOT, (i / cols) * PLOT, i + 1, 0);
+    }
+    std::string statsPath = out + "/sheet_stats.txt";
+    FILE* stats = fopen(statsPath.c_str(), "w");
+    if (!stats) return 1;
+    auto shoot = [&](const std::string& name, int px, int pz, float t) {
+        View v = { nullptr, "sheet", { px + 1.0f, 17.0f, pz + 1.0f }, { px + 15.0f, 9.0f, pz + 15.0f }, t, 0 };
+        static std::string keep; keep = name; v.name = keep.c_str();
+        Render(v, out, stats, 480, 320);
+    };
+    for (int i = 0; i < kCandidateCount; i++) {
+        std::string slug = kCandidates[i].name;
+        for (auto& ch : slug) if (ch == ' ') ch = '_';
+        shoot("mat_" + slug + "_late", (i % cols) * PLOT, (i / cols) * PLOT, 2650);
+    }
+    // Sheet 2: the picks meeting, each pair once.
+    std::vector<int> pick;
+    for (int k = 0; k < kPickCount; k++)
+        for (int i = 0; i < kCandidateCount; i++)
+            if (std::string(kCandidates[i].name) == kPicks[k]) pick.push_back(i + 1);
+    std::vector<std::pair<int, int>> pairs;
+    for (size_t a = 0; a < pick.size(); a++)
+        for (size_t b = a + 1; b < pick.size(); b++) pairs.push_back({ pick[a], pick[b] });
+    cols = 11; rows = ((int)pairs.size() + cols - 1) / cols;
+    WX = cols * PLOT; WZ = rows * PLOT;
+    g_cells.assign((size_t)WX * WY * WZ, 0);
+    for (size_t i = 0; i < pairs.size(); i++) Plot((int)(i % cols) * PLOT, (int)(i / cols) * PLOT, pairs[i].first, pairs[i].second);
+    for (size_t i = 0; i < pairs.size(); i++) {
+        std::string slug = g_matName[pairs[i].first] + "__" + g_matName[pairs[i].second];
+        for (auto& ch : slug) if (ch == ' ') ch = '_';
+        shoot("pair_" + slug, (int)(i % cols) * PLOT, (int)(i / cols) * PLOT, 1100);
+    }
+    fclose(stats);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) { fprintf(stderr, "usage: facet_preview OUTDIR [view]\n"); return 1; }
     std::string out = argv[1], only = argc > 2 ? argv[2] : "";
     std::string texDir = TEXDIR;
     if (!LoadTextures(texDir)) return 1;
-    for (int i = 1; i < M_COUNT; i++) g_fm[i] = { true, kMats[i].bump };
+    if (only == "sheets") return Sheets(out);
+    for (int i = 1; i < M_COUNT; i++)
+        if (!SetMaterial(i, kMats[i].name, kMats[i].top, kMats[i].side, kMats[i].bump)) return 1;
     BuildWorld();
     const float NOON = 1500, DAWN = 140, LATE = 2700;
     std::vector<View> views = {

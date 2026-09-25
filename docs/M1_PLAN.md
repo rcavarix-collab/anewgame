@@ -71,6 +71,7 @@
 ### 1.3 The starting materials and the texture direction
 - **Change.** You pick about 8–12 starting materials from contact sheets. The candidates are the 93 existing textures (natural set first), shown blended against each other under dawn and noon light. `TEXTURE_BRIEF.md` is rewritten for faceted ground and smooth filtering. Anything new or tweaked comes from the generators (`tools/*_textures.py`), so it can be adjusted by a parameter.
 - **Files.** Changed: `assets/textures/TEXTURE_BRIEF.md`, the generators as needed. New: a contact-sheet mode in `tools/facet_preview`. Textures not picked go to `assets/textures/parked/`.
+- **Status: built.** Twelve picks (D36, provisional): see `docs/pictures/m1_3/`. The brief is rewritten for faceted, filtered, world-projected ground. Parking the unpicked textures moves to 1.9 (the old roster still uses them). A contact-sheet mode was added to the preview (`facet_preview.sh OUTDIR sheets`), as planned.
 - **Your check.** The picks, on the sheets.
 
 ### 1.4 The test landscape

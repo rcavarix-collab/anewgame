@@ -1,4 +1,4 @@
-# Voxistics block-texture brief
+# walkgrid material-texture brief
 
 Paste everything below the line into the art conversation. It is also the
 format spec the engine's texture loader reads, so the two stay in step:
@@ -7,11 +7,14 @@ no conversion.
 
 ---
 
-I'm building a voxel game (Minecraft-scale cubes, first person, point-sampled
-pixel textures, no smoothing). I'd like you to turn my art style into block
-textures for it. The engine reads a plain-text texture format, described
-below. Please follow it exactly, since a malformed texture is rejected and
-the engine falls back to a placeholder.
+I'm building a first-person game on faceted ground: the world is a grid of
+one-block cells, but the ground is drawn as angular facets through them, not
+cubes and not smooth blobs. Textures are projected onto the ground from the
+world (from above and from two sides), so they never stretch on a slope, and
+they're filtered smoothly (blended and mip-mapped), not point-sampled. I'd
+like you to turn my art style into material textures for it. The engine reads
+a plain-text texture format, described below. Please follow it exactly, since
+a malformed texture is rejected and the engine falls back to a placeholder.
 
 ## Output format (`.vtex`)
 
@@ -99,25 +102,52 @@ Rules:
   uneven thicknesses (a band that repeats every 8 pixels reads as ruled
   paper on a cliff).
 
-- **Tile seamlessly.** Each texture repeats on every neighbouring block, so
-  its left edge must continue into its right edge and its top edge into its
-  bottom edge. Only use a drawn border where a block should visibly read as
-  a separate piece (the foundation and machine are framed, for example);
-  on natural blocks a border becomes a grid across the whole landscape.
-- **No baked light direction.** The engine shades each face by direction and
-  darkens corners where blocks meet (ambient occlusion). A highlight painted
-  on one edge will look wrong once tiled and shaded, so keep any shading
-  even and texture-level only.
-- **Leave headroom.** Faces get darkened by up to about 40%, so avoid pure
-  black and pure white. A range of roughly `141414` to `f0f0f0` works well.
-- **Readable at a distance.** Favour mid-sized clusters of 2–4 pixels over
-  single-pixel noise everywhere. Busy one-pixel noise shimmers on distant
-  blocks.
-- **Orientation.** For side faces, row 0 is the top (toward the sky). Top and
-  bottom faces may appear rotated, so avoid designs there that only work one
-  way round.
+- **Tile seamlessly.** A texture repeats across the ground in every
+  direction, so its left edge must continue into its right edge and its top
+  edge into its bottom edge. Natural materials never have a border.
+- **Top and side.** A material has a top (seen on ground up to about 50
+  degrees) and a side (on steeper ground and cliffs). Strata, layers and
+  anything with a direction belong on the side, where they stay level along
+  a whole cliff; tops are seen from above in any rotation, so they must work
+  either way round.
+- **Height maps matter most.** Every natural material should have a
+  `height` map. It gives the surface relief, and it decides how materials
+  meet: at a border the taller parts of each (grass tufts, pebbles, cobbles)
+  show through the other, so borders come out ragged instead of blurred.
+- **Smoothly filtered.** Textures are seen blended, not as crisp pixels.
+  Detail reads best in clusters of 2–4 pixels; single-pixel noise blurs to
+  mud up close and shimmers far away.
+- **No baked light direction.** Facets are lit per pixel by the sun and the
+  sky, and hollows are darkened. A highlight painted on one edge will look
+  wrong, so keep any shading even and texture-level only.
+- **Leave headroom.** Shade darkens by up to about 60%, so avoid pure black
+  and pure white. A range of roughly `141414` to `f0f0f0` works well.
+- **Orientation.** For side textures, row 0 is the top (toward the sky).
 
-## Blocks the engine has today
+## The materials walkgrid starts with (M1.3, provisional until the owner confirms)
+
+| material | top texture | side texture | lumpiness | notes |
+|---|---|---|---|---|
+| meadow grass | `meadow_grass` | `dirt` | 0.07 | the bright one; may be toned down |
+| dry turf | `dry_turf` | `dirt` | 0.06 | dry, straw-coloured grass |
+| moss | `moss` | `dirt` | 0.06 | deep, soft green |
+| dirt | `dirt` | `dirt` | 0.05 | |
+| loam | `loam` | `loam` | 0.05 | dark earth |
+| clay | `clay` | `clay` | 0.03 | orange-red |
+| sand | `sand` | `sand` | 0.012 | smooth: never cut into detail |
+| gravel | `gravel` | `gravel` | 0.035 | |
+| stone | `stone` | `stone` | 0.045 | pale grey |
+| slate | `slate` | `slate` | 0.04 | dark blue-grey |
+| sandstone | `sandstone_top` | `sandstone_layered` | 0.015 | strata on the side |
+| snow | `snow` | `snow` | 0.02 | |
+
+Lumpiness is how far the ground's fine detail is pushed in or out, in blocks
+(facetmesh.h). The picks came from contact sheets of 32 candidates
+(`docs/pictures/m1_3/`). The art is `natural.vtex` (from
+`tools/natural_textures.py`) and `batch_sept.vtex`; anything authored under the
+same texture names replaces it.
+
+## Blocks the engine had in Voxistics (being replaced in M1.9)
 
 | name         | what it is                                   | faces worth drawing        |
 |--------------|----------------------------------------------|----------------------------|
@@ -147,9 +177,5 @@ The current art for the natural blocks is `natural.vtex`, generated by
 `tools/natural_textures.py` from palettes of an earlier batch; anything
 authored for the same block names replaces it.
 
-Feel free to propose additional blocks that suit my art, using the same
-format with a new name plus a one-line description of what each is. The
-engine side adds new block types easily.
-
-Please start with `stone`, `dirt` and `wood` so I can see the style in-game
-before we do the rest.
+Feel free to propose additional materials that suit my art, using the same
+format with a new name plus a one-line description of what each is.

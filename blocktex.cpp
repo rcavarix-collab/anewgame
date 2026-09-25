@@ -325,6 +325,24 @@ void BuildSurface(const VtexTexture& t, uint8_t* sf) {
         }
 }
 
+// The height layer: the art's height map scaled up by whole pixels, or,
+// where it has none, the colour's brightness (so every layer can blend).
+void BuildHeight(const VtexTexture* t, const uint8_t* px, uint8_t* h) {
+    const int N = BLOCK_TEX_SIZE;
+    for (int y = 0; y < N; y++)
+        for (int x = 0; x < N; x++) {
+            float v;
+            if (t && !t->height.empty()) {
+                int k = N / t->size;
+                v = t->height[(size_t)(y / k) * t->size + (x / k)];
+            } else {
+                const uint8_t* p = px + ((size_t)y * N + x) * 4; // BGRA
+                v = (0.1f * p[0] + 0.6f * p[1] + 0.3f * p[2]) / 255.0f;
+            }
+            h[(size_t)y * N + x] = (uint8_t)std::lround(std::max(0.0f, std::min(1.0f, v)) * 255.0f);
+        }
+}
+
 void Upscale(const VtexTexture& t, uint8_t* px) {
     int k = BLOCK_TEX_SIZE / t.size;
     for (int y = 0; y < BLOCK_TEX_SIZE; y++)
@@ -384,7 +402,7 @@ void BuildBlockTextures(const VtexSet& authored, BlockTextureSet& out) {
     // Resolve every (block, facing, face) to a layer, assigning layers in
     // first-use order so the set is deterministic.
     std::map<std::string, uint16_t> layerOf;
-    std::vector<std::vector<uint8_t>> layers, surfaces; // colour and surface, one of each per layer
+    std::vector<std::vector<uint8_t>> layers, surfaces, heights; // colour, surface and height, one of each per layer
     auto layerFor = [&](const std::string& wanted, int id) -> uint16_t {
         auto it = layerOf.find(wanted);
         if (it != layerOf.end()) return it->second;
@@ -400,9 +418,12 @@ void BuildBlockTextures(const VtexSet& authored, BlockTextureSet& out) {
             if (own != procedural.end()) px = own->second; else DrawMissing(px.data());
             if (override_[id]) out.warnings.push_back(override_[id]->source + ": block '" + g_blocks[id].name + "' uses texture '" + wanted + "', which doesn't exist");
         }
+        std::vector<uint8_t> hl((size_t)BLOCK_TEX_SIZE * BLOCK_TEX_SIZE);
+        BuildHeight(a != art.end() ? a->second : nullptr, px.data(), hl.data());
         uint16_t layer = (uint16_t)layers.size();
         layers.push_back(std::move(px));
         surfaces.push_back(std::move(sf));
+        heights.push_back(std::move(hl));
         out.layerNames.push_back(wanted);
         layerOf[wanted] = layer;
         return layer;
@@ -455,6 +476,21 @@ void BuildBlockTextures(const VtexSet& authored, BlockTextureSet& out) {
                             ? (uint8_t)((a + b + e + f + 2) / 4)
                             : toSrgb(0.25f * (toLinear[a] + toLinear[b] + toLinear[e] + toLinear[f]));
                     }
+        }
+    }
+
+    // Height mips: a plain 2x2 average.
+    out.height.resize(mips);
+    for (auto& l : heights) out.height[0].insert(out.height[0].end(), l.begin(), l.end());
+    for (int m = 1; m < mips; m++) {
+        int src = BLOCK_TEX_SIZE >> (m - 1), dst = src >> 1;
+        out.height[m].resize((size_t)dst * dst * heights.size());
+        for (size_t L = 0; L < heights.size(); L++) {
+            const uint8_t* s = out.height[m - 1].data() + L * (size_t)src * src;
+            uint8_t* d = out.height[m].data() + L * (size_t)dst * dst;
+            for (int y = 0; y < dst; y++)
+                for (int x = 0; x < dst; x++)
+                    d[y * dst + x] = (uint8_t)((s[(2 * y) * src + 2 * x] + s[(2 * y) * src + 2 * x + 1] + s[(2 * y + 1) * src + 2 * x] + s[(2 * y + 1) * src + 2 * x + 1] + 2) / 4);
         }
     }
 

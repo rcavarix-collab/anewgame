@@ -123,6 +123,7 @@ static uint32_t g_meshVersion = 0;
 static float g_shadowAreaX = 0, g_shadowAreaZ = 0, g_shadowAreaHalf = -1; // -1: no map yet
 ID3D11ShaderResourceView* g_blockTexSRV = nullptr;
 static ID3D11ShaderResourceView* g_surfaceSRV = nullptr; // normal, shine, glow per layer (4.13)
+static ID3D11ShaderResourceView* g_heightSRV = nullptr;  // height per layer: how materials meet (23.4)
 ID3D11ShaderResourceView* g_iconSRV = nullptr;
 
 ID3D11VertexShader* g_uiVS = nullptr;
@@ -235,6 +236,7 @@ static const char* g_shaderSrc =
     "SamplerState glowSamp : register(s2);\n"
     "Texture2DArray surfTex : register(t3);\n"                      // normal xy, shine, glow (4.13)
     "SamplerState softSamp : register(s3);\n"                      // smooth: trilinear, anisotropic (D8)
+    "Texture2DArray<float> heightTex : register(t4);\n"            // each texture's heights: how materials meet (23.4)
     // Large-scale variation (4.16): a slow drift of value and warmth across
     // the world, from the pixel's world position -- a few ALU ops, no data.
     "float VHash(float2 p) { p = frac(p * float2(0.1031f, 0.1030f)); p += dot(p, p.yx + 33.33f); return frac((p.x + p.y) * p.x); }\n"
@@ -250,7 +252,7 @@ static const char* g_shaderSrc =
     "}\n"
     // One material, projected from the world: colour, and the surface map
     // (relief as a world-space nudge to the normal, shine, glow).
-    "struct Mat { float3 col; float3 bump; float shine; float glow; };\n"
+    "struct Mat { float3 col; float3 bump; float shine; float glow; float h; };\n"
     "void SampleProj(float2 uv, float layer, inout Mat m, float wgt, float3 tanU, float3 tanV) {\n"
     "    float3 c = tex0.Sample(softSamp, float3(uv, layer)).rgb;\n"
     "    float4 s = surfTex.Sample(softSamp, float3(uv, layer));\n"
@@ -258,6 +260,7 @@ static const char* g_shaderSrc =
     "    float2 t = s.xy * 2.0f - 1.0f;\n"
     "    m.bump += (tanU * t.x + tanV * t.y) * wgt;\n"
     "    m.shine += s.b * wgt; m.glow += s.a * wgt;\n"
+    "    m.h += heightTex.Sample(softSamp, float3(uv, layer)) * wgt;\n"
     "}\n"
     "Mat SampleMaterial(uint id, float3 w, float3 pw, float topness, bool up) {\n"
     "    uint4 L = matLayers[id];\n"
@@ -292,7 +295,28 @@ static const char* g_shaderSrc =
     // Projection weights, sharpened so a slope takes mostly one projection.
     "    float3 pw = ns * ns; pw *= pw; pw /= max(pw.x + pw.y + pw.z, 1e-5f);\n"
     "    float topness = smoothstep(0.45f, 0.70f, ns.y);\n"
-    "    Mat m = SampleMaterial(i.mats.x, i.wpos, pw, topness, ns.y >= 0.0f);\n"   // one material per facet (M1.5); blending in M1.6
+    "    bool up = ns.y >= 0.0f;\n"
+    "    Mat m = SampleMaterial(i.mats.x, i.wpos, pw, topness, up);\n"
+    // Height-based blending (23.4): where materials meet, each one's weight
+    // is lifted by its own height map and the tallest shows through within
+    // a narrow band -- grass tufts over gravel, pebbles standing out of sand
+    // -- so borders are ragged, not a muddy crossfade. World noise nudges
+    // the weights so borders don't follow triangle edges. Triangles inside
+    // one material, and distant ground, take the single-material path.
+    "    [branch] if (i.wts.x < 0.995f && dist < 64.0f) {\n"
+    "        float wn = (VNoise(i.wpos.xz * 1.3f + i.wpos.y * 0.6f) - 0.5f) * 0.35f;\n"
+    "        Mat m1 = (Mat)0, m2 = (Mat)0;\n"
+    "        float s0 = i.wts.x + wn + m.h * 0.6f, s1 = -9.0f, s2 = -9.0f;\n"
+    "        if (i.wts.y > 0.003f) { m1 = SampleMaterial(i.mats.y, i.wpos, pw, topness, up); s1 = i.wts.y - 0.5f * wn + m1.h * 0.6f; }\n"
+    "        if (i.wts.z > 0.003f) { m2 = SampleMaterial(i.mats.z, i.wpos, pw, topness, up); s2 = i.wts.z - 0.5f * wn + m2.h * 0.6f; }\n"
+    "        float best = max(s0, max(s1, s2));\n"
+    "        float3 b = max(float3(s0, s1, s2) - (best - 0.18f), 0.0f);\n"
+    "        b /= b.x + b.y + b.z;\n"
+    "        m.col = m.col * b.x + m1.col * b.y + m2.col * b.z;\n"
+    "        m.bump = m.bump * b.x + m1.bump * b.y + m2.bump * b.z;\n"
+    "        m.shine = m.shine * b.x + m1.shine * b.y + m2.shine * b.z;\n"
+    "        m.glow = m.glow * b.x + m1.glow * b.y + m2.glow * b.z;\n"
+    "    }\n"
     "    float3 albedo = m.col * WorldVariation(i.wpos);\n"
     // The relief tilts the facet's normal, fading with distance (no glitter).
     "    float farBlend = saturate((dist - 10.0f) / 22.0f);\n"
@@ -324,7 +348,10 @@ static const char* g_shaderSrc =
     "        }\n"
     "    }\n"
     "#endif\n"
-    "    float3 ambient = lerp(fAmbientDown.rgb, fAmbientUp.rgb, n.y * 0.5f + 0.5f) * ao;\n"
+    // Sky light (23.4): the sky's share of the ambient, so pits, overhangs
+    // and hollows go dark and a cliff face sees about half.
+    "    float sky = 0.25f + 0.75f * i.aoSky.y;\n"
+    "    float3 ambient = lerp(fAmbientDown.rgb, fAmbientUp.rgb, n.y * 0.5f + 0.5f) * (ao * sky);\n"
     "    float3 direct = fSunColor.rgb * sunLit * (0.55f + 0.45f * ao)\n"
     "                  + fMoonColor.rgb * saturate(dot(n, fMoonDir.xyz)) * ao;\n"
     "    float3 col = albedo * (ambient + direct);\n"
@@ -1142,8 +1169,8 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         g_context->PSSetConstantBuffers(0, 1, &g_cbuffer);
         ID3D11SamplerState* samplers[4] = { g_sampler, g_shadowSampler, g_glowSampler, g_softSampler };
         g_context->PSSetSamplers(0, 4, samplers);
-        ID3D11ShaderResourceView* srvs[4] = { g_blockTexSRV, shadows ? g_shadowSRV[g_shadowFront] : nullptr, g_glowSRV, g_surfaceSRV };
-        g_context->PSSetShaderResources(0, 4, srvs);
+        ID3D11ShaderResourceView* srvs[5] = { g_blockTexSRV, shadows ? g_shadowSRV[g_shadowFront] : nullptr, g_glowSRV, g_surfaceSRV, g_heightSRV };
+        g_context->PSSetShaderResources(0, 5, srvs);
         g_context->PSSetConstantBuffers(3, 1, &g_matCB);
         Frustum frustum = ExtractFrustum(viewProj);
         // Back faces aren't drawn: facetmesh winds every triangle so
@@ -1936,6 +1963,19 @@ bool InitTextures(std::string& problemSummary) {
     if (FAILED(g_device->CreateTexture2D(&td, init.data(), &surfTex))) return false;
     g_device->CreateShaderResourceView(surfTex, nullptr, &g_surfaceSRV);
     surfTex->Release();
+
+    // The matching height layers (23.4): one byte a texel, linear.
+    td.Format = DXGI_FORMAT_R8_UNORM;
+    for (int L = 0; L < set.layerCount; L++)
+        for (int m = 0; m < set.mipCount; m++) {
+            int sz = BLOCK_TEX_SIZE >> m;
+            init[(size_t)L * set.mipCount + m].pSysMem = set.height[m].data() + (size_t)L * sz * sz;
+            init[(size_t)L * set.mipCount + m].SysMemPitch = sz;
+        }
+    ID3D11Texture2D* heightTex = nullptr;
+    if (FAILED(g_device->CreateTexture2D(&td, init.data(), &heightTex))) return false;
+    g_device->CreateShaderResourceView(heightTex, nullptr, &g_heightSRV);
+    heightTex->Release();
 
     D3D11_TEXTURE2D_DESC itd = {};
     itd.Width = set.iconsW; itd.Height = set.iconsH;

@@ -47,12 +47,24 @@ void InitGroundMaterials(const uint16_t faceLayer[BLOCK_COUNT][FACE_COUNT][FACE_
 // How lumpy a material's fine detail is, blocks (DESIGN.md 23.1).
 float GroundBump(BlockID id);
 
-// A chunk's cells with FACET_PAD cells of margin on every side.
+// A chunk's cells with FACET_PAD cells of margin on every side, and the
+// column tops (World::Top) around it, for the sky light.
 static const int GROUND_GRID = CHUNK_SIZE + 2 * FACET_PAD;
+static const int GROUND_TOPS_PAD = 10;
+static const int GROUND_TOPS = CHUNK_SIZE + 2 * GROUND_TOPS_PAD;
 struct GroundCells {
     ChunkCoord cc{ 0, 0, 0 };
     uint8_t cells[GROUND_GRID * GROUND_GRID * GROUND_GRID];
+    int16_t tops[GROUND_TOPS * GROUND_TOPS]; // index (z + 10) * 36 + (x + 10), chunk-local
 };
+// How open corner (cx, cy, cz) is to the sky, 0..1, from the column tops
+// around it: in 8 directions, the steepest rise within 8 blocks sets a
+// horizon, and that direction contributes cos^2 of its angle (the share
+// of sky light a surface gets from above that horizon). Flat ground is
+// fully open; a cliff face sees about half; a pit's floor or ground under
+// an overhang, little. A heightmap can't see gaps under a roof: ground
+// under an overhang counts as walled in, which is what it should look like.
+float GroundSkyAt(const GroundCells& g, int cx, int cy, int cz);
 // Main thread: copies from the world. Below the world's floor counts as
 // solid (no faces pointing down out of the world); missing chunks are air.
 void CopyGroundCells(World& w, const ChunkCoord& cc, GroundCells& out);

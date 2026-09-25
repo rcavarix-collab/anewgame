@@ -246,6 +246,42 @@ int ColumnDistance(int cx, int cz, int playerChunkX, int playerChunkZ) {
 
 static const int COLUMN_CHUNKS = Y_MAX / CHUNK_SIZE + 1;
 
+// ---- Column tops (DESIGN.md 23.4) ----
+int World::Top(int x, int z) const {
+    int cx = FloorDiv16(x), cz = FloorDiv16(z);
+    auto it = columnTops.find(ColumnKey(cx, cz));
+    if (it == columnTops.end()) return -1;
+    return it->second[LocalOf(z, cz) * CHUNK_SIZE + LocalOf(x, cx)];
+}
+void World::NoteCell(int x, int y, int z, bool solid) {
+    int cx = FloorDiv16(x), cz = FloorDiv16(z);
+    auto it = columnTops.find(ColumnKey(cx, cz));
+    if (it == columnTops.end()) return;
+    int16_t& t = it->second[LocalOf(z, cz) * CHUNK_SIZE + LocalOf(x, cx)];
+    if (solid) { if (y > t) t = (int16_t)y; return; }
+    if (y != t) return;
+    // The top was taken: look down for the next solid cell.
+    int ny = y - 1;
+    while (ny >= Y_MIN && !Solid(x, ny, z)) ny--;
+    t = (int16_t)(ny >= Y_MIN ? ny : -1);
+}
+void World::ComputeColumnTops(int cx, int cz) {
+    auto& tops = columnTops[ColumnKey(cx, cz)];
+    tops.fill(-1);
+    int left = CHUNK_SIZE * CHUNK_SIZE;
+    for (int cy = COLUMN_CHUNKS - 1; cy >= 0 && left > 0; cy--) {
+        Chunk* c = FindChunk({ cx, cy, cz });
+        if (!c) continue;
+        for (int lz = 0; lz < CHUNK_SIZE; lz++)
+            for (int lx = 0; lx < CHUNK_SIZE; lx++) {
+                int16_t& t = tops[lz * CHUNK_SIZE + lx];
+                if (t >= 0) continue;
+                for (int ly = CHUNK_SIZE - 1; ly >= 0; ly--)
+                    if (BlockSolid((BlockID)c->blocks[Chunk::LocalIndex(lx, ly, lz)])) { t = (int16_t)(cy * CHUNK_SIZE + ly); left--; break; }
+            }
+    }
+}
+
 bool ColumnNeighborhoodResident(int cx, int cz) {
     for (int dz = -1; dz <= 1; dz++)
         for (int dx = -1; dx <= 1; dx++)
@@ -270,6 +306,7 @@ static void MarkColumnNeighborhoodDirty(World& w, int cx, int cz) {
 // has left scales with what they changed there, not with distance
 // walked.
 static void EvictColumnFromWorld(World& w, int cx, int cz) {
+    w.columnTops.erase(ColumnKey(cx, cz));
     for (int cy = 0; cy < COLUMN_CHUNKS; cy++) {
         ChunkCoord cc{ cx, cy, cz };
         std::unique_ptr<Chunk> c = w.TakeChunk(cc);
@@ -369,6 +406,8 @@ static void ApplyColumn(World& w, int cx, int cz, const TerrainColumn& col) {
         w.AdoptChunk(it->first, std::move(it->second));
         g_evictedChunks.erase(it);
     }
+    w.ComputeColumnTops(cx, cz);
+    // The sky light of every chunk around reads these tops (23.4).
     MarkColumnNeighborhoodDirty(w, cx, cz);
 }
 

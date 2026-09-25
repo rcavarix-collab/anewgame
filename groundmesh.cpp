@@ -68,6 +68,46 @@ void CopyGroundCells(World& w, const ChunkCoord& cc, GroundCells& out) {
                         memcpy(dst, src, x1 - x0);
                     }
             }
+    // Column tops, one resident column (a hash lookup) at a time.
+    int tx0 = cc.x * CHUNK_SIZE - GROUND_TOPS_PAD, tz0 = cc.z * CHUNK_SIZE - GROUND_TOPS_PAD;
+    for (int i = 0; i < GROUND_TOPS * GROUND_TOPS; i++) out.tops[i] = -1;
+    for (int dz = -1; dz <= 1; dz++)
+        for (int dx = -1; dx <= 1; dx++) {
+            auto it = w.columnTops.find(ColumnKey(cc.x + dx, cc.z + dz));
+            if (it == w.columnTops.end()) continue;
+            int bx = (cc.x + dx) * CHUNK_SIZE, bz = (cc.z + dz) * CHUNK_SIZE;
+            for (int lz = 0; lz < CHUNK_SIZE; lz++)
+                for (int lx = 0; lx < CHUNK_SIZE; lx++) {
+                    int ix = bx + lx - tx0, iz = bz + lz - tz0;
+                    if (ix < 0 || iz < 0 || ix >= GROUND_TOPS || iz >= GROUND_TOPS) continue;
+                    out.tops[iz * GROUND_TOPS + ix] = it->second[lz * CHUNK_SIZE + lx];
+                }
+        }
+}
+
+float GroundSkyAt(const GroundCells& g, int cx, int cy, int cz) {
+    static const float dirs[8][2] = { { 1, 0 }, { 0.7071f, 0.7071f }, { 0, 1 }, { -0.7071f, 0.7071f },
+                                      { -1, 0 }, { -0.7071f, -0.7071f }, { 0, -1 }, { 0.7071f, -0.7071f } };
+    int bx = g.cc.x * CHUNK_SIZE - GROUND_TOPS_PAD, bz = g.cc.z * CHUNK_SIZE - GROUND_TOPS_PAD;
+    float open = 0;
+    for (auto& d : dirs) {
+        float steep = 0; // tan of the horizon
+        for (float r = 0.75f; r <= 8.0f; r += 0.75f) {
+            int x = (int)floorf(cx + d[0] * r), z = (int)floorf(cz + d[1] * r);
+            int ix = x - bx, iz = z - bz;
+            if (ix < 0 || iz < 0 || ix >= GROUND_TOPS || iz >= GROUND_TOPS) break;
+            // How far that column stands above the corner, less half a cell:
+            // a single step in a meadow barely shades.
+            float rise = (float)(g.tops[iz * GROUND_TOPS + ix] + 1 - cy) - 0.5f;
+            if (rise > 0) steep = std::max(steep, rise / r);
+        }
+        open += 1.0f / (1.0f + steep * steep); // cos^2 of the horizon angle
+    }
+    return open / 8.0f;
+}
+
+static float SkyCallback(int cx, int cy, int cz, void* user) {
+    return GroundSkyAt(*(const GroundCells*)user, cx, cy, cz);
 }
 
 void BuildGroundMesh(const GroundCells& in, int (*band)(Vec3, void*), void* user, GroundMesh& out) {
@@ -80,7 +120,13 @@ void BuildGroundMesh(const GroundCells& in, int (*band)(Vec3, void*), void* user
     FacetBuildParams p;
     p.bx0 = in.cc.x * CHUNK_SIZE; p.by0 = in.cc.y * CHUNK_SIZE; p.bz0 = in.cc.z * CHUNK_SIZE;
     p.bx1 = p.bx0 + CHUNK_SIZE; p.by1 = p.by0 + CHUNK_SIZE; p.bz1 = p.bz0 + CHUNK_SIZE;
-    p.band = band; p.user = user;
+    // The facet builder has one user pointer: the band callback's goes in a
+    // small bundle beside the cells the sky callback reads.
+    struct Ctx { const GroundCells* cells; int (*band)(Vec3, void*); void* user; };
+    Ctx ctx{ &in, band, user };
+    p.user = &ctx;
+    if (band) p.band = [](Vec3 q, void* u) { Ctx* c = (Ctx*)u; return c->band(q, c->user); };
+    p.sky = [](int cx, int cy, int cz, void* u) { return SkyCallback(cx, cy, cz, (void*)((Ctx*)u)->cells); };
     FacetMesh m;
     FacetBuild(g, p, m);
     out.verts.resize(m.verts.size());

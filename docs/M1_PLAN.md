@@ -99,6 +99,7 @@
 - **Change.** Height-based blending across up to 3 materials per triangle, with the single-material path for interiors, and sky light in the vertex. Both follow what you approved on the pictures in 1.2 and 1.3.
 - **Files.** Changed: `render.cpp` (world shader), `facetmesh.cpp`.
 - **Cost.** GPU WORLD rises; it's budgeted at ≤ 5 ms on your machine, from a 0.6 ms baseline.
+- **Status: built.** Also changed, beyond the plan's list: `blocktex.cpp/.h` (height layers), `world.h/.cpp` (column tops), `groundmesh.*` (sky light). Tests: height layers vary, tops follow edits, sky light at flat/pit/roof/cliff. The shader isn't run here.
 - **Your check.** Natural borders (T3), dark hollows (T5), and your pictures from 1.2 matching the game.
 
 ### 1.7 Collision and picking on facets

@@ -32,6 +32,10 @@ struct BlockTextureSet {
     // down the texture) as n * 0.5 + 0.5 (z is rebuilt in the shader);
     // B = shine, A = glow. Flat and matte where a texture has no maps.
     std::vector<std::vector<uint8_t>> surface;
+    // The matching height layers, same layout, one byte per texel (0 low ..
+    // 255 high): the art's height map, or its brightness where it has none.
+    // Materials meeting at a border are blended by these (DESIGN.md 23.4).
+    std::vector<std::vector<uint8_t>> height;
     std::vector<std::string> layerNames;
     // Texture-array layer for face `face` of block `id` placed with
     // facing `facing` (both BlockFace). The mesher's only texture lookup.

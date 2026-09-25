@@ -138,3 +138,9 @@ Problems we expect before they happen: why we expect each one, the warning signs
 - **Why.** Detail vertices are per material triple, so borders duplicate them; the preview world's near detail is about 250,000 vertices around one viewpoint.
 - **Warning signs.** GPU memory in a Ctrl+F3 report approaching 1 GB.
 - **Act.** 1.8's fine-detail distance setting; pack the vertex to 20 bytes (1.5).
+
+### F19. Pixel cost of blended borders
+- **Likelihood:** Medium. **Cost if ignored:** Medium on the 2 GB floor machine.
+- **Why.** A border pixel within 64 blocks reads up to 27 texels (three materials × three projections × colour, surface and height), where M0's cube face read 3.
+- **Warning signs.** GPU WORLD in a Ctrl+F3 report above 3 ms at 1080p.
+- **Act.** Pull the blend distance in (64 → 32), drop the height texture's third projection, or give the setting a quality level.

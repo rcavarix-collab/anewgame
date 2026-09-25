@@ -26,7 +26,7 @@ Every system, what it's allowed to cost (its budget), and what it was last measu
 | Pass | F3 row | Budget | Grows with | Measured |
 |---|---|---|---|---|
 | Shadow map | GPU SHADOW | 1.5 ms | triangles in the light's view, when redrawn | 0.00, 0.03 worst |
-| World | GPU WORLD | 5.0 ms | pixels × shader cost; triangles | 0.59 median, 0.94 worst |
+| World | GPU WORLD | 5.0 ms | pixels × shader cost; triangles | 0.59 median, 0.94 worst (M0, cubes). From M1.5–1.6: 6 texture reads a pixel for one material (3 projections × colour, surface, height = 9 with heights), up to 27 on border triangles within 64 blocks. Awaiting a report |
 | Post (SSAO, outlines, bloom) | GPU POST | 1.0 ms | screen size | 0.11, 0.20 worst |
 | UI | GPU UI | 0.5 ms | text on screen | 0.00 |
 

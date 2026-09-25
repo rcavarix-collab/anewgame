@@ -20,6 +20,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <array>
 #include <utility>
 
 // Stamps chunk versions (Chunk::meshVersion); only ever grows.
@@ -111,6 +112,18 @@ public:
     // leaving), so a system that derives something from them -- the pulse
     // networks (Part VI) -- knows when to look again, and only then.
     uint64_t edits = 0;
+    // The highest solid cell of each resident column (-1: none), keyed by
+    // ColumnKey: how the sky light sees the ground (DESIGN.md 23.4). Filled
+    // when a column arrives, kept current by every edit, dropped on
+    // eviction. 512 bytes a column.
+    std::unordered_map<long long, std::array<int16_t, CHUNK_SIZE * CHUNK_SIZE>> columnTops;
+    // The highest solid cell at (x, z): -1 when there's none or the column
+    // isn't resident.
+    int Top(int x, int z) const;
+    // Keeps columnTops current after the cell at (x, y, z) changed.
+    void NoteCell(int x, int y, int z, bool solid);
+    // Recomputes one resident column's tops from its chunks.
+    void ComputeColumnTops(int cx, int cz);
 
     // Replaces any chunk already at cc.
     void AdoptChunk(const ChunkCoord& cc, std::unique_ptr<Chunk> c) {
@@ -129,7 +142,7 @@ public:
         edits++;
         return c;
     }
-    void ClearChunks() { chunks.clear(); dirtyChunks.clear(); edits++; }
+    void ClearChunks() { chunks.clear(); dirtyChunks.clear(); columnTops.clear(); edits++; }
 
     static ChunkCoord ToChunk(int x, int y, int z) {
         return { FloorDiv16(x), FloorDiv16(y), FloorDiv16(z) };
@@ -210,6 +223,7 @@ public:
         c->SetCell(Chunk::LocalIndex(lx, ly, lz), id, st);
         c->modified = true;
         edits++;
+        NoteCell(x, y, z, BlockSolid(id));
         MarkDirtyForEdit(cc, lx, ly, lz);
     }
 

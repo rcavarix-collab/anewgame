@@ -33,6 +33,8 @@ static const uint64_t HILLS_V1_FINGERPRINT = 0x24bcdc60e3a97b69ull; // walkgrid-
 #include <array>
 #include <algorithm>
 #include <map>
+#include <sstream>
+#include <fstream>
 
 static int g_failures = 0, g_checks = 0;
 #define CHECK(cond) do { g_checks++; if (!(cond)) { g_failures++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
@@ -1500,8 +1502,9 @@ static void TestJobs() {
     // A column still generating when the world is reset is dropped on arrival.
     World w2; ResetWorldState(w2);
     EnsureChunksLoaded(40, 40);
-    ProcessColumnGeneration(w2);        // submits a few
-    ResetColumnStreaming();             // New Game / Load
+    ProcessColumnGeneration(w2);        // submits a few (one may already have landed: threads are fast)
+    w2.ClearChunks();                   // New Game / Load: the world goes with the streaming state,
+    ResetColumnStreaming();             // as ResetWorldForNewGame and LoadGame do
     JobsWaitIdle();
     JobsApply(JOB_TERRAIN, 100);
     CHECK(g_residentColumns.empty() && w2.chunks.empty());
@@ -1601,6 +1604,62 @@ static void TestGroundMesh() {
         }
         CHECK(cubeSign != 0 && facetSign != 0 && total > 0 && agree == total);
     }
+}
+
+// ---- Blending heights, column tops and sky light (M1.6) ----
+static void TestSkyLight() {
+    printf("blending heights, column tops, sky light\n");
+    // Every texture layer has heights, and authored height maps vary.
+    VtexSet art;
+    {
+        std::ifstream in("../assets/textures/natural.vtex");
+        std::stringstream ss; ss << in.rdbuf();
+        ParseVtex(ss.str(), "natural.vtex", art);
+    }
+    BlockTextureSet t; BuildBlockTextures(art, t);
+    CHECK(!t.height.empty() && t.height[0].size() == (size_t)t.layerCount * BLOCK_TEX_SIZE * BLOCK_TEX_SIZE);
+    int L = t.faceLayer[BLOCK_MEADOW_GRASS][FACE_POS_Z][FACE_POS_Y];
+    uint8_t lo = 255, hi = 0;
+    for (int i = 0; i < BLOCK_TEX_SIZE * BLOCK_TEX_SIZE; i++) { uint8_t h = t.height[0][(size_t)L * BLOCK_TEX_SIZE * BLOCK_TEX_SIZE + i]; lo = std::min(lo, h); hi = std::max(hi, h); }
+    CHECK(hi - lo > 60);
+    CHECK(t.height.back().size() == (size_t)t.layerCount); // down to 1x1
+    InitGroundMaterials(t.faceLayer);
+
+    // Column tops follow generation and edits.
+    World w; ResetWorldState(w);
+    g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
+    for (int cz = -1; cz <= 1; cz++) for (int cx = -1; cx <= 1; cx++) GenerateColumn(w, cx, cz);
+    int G = TerrainHeight(5, 5);
+    CHECK(w.Top(5, 5) == G && w.Top(-7, 12) == G && w.Top(100, 100) == -1);
+    w.Set(5, G, 5, BLOCK_AIR);
+    CHECK(w.Top(5, 5) == G - 1);
+    w.Set(5, G + 4, 5, BLOCK_STONE);
+    CHECK(w.Top(5, 5) == G + 4);
+    w.Set(5, G + 4, 5, BLOCK_AIR);
+    CHECK(w.Top(5, 5) == G - 1);
+
+    // Sky light: open on flat ground, low on a pit's floor and under an
+    // overhang, in between on a cliff face.
+    GroundCells gc; CopyGroundCells(w, { 0, 0, 0 }, gc);
+    float flat = GroundSkyAt(gc, 8, G + 1, 8);
+    for (int y = G - 5; y <= G; y++)
+        for (int z = 6; z <= 9; z++) for (int x = 6; x <= 9; x++) w.Set(x, y, z, BLOCK_AIR);   // a 4x4 pit, 6 deep
+    for (int x = 12; x <= 15; x++) for (int z = 2; z <= 14; z++) w.Set(x, G + 3, z, BLOCK_STONE); // a roof, 2 cells up
+    for (int y = G + 1; y <= G + 8; y++) for (int z = 0; z < 16; z++) w.Set(2, y, z, BLOCK_STONE); // a wall, 8 high
+    CopyGroundCells(w, { 0, 0, 0 }, gc);
+    float pit = GroundSkyAt(gc, 8, G - 5, 8);
+    float under = GroundSkyAt(gc, 13, G + 1, 8);
+    float cliff = GroundSkyAt(gc, 3, G + 4, 8);
+    printf("  sky: flat %.2f, pit floor %.2f, under a roof %.2f, cliff face %.2f\n", flat, pit, under, cliff);
+    CHECK(flat > 0.99f);
+    CHECK(pit < 0.4f);
+    CHECK(under < 0.5f);
+    CHECK(cliff > 0.4f && cliff < 0.8f);
+    // And it reaches the vertices.
+    GroundMesh gm; BuildGroundMesh(gc, nullptr, nullptr, gm);
+    int dark = 0, bright = 0;
+    for (auto& v : gm.verts) { if (v.sky < 100) dark++; if (v.sky > 250) bright++; }
+    CHECK(dark > 0 && bright > 0);
 }
 
 // ---- The faceted ground (facetmesh.h, M1.2) ----
@@ -1760,6 +1819,7 @@ int main() {
     TestHills();
     TestJobs();
     TestGroundMesh();
+    TestSkyLight();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

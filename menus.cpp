@@ -104,7 +104,7 @@ std::string GetSliderLabel(int id) {
     case SLIDER_SENS_X: snprintf(buf, sizeof(buf), "X SENSITIVITY: %.2fx", g_sensitivityMultX); break;
     case SLIDER_SENS_Y: snprintf(buf, sizeof(buf), "Y SENSITIVITY: %.2fx", g_sensitivityMultY); break;
     case SLIDER_RENDER_DIST: snprintf(buf, sizeof(buf), "RENDER DISTANCE: %d CHUNKS", g_loadRadius); break;
-    case SLIDER_FRAME_LIMIT: snprintf(buf, sizeof(buf), "FRAME RATE LIMIT: %d FPS", g_frameLimit); break;
+    case SLIDER_FRAME_LIMIT: snprintf(buf, sizeof(buf), "FRAME LIMIT (VSYNC OFF): %d FPS", g_frameLimit); break; // vsync paces frames when on (main.cpp)
     case SLIDER_MASTER_VOLUME: snprintf(buf, sizeof(buf), "MASTER VOLUME: %d%%", (int)(g_masterVolume * 100.0f + 0.5f)); break;
     case SLIDER_MUSIC_VOLUME: snprintf(buf, sizeof(buf), "MUSIC VOLUME: %d%%", (int)(g_musicVolume * 100.0f + 0.5f)); break;
     case SLIDER_WORLD_VOLUME: snprintf(buf, sizeof(buf), "WORLD SOUNDS: %d%%", (int)(g_worldVolume * 100.0f + 0.5f)); break;

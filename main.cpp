@@ -98,6 +98,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     const float FIXED_DT = 1.0f / 60.0f;
     float accumulator = 0.0f;
 
+    // Smooth motion (D10): the world moves in fixed 60 Hz ticks, but the
+    // view is drawn between the last two, by how far the next tick has
+    // come -- so above 60 fps the camera glides instead of repeating a
+    // position some frames and jumping on others. Only the body is
+    // blended; looking around is applied every frame (below), so it never
+    // waits for a tick.
+    struct Pose { float x, y, z, eyeHeight, roll, leanPitch; };
+    auto poseOf = [](const Player& p) { return Pose{ p.x, p.y, p.z, p.eyeHeight, p.roll, p.leanPitch }; };
+    Pose prevPose = poseOf(g_player);
+
     bool running = true;
     while (running) {
         MSG msg;
@@ -177,6 +187,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
             const int MAX_TICKS_PER_FRAME = 5;
             int ticks = 0;
             while (accumulator >= FIXED_DT && ticks++ < MAX_TICKS_PER_FRAME) {
+                prevPose = poseOf(g_player); // where this tick starts from
                 // Day clock (Section 13): advances only here, gated
                 // identically to every other simulation system -- the
                 // single authoritative source of "what time is it,"
@@ -239,9 +250,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
         ProfSetCounter(PCOUNT_DIRTY_WAITING, (int64_t)g_world.dirtyChunks.size());
         ProfSetCounter(PCOUNT_COLUMNS_WAITING, (int64_t)g_pendingColumns.size());
         ProfSetCounter(PCOUNT_UPDATES_WAITING, (int64_t)ScheduledUpdateCount());
+        // The drawn pose: between the last two ticks (see Pose above). While
+        // a menu is open the world is frozen, so the latest tick is shown
+        // as is; a jump of more than a few blocks in one tick (a load, New
+        // Game, being lifted out of the ground) is a teleport, not motion,
+        // and snaps rather than sweeping across.
+        Player seen = g_player;
+        {
+            Pose cur = poseOf(g_player);
+            float dx = cur.x - prevPose.x, dy = cur.y - prevPose.y, dz = cur.z - prevPose.z;
+            bool teleport = dx * dx + dy * dy + dz * dz > 4.0f * 4.0f;
+            float a = (g_menuScreen != MenuScreen::None || teleport) ? 1.0f : accumulator / FIXED_DT;
+            if (a > 1.0f) a = 1.0f;
+            auto mix = [a](float p, float c) { return p + (c - p) * a; };
+            seen.x = mix(prevPose.x, cur.x); seen.y = mix(prevPose.y, cur.y); seen.z = mix(prevPose.z, cur.z);
+            seen.eyeHeight = mix(prevPose.eyeHeight, cur.eyeHeight);
+            seen.roll = mix(prevPose.roll, cur.roll); seen.leanPitch = mix(prevPose.leanPitch, cur.leanPitch);
+        }
         Vec3 f, r, u;
-        GetCameraVectors(g_player, f, r, u);
-        Vec3 eye = { g_player.x, g_player.y + g_player.eyeHeight, g_player.z };
+        GetCameraVectors(seen, f, r, u);
+        Vec3 eye = { seen.x, seen.y + seen.eyeHeight, seen.z };
         Mat4 view = MatLookToLH(eye, f, u);
         // g_fov (Accessibility, Section 11) is stored in degrees since
         // that's the meaningful unit for a player-facing slider.
@@ -266,14 +294,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
             // left of this frame's share, then a short spin for precision.
             // The simulation runs on a fixed step, so the cap changes only
             // how often we draw -- never how fast the world moves.
-            double target = 1.0 / (double)(g_frameLimit < 30 ? 30 : g_frameLimit);
-            LARGE_INTEGER t;
-            for (;;) {
-                QueryPerformanceCounter(&t);
-                double spent = (double)(t.QuadPart - now.QuadPart) / (double)freq.QuadPart;
-                double left = target - spent;
-                if (left <= 0.0) break;
-                if (left > 0.002) Sleep((DWORD)((left - 0.0015) * 1000.0));
+            // Only with vsync off: with it on, the display paces the frames,
+            // and a cap that isn't a whole divisor of its refresh rate (60 on
+            // a 75 or 144 Hz screen) would make frames alternate between one
+            // refresh and two -- judder (September review; D10).
+            if (!g_vsync) {
+                double target = 1.0 / (double)(g_frameLimit < 30 ? 30 : g_frameLimit);
+                LARGE_INTEGER t;
+                for (;;) {
+                    QueryPerformanceCounter(&t);
+                    double spent = (double)(t.QuadPart - now.QuadPart) / (double)freq.QuadPart;
+                    double left = target - spent;
+                    if (left <= 0.0) break;
+                    if (left > 0.002) Sleep((DWORD)((left - 0.0015) * 1000.0));
+                }
             }
         }
     }

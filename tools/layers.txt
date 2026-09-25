@@ -57,8 +57,6 @@ game.h          5
 game.cpp        5
 worldsound.h    5
 worldsound.cpp  5
-theline.h       5
-theline.cpp     5
 pulse.h         5
 pulse.cpp       5
 pulse_colours.h 5

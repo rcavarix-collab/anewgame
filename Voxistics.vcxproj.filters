@@ -69,9 +69,6 @@
     <ClCompile Include="icons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="theline.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pulse.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -132,9 +129,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="icons.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="theline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pulse.h">

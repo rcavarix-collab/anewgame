@@ -7,7 +7,6 @@
 #include "blocktex.h"
 #include "icons.h"
 #include "sky.h"
-#include "theline.h"
 #include "audio.h"
 #include "persist.h"
 #include "vtex.h"
@@ -211,9 +210,9 @@ static const char* g_atmosphereSrc =
 // world.
 static const char* g_shaderSrc =
     "// uses atmosphere\n"
-    "cbuffer CB : register(b0) { row_major matrix mvp; row_major matrix lightViewProj; float4 params; float4 lineA; float4 lineB; float4 glowGrid; float4 spots[8]; float4 spotInfo[8]; };\n"
+    "cbuffer CB : register(b0) { row_major matrix mvp; row_major matrix lightViewProj; float4 params; float4 glowDrive; float4 glowGrid; float4 spots[8]; float4 spotInfo[8]; };\n"
     // params: x shadows on, y shadow half-texel, z 1 while drawing see-through blocks (4.11).
-    // lineA: The Line's pivot x, height, pivot z, intensity; lineB: its direction x, z, the music level, unused.
+    // glowDrive: x the music level now (music blocks follow it), yzw unused.
     // glowGrid: xyz the glow-light grid's world origin, w 1 when it holds any light (4.12).
     "cbuffer ChunkCB : register(b1) { float4 chunkOrigin; };\n"
     "struct VSIn { uint4 pos:POSITION; uint layer:TEXCOORD0; uint2 uv:TEXCOORD1; };\n"
@@ -358,39 +357,24 @@ static const char* g_shaderSrc =
     // Light from glowing blocks nearby (4.12): one lookup in the light
     // grid, at the centre of the open cell this face looks into, so a wall
     // between a light and a surface leaves the surface dark. Music light
-    // follows the music; timestream light counts only near The Line
-    // (it lights its blocks only as it passes -- a cheap stand-in for
-    // knowing which ones are lit).
+    // follows the music; ember light (magma) is steady.
     "    if (glowGrid.w > 0.5f) {\n"
     "        float3 gl = glowTex.SampleLevel(glowSamp, (i.wpos + nGeo * 0.42f - glowGrid.xyz) / 64.0f, 0).rgb;\n"
-    "        float2 rl = i.wpos.xz - lineA.xz;\n"
-    "        float lineNear = saturate(1.0f - abs(rl.x * lineB.y - rl.y * lineB.x) / 8.0f) * saturate(1.0f - abs(i.wpos.y - lineA.y) / 8.0f);\n"
-    "        float3 emitted = gl.r * lineB.z * float3(1.0f, 0.62f, 0.25f) + gl.g * lineNear * float3(0.35f, 0.85f, 1.0f)\n"
-    "                       + gl.b * float3(1.0f, 0.45f, 0.15f);\n"                          // embers (magma): steady
+    "        float3 emitted = gl.r * glowDrive.x * float3(1.0f, 0.62f, 0.25f) + gl.b * float3(1.0f, 0.45f, 0.15f);\n"
     "        col += albedo * emitted * 1.5f * ao * (0.6f + 0.4f * saturate(n.y * 0.5f + 0.5f + dot(n, nGeo) - 1.0f));\n" // bumps catch it a little
     "    }\n"
-    // Reactive blocks (blocks.h BlockGlow): 1 = the music playing now,
-    // 2 = The Line passing through this block's cell (found per pixel from
-    // the world position minus the face normal: a vertex on a corner could
-    // floor into the neighbouring cell). They emit light of their own.
+    // Reactive blocks (blocks.h BlockGlow): 1 = the music playing now.
+    // They emit light of their own.
     "    float glow = 0.0f;\n"
     "    float3 glowCol = float3(1.0f, 0.62f, 0.25f);\n"
-    "    if (i.glowInfo.x > 1.5f && i.glowInfo.x < 2.5f) {\n"
-    "        float3 cell = floor(i.wpos - nGeo * 0.58f) + 0.5f;\n"
-    "        float2 r = cell.xz - lineA.xz;\n"
-    "        float across = abs(r.x * lineB.y - r.y * lineB.x);\n"
-    "        glow = saturate(1.0f - across / 0.75f) * saturate((0.6f - abs(cell.y - lineA.y)) * 4.0f);\n"
-    "        glowCol = float3(0.35f, 0.85f, 1.0f);\n"
-    "    } else if (i.glowInfo.x > 0.5f && i.glowInfo.x < 1.5f) {\n"
-    "        glow = lineB.z;\n"
-    "    }\n"
+    "    if (i.glowInfo.x > 0.5f && i.glowInfo.x < 1.5f) glow = glowDrive.x;\n"
     "    col += glow * (albedo * 1.2f + glowCol * 0.8f);\n"
     // The texture's own glow map (4.13): veins, cores, runes light up by
     // themselves, whatever the lighting, and bloom.
     // GLOW_PULSE blocks breathe it slowly: a smooth 0.4 Hz swell, never
     // below a third -- far under the 3-per-second flash limit.
     "    float texGlow = surf.a;\n"
-    "    if (i.glowInfo.x > 3.5f && i.glowInfo.x < 4.5f) texGlow *= 0.35f + 0.65f * (0.5f + 0.5f * sin(fCamPos.w * 2.5133f));\n"
+    "    if (i.glowInfo.x > 2.5f && i.glowInfo.x < 3.5f) texGlow *= 0.35f + 0.65f * (0.5f + 0.5f * sin(fCamPos.w * 2.5133f));\n"
     "    col += albedo * texGlow * 2.5f;\n"
     "    float outAlpha = saturate(max(glow, texGlow));\n"              // opaque pass: the bloom mask
     // Where a flier fell on grass (fliers.h): the ground's tops within the
@@ -436,8 +420,9 @@ static const char* g_shadowShaderSrc =
     "    return mul(float4(p, 1.0f), lightViewProj);\n"
     "}\n";
 
-// Debug lines (The Line's test marker, Part XVIII): coloured line list,
-// depth tested. A testing aid only.
+// Debug lines: a coloured line list, depth tested -- a testing aid for
+// marking things in the world (Voxistics drew The Line with it). The same
+// plain-colour pipeline draws pulses and fliers as triangles.
 static const char* g_debugShaderSrc =
     "cbuffer DebugCB : register(b0) { row_major matrix viewProj; };\n"
     "struct VSIn { float3 pos:POSITION; float4 col:COLOR0; };\n"
@@ -577,9 +562,8 @@ static const char* g_skyShaderSrc =
     "// uses atmosphere\n"
     "cbuffer SkyCB : register(b0) {\n"
     "    row_major matrix viewProj;\n"
-    "    float4 params;    // x stars visible, y direct-sun amount (disc brightness), z seconds the clouds' clock is ahead (The Line)\n"
+    "    float4 params;    // x stars visible, y direct-sun amount (disc brightness), zw unused\n"
     "    float4 moon;      // xyz toward the moon, w visibility\n"
-    "    float4 ghostMoon; // xyz toward The Line's ghost moon, w strength\n"
     "    float4 starRow0; float4 starRow1; float4 starRow2; // sky direction -> star-field direction\n"
     "};\n"
     "struct VSIn { float3 pos:POSITION; };\n"
@@ -616,7 +600,7 @@ static const char* g_skyShaderSrc =
     "float CloudNoise(float3 d) {\n"
     "    float2 base = d.xz / (d.y + 0.06f) * 0.45f;\n"                                   // a high sheet: flat, far away
     "    float2 p = float2(dot(base, float2(0.8f, 0.6f)), dot(base, float2(-0.6f, 0.8f)));\n" // into the wind's frame
-    "    p = p * float2(0.6f, 3.2f) + float2((fCamPos.w + params.z) * 0.004f, 0.0f);\n"                    // long along the wind, thin across; drifting
+    "    p = p * float2(0.6f, 3.2f) + float2(fCamPos.w * 0.004f, 0.0f);\n"                    // long along the wind, thin across; drifting
     "    p.y += (Noise2(p * float2(0.7f, 0.25f) + 5.2f) - 0.5f) * 2.4f;\n"                     // warp the streaks into wisps
     "    return 0.5f * Noise2(p) + 0.25f * Noise2(p * 2.07f + 17.1f) + 0.15f * Noise2(p * float2(4.3f, 3.1f) + 5.3f) + 0.1f * Noise2(p * float2(9.1f, 6.7f) + 9.7f);\n"
     "}\n"
@@ -634,13 +618,12 @@ static const char* g_skyShaderSrc =
     "        float wisp = smoothstep(fFog.w, fFog.w + 0.28f, cloudN);\n"
     "        cloud = wisp * wisp * lerp(0.55f, 0.25f, params.x) * smoothstep(0.02f, 0.2f, d.y);\n"
     "    }\n"
-    // Stars, moon and its ghost behind the clouds.
+    // Stars and moon behind the clouds.
     "    float3 s = float3(dot(starRow0.xyz, d), dot(starRow1.xyz, d), dot(starRow2.xyz, d));\n"
     "    float veil = 1.0f - cloud;\n"
     "    col += Stars(s) * params.x * above * veil * float3(0.8f, 0.85f, 1.0f);\n"
     "    float3 moonCol = float3(0.9f, 0.92f, 1.0f) * 1.4f;\n"
     "    col = lerp(col, moonCol, Disc(d, moon.xyz, 0.99966f) * moon.w * above * veil);\n"
-    "    col += moonCol * Disc(d, ghostMoon.xyz, 0.99966f) * ghostMoon.w * above * veil;\n"
     // The sun's disc (bright enough to bloom), dimmed by cloud.
     "    float sunDisc = smoothstep(0.9990f, 0.9996f, mu) * params.y * above;\n"
     "    col += sunDisc * float3(1.0f, 0.9f, 0.7f) * 30.0f * (1.0f - cloud);\n"
@@ -953,7 +936,6 @@ static void UpdateShadowMap(World& w, Vec3 eye, Vec3 sun) {
     ProfAddCounter(PCOUNT_SHADOW_RENDERS, 1);
 }
 
-static void DrawLineDebug(const Mat4& viewProj, Vec3 player); // below InitD3D, beside its pipeline
 static void DrawPulses(const Mat4& viewProj, Vec3 eye);
 static void DrawFliers(const Mat4& viewProj, Vec3 eye);
 
@@ -1162,34 +1144,17 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
     {
         Mat4 skyViewProj = MatMul(MatLookToLH({ 0, 0, 0 }, forward, up), proj);
         float day = (sky.daylight - NIGHT_LIGHT) / (1.0f - NIGHT_LIGHT);
-        // Star field: shown = W * R * star, where R is the normal turning
-        // about the pole and W The Line's precession; the shader needs the
-        // inverse, (W R)^T = R^T W^T.
-        // The visible sky keeps The Line's clock, which runs ahead of the
-        // day near the line (Part XVIII): stars, moon and clouds read it;
-        // the sun, light and shadows keep the real one.
-        SkyState seen = g_line.skyLead > 0 ? ComputeSky(dayTime + g_line.skyLead) : sky;
-        float R[3][3], W[3][3], G[3][3];
-        AxisAngleMatrix(CelestialPole(), seen.starAngle, R);
-        LineSkyWobble(g_line, g_lineTuning, 1.0f, W);
-        LineSkyWobble(g_line, g_lineTuning, g_lineTuning.moonGhostScale, G);
-        float M[3][3];
-        for (int i = 0; i < 3; i++)
-            for (int j = 0; j < 3; j++) {
-                M[i][j] = 0;
-                for (int k = 0; k < 3; k++) M[i][j] += R[k][i] * W[j][k];
-            }
-        Vec3 md = seen.moonDir;
-        Vec3 ghost = { G[0][0] * md.x + G[0][1] * md.y + G[0][2] * md.z,
-                       G[1][0] * md.x + G[1][1] * md.y + G[1][2] * md.z,
-                       G[2][0] * md.x + G[2][1] * md.y + G[2][2] * md.z };
+        // Star field: shown = R * star, R the normal turning about the pole;
+        // the shader needs the inverse, R^T.
+        float R[3][3];
+        AxisAngleMatrix(CelestialPole(), sky.starAngle, R);
+        Vec3 md = sky.moonDir;
         float moonVis = SkySmooth(-0.03f, 0.05f, md.y) * (1.0f - 0.75f * day);
-        struct { Mat4 viewProj; float params[4]; float moon[4]; float ghost[4]; float rows[3][4]; } cb = {
+        struct { Mat4 viewProj; float params[4]; float moon[4]; float rows[3][4]; } cb = {
             skyViewProj,
-            { sky.starsVisible, sky.sunLight, g_line.cloudLead, 0 },
+            { sky.starsVisible, sky.sunLight, 0, 0 },
             { md.x, md.y, md.z, moonVis },
-            { ghost.x, ghost.y, ghost.z, 0.22f * g_line.intensity * moonVis }, // always fainter than the moon
-            { { M[0][0], M[0][1], M[0][2], 0 }, { M[1][0], M[1][1], M[1][2], 0 }, { M[2][0], M[2][1], M[2][2], 0 } },
+            { { R[0][0], R[1][0], R[2][0], 0 }, { R[0][1], R[1][1], R[2][1], 0 }, { R[0][2], R[1][2], R[2][2], 0 } },
         };
         g_context->OMSetDepthStencilState(g_uiDepthState, 0);
         g_context->VSSetShader(g_skyVS, nullptr, 0);
@@ -1219,9 +1184,7 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         cb.params[1] = 0.5f / SHADOW_SIZE;
         cb.params[2] = 0.0f;
         cb.params[3] = 0.0f;
-        Vec3 ld = LineDirection(g_line);
-        cb.lineA[0] = g_line.pivotX; cb.lineA[1] = g_line.lineY; cb.lineA[2] = g_line.pivotZ; cb.lineA[3] = g_line.intensity;
-        cb.lineB[0] = ld.x; cb.lineB[1] = ld.z; cb.lineB[2] = CurrentMusicLevel(); cb.lineB[3] = 0.0f;
+        cb.glowDrive[0] = CurrentMusicLevel(); cb.glowDrive[1] = cb.glowDrive[2] = cb.glowDrive[3] = 0.0f;
         cb.glowGrid[0] = (float)g_glowGrid.ox; cb.glowGrid[1] = (float)g_glowGrid.oy; cb.glowGrid[2] = (float)g_glowGrid.oz;
         cb.glowGrid[3] = g_glowLit && g_glowSRV ? 1.0f : 0.0f;
         // Grass glowing where fliers fell (fliers.h).
@@ -1247,7 +1210,6 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         g_context->PSSetShaderResources(0, 4, srvs);
         Frustum frustum = ExtractFrustum(viewProj);
         DrawChunks(w, frustum, true);
-        if (g_lineDebug) DrawLineDebug(viewProj, eye);
         DrawPulses(viewProj, eye);
         DrawFliers(viewProj, eye);
         // See-through blocks last: same shader, told by params.z to shade
@@ -1709,7 +1671,7 @@ bool InitD3D(HWND hwnd) {
         D3D11_TEXTURE3D_DESC gd = {};
         gd.Width = gd.Height = gd.Depth = GLOW_GRID;
         gd.MipLevels = 1;
-        gd.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // R music, G timestream, B embers
+        gd.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // R music, G unused, B embers
         gd.Usage = D3D11_USAGE_DEFAULT;
         gd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         if (SUCCEEDED(g_device->CreateTexture3D(&gd, nullptr, &g_glowTex)))
@@ -1822,7 +1784,7 @@ bool InitD3D(HWND hwnd) {
 
     D3D11_BUFFER_DESC skyCbd = {};
     skyCbd.Usage = D3D11_USAGE_DYNAMIC;
-    skyCbd.ByteWidth = sizeof(Mat4) + 6 * 4 * sizeof(float); // viewProj + 6 float4s (SkyCB)
+    skyCbd.ByteWidth = sizeof(Mat4) + 5 * 4 * sizeof(float); // viewProj + 5 float4s (SkyCB)
     skyCbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     skyCbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     g_device->CreateBuffer(&skyCbd, nullptr, &g_skyCBuffer);
@@ -1937,58 +1899,6 @@ bool InitD3D(HWND hwnd) {
           << g_shaderErrors;
     }
     return true;
-}
-
-// The Line's debug marker: the line across the loaded area at its height
-// (cyan = counterclockwise, orange = clockwise), short strokes showing
-// which way it's sweeping, and a white pole at the pivot.
-static void DrawLineDebug(const Mat4& viewProj, Vec3 player) {
-    if (!g_debugVS || !g_debugPS || !g_debugLayout || !g_debugVB || !g_debugCB) return;
-    const LineState& L = g_line;
-    Vec3 u = LineDirection(L);
-    float halfLen = (float)((g_loadRadius + 1) * CHUNK_SIZE);
-    float along = (player.x - L.pivotX) * u.x + (player.z - L.pivotZ) * u.z;
-    float cx = L.pivotX + u.x * along, cz = L.pivotZ + u.z * along, y = L.lineY;
-    float r = L.spin > 0 ? 0.3f : 1.0f, g = L.spin > 0 ? 0.9f : 0.6f, b = L.spin > 0 ? 1.0f : 0.2f;
-    DebugVertex v[DEBUG_VB_CAPACITY];
-    UINT n = 0;
-    auto seg = [&](float x0, float y0, float z0, float x1, float y1, float z1, float cr, float cg, float cb) {
-        if (n + 2 > DEBUG_VB_CAPACITY) return;
-        v[n++] = { x0, y0, z0, cr, cg, cb, 1 };
-        v[n++] = { x1, y1, z1, cr, cg, cb, 1 };
-    };
-    seg(cx - u.x * halfLen, y, cz - u.z * halfLen, cx + u.x * halfLen, y, cz + u.z * halfLen, r, g, b);
-    // The band the line fills (diffusers widen it), dimmer, above and below.
-    for (float side : { -1.0f, 1.0f }) {
-        float by = y + side * L.halfHeight;
-        seg(cx - u.x * halfLen, by, cz - u.z * halfLen, cx + u.x * halfLen, by, cz + u.z * halfLen, r * 0.5f, g * 0.5f, b * 0.5f);
-    }
-    // Sweep strokes every 8 blocks: the line moves perpendicular to itself,
-    // opposite ways on either side of the pivot.
-    for (float t = -halfLen; t <= halfLen; t += 8.0f) {
-        float px = cx + u.x * t, pz = cz + u.z * t;
-        float side = ((px - L.pivotX) * u.x + (pz - L.pivotZ) * u.z) >= 0 ? 1.0f : -1.0f;
-        float nx = -u.z * L.spin * side, nz = u.x * L.spin * side;
-        seg(px, y, pz, px + nx * 1.2f, y, pz + nz * 1.2f, r, g, b);
-    }
-    seg(L.pivotX, y - 3.0f, L.pivotZ, L.pivotX, y + 12.0f, L.pivotZ, 1, 1, 1);
-
-    D3D11_MAPPED_SUBRESOURCE mapped;
-    g_context->Map(g_debugVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-    memcpy(mapped.pData, v, n * sizeof(DebugVertex));
-    g_context->Unmap(g_debugVB, 0);
-    g_context->Map(g_debugCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-    memcpy(mapped.pData, &viewProj, sizeof(Mat4));
-    g_context->Unmap(g_debugCB, 0);
-    g_context->VSSetShader(g_debugVS, nullptr, 0);
-    g_context->PSSetShader(g_debugPS, nullptr, 0);
-    g_context->IASetInputLayout(g_debugLayout);
-    g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-    g_context->VSSetConstantBuffers(0, 1, &g_debugCB);
-    UINT stride = sizeof(DebugVertex), offset = 0;
-    g_context->IASetVertexBuffers(0, 1, &g_debugVB, &stride, &offset);
-    g_context->Draw(n, 0);
-    g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 // Pulses on their way (Part VI): each a small octahedron in its spin's

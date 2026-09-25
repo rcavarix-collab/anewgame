@@ -224,18 +224,6 @@ void DrawMusicBlockTile(TileCanvas& t) {
     t.Disc(s / 2 - s / 12, s / 2 - s / 12, s / 6, { 190, 150, 90 });
 }
 
-// Pale, faintly veined stone, like something that remembers light.
-void DrawTimestreamBlockTile(TileCanvas& t) {
-    int s = t.size;
-    t.Fill(0, 0, s, s, { 150, 165, 180 });
-    for (int i = 0; i < s; i++) {
-        t.Put(i, (i * 3 / 4 + s / 5) % s, { 185, 205, 225 });
-        t.Put((i * 5 / 7 + s / 3) % s, i, { 120, 135, 155 });
-        t.Put(i, (s - 1 - i / 2 + s / 2) % s, { 175, 195, 215 });
-    }
-    t.Border(1, { 110, 125, 145 });
-}
-
 // A dark frame around a violet core: the placeholder essence attractor.
 void DrawAttractorTile(TileCanvas& t) {
     int s = t.size;
@@ -286,7 +274,6 @@ const Procedural kProcedural[] = {
     { "machine_front", DrawMachineFrontTile },
     { "tube", DrawTubeTile },
     { "music_block", DrawMusicBlockTile },
-    { "timestream_block", DrawTimestreamBlockTile },
     { "essence_attractor", DrawAttractorTile },
     { "glass", DrawGlassTile },
     { "crystal", DrawCrystalTile },

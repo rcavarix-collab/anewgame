@@ -17,7 +17,6 @@
 #include "../shapes.h"
 #include "../icons.h"
 #include "../sky.h"
-#include "../theline.h"
 #include "../pulse.h"
 #include "../fliers.h"
 #include "../pulse_colours.h"
@@ -149,7 +148,7 @@ static void TestBlockTextures() {
     BlockTextureSet t;
     BuildBlockTextures(none, t);
     CHECK(t.warnings.empty());
-    CHECK(t.layerCount == 14 + 90); // 14 procedural (foundation .. crystal) + 90 more names only the generated art provides (magenta without it)
+    CHECK(t.layerCount == 13 + 90); // 13 procedural (foundation .. crystal) + 90 more names only the generated art provides (magenta without it)
 
     // The natural materials' art in the repo loads cleanly and covers
     // every natural block (no magenta fallback), with seamless wrap.
@@ -336,9 +335,8 @@ static void TestSaveRoundTrip() {
     Player p; p.x = 1.5f; p.y = 13; p.z = 2.5f; p.yaw = 0.7f; p.hotbarIndex = 3;
     std::vector<uint8_t> buf;
     std::vector<PendingUpdate> pend = { { 7, 20, 7, UPD_GRAVITY, 3 }, { -1, 5, 9, UPD_GRAVITY, 0 } };
-    LineSaveData ld; ld.cells = { { 5.5f, -7.25f, 12.5f }, { -300.0f, 41.0f, 600.0f } }; ld.angMom = -42.5; ld.theta = 1.25f;
     EssenceNetwork::SaveData es; es.discoveredZones = { 42, 7 }; es.attractors = { 1, 13, -5 };
-    EncodeSave(p, 1234.5f, g_worldGen, w, g_evictedChunks, pend, ld, es, buf);
+    EncodeSave(p, 1234.5f, g_worldGen, w, g_evictedChunks, pend, es, buf);
     printf("    %zu generated chunks, 2 modified -> %zu bytes\n", generated, buf.size());
     CHECK(buf.size() < 3000);
 
@@ -351,7 +349,6 @@ static void TestSaveRoundTrip() {
     CHECK(d.chunks.size() == 2);
     CHECK(d.updates.size() == 2 && d.updates[0].x == 7 && d.updates[0].delay == 3 && d.updates[1].y == 5);
     CHECK(d.essence.discoveredZones.size() == 2 && d.essence.discoveredZones[1] == 7 && d.essence.attractors.size() == 3 && d.essence.attractors[2] == -5);
-    CHECK(d.line.cells.size() == 2 && d.line.cells[1].x == -300.0f && d.line.cells[1].z == 41.0f && d.line.cells[1].seconds == 600.0f && d.line.angMom == -42.5 && d.line.theta == 1.25f);
     for (auto& kv : d.chunks) {
         Chunk* orig = w.FindChunk(kv.first);
         CHECK(orig && orig->modified && ChunksEqual(*orig, *kv.second));
@@ -361,33 +358,6 @@ static void TestSaveRoundTrip() {
     std::vector<uint8_t> broken = buf; broken[buf.size() / 2] ^= 0x40;
     SaveData d2; CHECK(DecodeSave(broken.data(), broken.size(), d2) == DecodeResult::BadChecksum);
     SaveData d3; CHECK(DecodeSave(buf.data(), 20, d3) != DecodeResult::Ok);
-
-    // A v8 file's Line history (32-block cell keys, no positions) still
-    // loads: each cell's time is placed at its centre. Built by swapping
-    // this file's line cells for the v8 layout.
-    {
-        const size_t n = ld.cells.size();
-        // After the cells: angMom (8) theta (4), essence: 2 zones (4 + 16), 1 attractor (4 + 12), checksum (4).
-        size_t after = 8 + 4 + 4 + 16 + 4 + 12 + 4;
-        size_t cellsAt = buf.size() - after - 12 * n;
-        std::vector<uint8_t> v8(buf.begin(), buf.begin() + cellsAt);
-        v8[4] = 8; v8[5] = v8[6] = v8[7] = 0;
-        auto u64 = [&](uint64_t v) { for (int i = 0; i < 8; i++) v8.push_back((uint8_t)(v >> (8 * i))); };
-        auto f32 = [&](float f) { uint32_t u; memcpy(&u, &f, 4); for (int i = 0; i < 4; i++) v8.push_back((uint8_t)(u >> (8 * i))); };
-        u64(((uint64_t)(uint32_t)2 << 32) | (uint32_t)-1); f32(120.0f); // cell (2, -1): centre (80, -16)
-        u64(((uint64_t)(uint32_t)-4 << 32) | (uint32_t)0); f32(30.0f);  // cell (-4, 0): centre (-112, 16)
-        v8.insert(v8.end(), buf.end() - after, buf.end() - 4);
-        uint32_t sum = Fnv1a(v8.data(), v8.size());
-        for (int i = 0; i < 4; i++) v8.push_back((uint8_t)(sum >> (8 * i)));
-        SaveData old;
-        CHECK(DecodeSave(v8.data(), v8.size(), old) == DecodeResult::Ok);
-        CHECK(old.version == 8 && old.line.cells.size() == 2);
-        CHECK(old.line.cells.size() == 2 && old.line.cells[0].x == 80.0f && old.line.cells[0].z == -16.0f && old.line.cells[0].seconds == 120.0f);
-        CHECK(old.line.cells.size() == 2 && old.line.cells[1].x == -112.0f && old.line.cells[1].z == 16.0f);
-        CHECK(old.line.angMom == -42.5 && old.essence.attractors.size() == 3);
-        LineState ls; LineTuning lt; RestoreLine(ls, lt, old.line);
-        CHECK(fabsf(ls.pivotX - 80.0f) < 1e-3f && fabsf(ls.pivotZ + 16.0f) < 1e-3f); // the favourite, at its old centre
-    }
 }
 
 // Writes a v4 file the way the old SaveGame did (every non-air block).
@@ -623,11 +593,11 @@ static void TestMesher() {
     for (auto& x : v) CHECK((x.layer == front) == (VertexFace(x) == FACE_NEG_X));
 
     // Glow kinds ride in the vertex for the reactive blocks only.
-    World wg; wg.Set(1, 1, 1, BLOCK_MUSIC); wg.Set(3, 1, 1, BLOCK_TIMESTREAM); wg.Set(5, 1, 1, BLOCK_STONE);
+    World wg; wg.Set(1, 1, 1, BLOCK_MUSIC); wg.Set(3, 1, 1, BLOCK_MAGMA_ROCK); wg.Set(5, 1, 1, BLOCK_STONE);
     BuildChunkMesh(wg, { 0, 0, 0 }, *wg.FindChunk({ 0, 0, 0 }), v, idx);
-    int glowMusic = 0, glowLine = 0, glowNone = 0;
-    for (auto& x : v) { int g = VertexGlow(x); if (g == GLOW_MUSIC) glowMusic++; else if (g == GLOW_TIMESTREAM) glowLine++; else glowNone++; }
-    CHECK(glowMusic == 24 && glowLine == 24 && glowNone == 24);
+    int glowMusic = 0, glowEmber = 0, glowNone = 0;
+    for (auto& x : v) { int g = VertexGlow(x); if (g == GLOW_MUSIC) glowMusic++; else if (g == GLOW_EMBER) glowEmber++; else glowNone++; }
+    CHECK(glowMusic == 24 && glowEmber == 24 && glowNone == 24);
 
     // Every cube face is wound clockwise seen from outside (the D3D front
     // face): the see-through pass culls back faces on that basis (4.11).
@@ -952,13 +922,10 @@ static void TestGlowLight() {
     CHECK(ChunkAffectsGlow(g, { 1, 0, 0 }, *w.FindChunk({ 1, 0, 0 })));
     Chunk empty;
     CHECK(!ChunkAffectsGlow(g, { 6, 0, 6 }, empty));
-    // A timestream block lights the other channel; no emitters, no texels.
-    w.Set(20, 11, 20, BLOCK_TIMESTREAM);
-    BuildGlowGrid(w, ox, oy, oz, g);
-    CHECK(g.emitters.size() == 2 && at(21, 11, 20, 1) > 150 && at(21, 11, 20, 0) == 0);
     w.Set(20, 11, 3, BLOCK_MAGMA_ROCK); // an ember: the third channel
     BuildGlowGrid(w, ox, oy, oz, g);
-    CHECK(g.emitters.size() == 3 && at(21, 11, 3, 2) > 150 && at(21, 11, 3, 0) == 0 && at(21, 11, 3, 1) == 0);
+    CHECK(g.emitters.size() == 2 && at(21, 11, 3, 2) > 150 && at(21, 11, 3, 0) == 0 && at(21, 11, 3, 1) == 0);
+    // No emitters, no texels.
     World none; none.Set(0, 0, 0, BLOCK_STONE);
     BuildGlowGrid(none, ox, oy, oz, g);
     CHECK(g.emitters.empty() && g.texels.empty());
@@ -1260,38 +1227,6 @@ static void TestPulse() {
         for (int i = 0; i < 600; i++) p.Tick(w, t, dt, [](int, int, int) { return 5.0f; });
         printf("    at 5x time: %lld gathered in 10 s\n", p.gathered);
         CHECK(p.gathered >= 98 && p.gathered <= 101 && PulseStored(w, 1, 10, 0) >= 97);
-        LineState L; LineTuning lt; L.pivotX = 0; L.pivotZ = 0; L.theta = 0; // along +X through the origin
-        L.lineY = 13.5f; L.halfHeight = 1.0f;
-        CHECK(LineTimeRateAt(L, lt, 50.0f, 13.5f, 0.5f) > 25.0f && LineTimeRateAt(L, lt, 50.0f, 13.5f, 60.0f) < 1.01f);
-        // Above the band, the boost falls away as if that far off to the side...
-        float high = LineTimeRateAt(L, lt, 50.0f, 13.5f + 1.0f + 24.0f, 0.5f); // four decades out
-        CHECK(high < 1.5f);
-        // ...until diffusers widen the band to take it in.
-        L.halfHeight = 14.0f;
-        CHECK(LineTimeRateAt(L, lt, 50.0f, 13.5f + 13.0f, 0.5f) > 25.0f);
-    }
-
-    // A diffuser takes pulse of any spin, keeps none, and its feed widens
-    // The Line's band (with diminishing returns), which narrows unfed.
-    {
-        World w; PulseSystem p; double beats = 0;
-        place(w, p, 0, 10, 0, BLOCK_PULSE_HARVESTER);
-        place(w, p, 1, 10, 0, BLOCK_PULSE_PIPE_CW, FACE_POS_X);
-        place(w, p, 2, 10, 0, BLOCK_PULSE_DIFFUSER);
-        LineState L; LineTuning lt;
-        float before = 0;
-        for (int i = 0; i < 60 * 30; i++) {
-            beats += dt; p.Tick(w, t, dt);
-            FeedLine(L, p.TakeDiffused());
-            UpdateLine(L, lt, 100.0f, 13.0f, 100.0f, dt);
-            if (i == 0) before = L.halfHeight;
-        }
-        printf("    diffuser: took %lld, band +-%.2f (from %.2f), feed %.2f/s\n", p.Diffused(), L.halfHeight, before, L.feedRate);
-        CHECK(p.Diffused() >= 55 && PulseStored(w, 2, 10, 0) == 0);
-        CHECK(L.feedRate > 1.6f && L.halfHeight > 3.5f && before < 1.2f);
-        w.Set(0, 10, 0, BLOCK_AIR); // the harvester goes
-        for (int i = 0; i < 60 * 120; i++) { p.Tick(w, t, dt); FeedLine(L, p.TakeDiffused()); UpdateLine(L, lt, 100.0f, 13.0f, 100.0f, dt); }
-        CHECK(L.halfHeight < 1.1f); // two minutes unfed: back to its base
     }
 
     // Twisted pipes: a raised thread winds round a run, one turn a block;
@@ -1439,190 +1374,6 @@ static void TestColourVision() {
     CHECK(red > 0.4f && green > 0.4f && blue > 0.4f && mono > 0.3f);
     CHECK(tM < 0.1f && mono > 5.0f * tM); // blue and red by brightness alone: nearly one; the no-colour mode parts them
     CHECK(strcmp(ColourVisionName(CV_BLUE_WEAK), "BLUE-WEAK") == 0 && strcmp(ColourVisionName(99), "TYPICAL") == 0);
-}
-
-static void TestTheLine() {
-    printf("the line\n");
-    LineTuning t;
-    const float dt = 1.0f / 60.0f;
-
-    // Pivot: an hour lived at A outweighs a minute passing through B.
-    LineState s;
-    for (int i = 0; i < 3600 * 60 / 10; i++) UpdateLine(s, t, 100.0f, 13.0f, 100.0f, dt * 10); // 1 h at A
-    for (int i = 0; i < 60 * 60; i++) UpdateLine(s, t, 900.0f, 13.0f, 100.0f, dt);           // 1 min at B
-    CHECK(fabsf(s.pivotX - 100.0f) < 0.5f && fabsf(s.pivotZ - 100.0f) < 0.5f); // A itself, not its cell's centre
-
-    // x and z alike: pottering about an off-centre spot puts the pivot on
-    // that spot, and a spot straddling a cell edge is found on the edge.
-    {
-        LineState p;
-        for (int i = 0; i < 1200 * 6; i++) { float a = i * 0.37f; UpdateLine(p, t, 5.0f + 3.0f * cosf(a), 13.0f, 27.0f + 3.0f * sinf(a * 1.3f), 1.0f / 6.0f); }
-        printf("    off-centre haunt at (5, 27): pivot %.2f, %.2f\n", p.pivotX, p.pivotZ);
-        CHECK(fabsf(p.pivotX - 5.0f) < 1.0f && fabsf(p.pivotZ - 27.0f) < 1.0f);
-        LineState e;
-        for (int i = 0; i < 1200 * 6; i++) UpdateLine(e, t, (i & 1) ? 14.0f : 18.0f, 13.0f, -40.0f, 1.0f / 6.0f); // either side of x = 16
-        CHECK(fabsf(e.pivotX - 16.0f) < 0.5f && fabsf(e.pivotZ + 40.0f) < 0.5f);
-    }
-
-    // Two separate haunts: the pivot heads for the one with more time,
-    // not the empty ground between them, and travels there rather than
-    // jumping.
-    {
-        LineState h;
-        for (int i = 0; i < 3600 * 6; i++) UpdateLine(h, t, 16.0f, 13.0f, 16.0f, 1.0f / 6.0f);    // 1 h at A (cell 0,0)
-        CHECK(fabsf(h.pivotX - 16.0f) < 0.5f && fabsf(h.pivotZ - 16.0f) < 0.5f);
-        for (int i = 0; i < 5400 * 6; i++) UpdateLine(h, t, 1016.0f, 13.0f, 16.0f, 1.0f / 6.0f);  // then 1.5 h at B, 1000 blocks east
-        CHECK(fabsf(h.targetX - 1016.0f) < 1.0f);                     // B, not the midpoint
-        CHECK(fabsf(h.pivotX - h.targetX) < 1.0f);                    // arrived by now
-        // The trip itself: at most pivotMaxSpeed, so ~500 s for 1000 blocks.
-        LineState h2;
-        for (int i = 0; i < 3600 * 6; i++) UpdateLine(h2, t, 16.0f, 13.0f, 16.0f, 1.0f / 6.0f);
-        bool steady = true; int steps = 0;
-        while (h2.targetX < 500.0f && steps < 100000) { UpdateLine(h2, t, 1016.0f, 13.0f, 16.0f, 1.0f / 6.0f); steps++; }
-        float prev = h2.pivotX;
-        for (int i = 0; i < 60 * 6; i++) {
-            UpdateLine(h2, t, 1016.0f, 13.0f, 16.0f, 1.0f / 6.0f);
-            float moved = h2.pivotX - prev; prev = h2.pivotX;
-            if (moved < 0 || moved > t.pivotMaxSpeed / 6.0f + 1e-3f) steady = false;
-        }
-        printf("    pivot trip: switched after %.0f s at B, then 60 s later at x=%.1f (steady %d)\n", steps / 6.0f, h2.pivotX, (int)steady);
-        CHECK(steady && h2.pivotX > 16.0f && h2.pivotX < 1016.0f);   // under way, toward B, at walking pace
-    }
-
-    // Where the player is these days wins: 1 h at A, then 40 min at B.
-    // Unfaded, A would still lead; with a 30 min half-life, B has taken over.
-    {
-        LineState f;
-        for (int i = 0; i < 3600 * 2; i++) UpdateLine(f, t, 16.0f, 13.0f, 16.0f, 0.5f);
-        for (int i = 0; i < 2400 * 2; i++) UpdateLine(f, t, 1016.0f, 13.0f, 16.0f, 0.5f);
-        CHECK(fabsf(f.targetX - 1016.0f) < 1.0f);
-        LineSaveData fd = SnapshotLine(f);
-        float a = 0, b = 0;
-        for (auto& c : fd.cells) { if (c.seconds > 300) (a == 0 ? a : b) = c.seconds; }
-        printf("    faded hours at the two haunts: %.2f %.2f\n", a / 3600.0f, b / 3600.0f);
-    }
-
-    // Spin follows the sense of movement around one's own centre.
-    auto circle = [&](int dir) {
-        LineState c;
-        for (int i = 0; i < 600 * 60; i++) UpdateLine(c, t, 16.0f, 13.0f, 16.0f, dt); // settle a pivot
-        float r = 10.0f, w = 0.3f * dir;
-        for (int i = 0; i < 120 * 60; i++) {
-            float a = w * i * dt;
-            UpdateLine(c, t, c.pivotX + r * cosf(a), 13.0f, c.pivotZ + r * sinf(a), dt);
-        }
-        return c.spin;
-    };
-    CHECK(circle(+1) == +1); // angle increasing from +X toward +Z: counterclockwise from above
-    CHECK(circle(-1) == -1);
-    // Clockwise by default: standing still, or barely circling the other way.
-    {
-        LineState still;
-        for (int i = 0; i < 600; i++) UpdateLine(still, t, 16.0f, 13.0f, 16.0f, dt);
-        CHECK(still.spin == -1);
-        still.player.angMom = t.ccwThreshold * 0.5f;
-        UpdateLine(still, t, 16.0f, 13.0f, 16.0f, dt);
-        CHECK(still.spin == -1);
-    }
-
-    // The line sweeps in the spin's direction.
-    LineState sw; sw.player.angMom = -5;
-    float before = 1.0f; sw.theta = before;
-    UpdateLine(sw, t, 0.0f, 13.0f, 0.0f, 1.0f);
-    CHECK(sw.spin == -1 && sw.theta < before);
-
-    // Falloff: standing still, one decade of intensity per blocksPerDecade,
-    // flat treads between steps.
-    auto settle = [&](float dist) {
-        LineState a; a.hasPivot = true; a.pivotX = 0; a.pivotZ = 0; a.theta = 0; // pivot at the origin; line along +X
-        t.turnSeconds = 1e9f; t.pivotMaxSpeed = 0; // freeze the sweep and the pivot for this test
-        for (int i = 0; i < 600; i++) UpdateLine(a, t, 5.0f, 13.0f, dist, dt);
-        t.turnSeconds = 3600.0f; t.pivotMaxSpeed = LineTuning().pivotMaxSpeed;
-        return a;
-    };
-    LineState on = settle(0.0f), near = settle(3.0f), dec1 = settle(6.3f), tread = settle(9.0f), dec2 = settle(12.3f);
-    printf("    intensity at 0/3/6.3/9/12.3 blocks: %.3f %.3f %.3f %.3f %.4f\n", on.intensity, near.intensity, dec1.intensity, tread.intensity, dec2.intensity);
-    CHECK(on.intensity > 0.99f);
-    CHECK(fabsf(near.intensity - 1.0f) < 0.02f);          // still on the first tread
-    CHECK(fabsf(dec1.intensity - 0.1f) < 0.01f);          // one decade down
-    CHECK(fabsf(tread.intensity - 0.1f) < 0.01f);         // flat until the next riser
-    CHECK(fabsf(dec2.intensity - 0.01f) < 0.002f);
-
-    // Asymmetry: moving with the sweep stretches the falloff, against shrinks it.
-    auto walk = [&](float vz) {
-        LineState a; a.hasPivot = true; a.pivotX = 0; a.pivotZ = 0; a.theta = 0; a.player.angMom = 1e9; // pivot at the origin, ccw
-        t.pivotMaxSpeed = 0;
-        float z = 4.0f;
-        for (int i = 0; i < 10; i++) { UpdateLine(a, t, 20.0f, 13.0f, z, dt); z += vz * dt; }
-        t.pivotMaxSpeed = LineTuning().pivotMaxSpeed;
-        return a.blocksPerDecade;
-    };
-    // Line along +X, ccw spin: at x = +20 it sweeps toward +Z.
-    float with = walk(+4.5f), against = walk(-4.5f), still = walk(0.0f);
-    printf("    blocks per decade: with %.2f, still %.2f, against %.2f\n", with, still, against);
-    CHECK(with > still && still > against);
-    CHECK(fabsf(with - t.decadeWith) < 0.5f && fabsf(against - t.decadeAgainst) < 0.2f);
-
-    // Sky wobble: a rotation (orthonormal), none at zero intensity, and the
-    // moon's ghost always weaker than the stars.
-    float m[3][3];
-    LineState q; q.intensity = 0; LineSkyWobble(q, t, 1.0f, m);
-    CHECK(fabsf(m[0][0] - 1) < 1e-6f && fabsf(m[1][1] - 1) < 1e-6f && fabsf(m[0][1]) < 1e-6f);
-    q.intensity = 1; q.theta = 0.7f; q.wobblePhase = 0.3f;
-    float stars[3][3], ghost[3][3];
-    LineSkyWobble(q, t, 1.0f, stars); LineSkyWobble(q, t, t.moonGhostScale, ghost);
-    float det = stars[0][0] * (stars[1][1] * stars[2][2] - stars[1][2] * stars[2][1]) - stars[0][1] * (stars[1][0] * stars[2][2] - stars[1][2] * stars[2][0]) + stars[0][2] * (stars[1][0] * stars[2][1] - stars[1][1] * stars[2][0]);
-    CHECK(fabsf(det - 1) < 1e-4f);
-    CHECK(acosf(ghost[1][1]) < acosf(stars[1][1])); // smaller tilt of the vertical
-
-    // Save/restore keeps pivot, spin and angle.
-    LineSaveData d = SnapshotLine(s);
-    LineState r; RestoreLine(r, t, d);
-    CHECK(fabsf(r.pivotX - s.pivotX) < 1e-2f && fabsf(r.pivotZ - s.pivotZ) < 1e-2f && r.spin == s.spin && r.theta == s.theta);
-
-    // The sky clock. On the line the sky races (faster the closer); off
-    // it, the sky finds its way back into step by the shorter way: a little
-    // ahead, it runs slow; more than half a day ahead, it runs on round to
-    // the next day, slowing as it gets there. Far off, it keeps time.
-    {
-        auto rateAt = [&](float dist) { LineState a = settle(dist); return a.skyRate; };
-        float r0 = rateAt(0.0f), r6 = rateAt(6.3f), r12 = rateAt(12.3f), r30 = rateAt(30.0f);
-        printf("    sky rate at 0/6.3/12.3/30 blocks: %.2f %.2f %.2f %.2f\n", r0, r6, r12, r30);
-        CHECK(r0 > 25.0f && r0 > r6 && r6 > r12 && r12 > r30 && r30 > 0.99f && r30 < 1.05f);
-        t.turnSeconds = 1e9f; t.pivotMaxSpeed = 0;
-        auto onLine = [&](float seconds) {
-            LineState a; a.hasPivot = true; a.theta = 0;
-            for (int i = 0; i < (int)(seconds * 60); i++) UpdateLine(a, t, 5.0f, 13.0f, 0.0f, dt);
-            return a;
-        };
-        // A little ahead: the sky runs slow once the player walks off.
-        LineState a = onLine(20.0f);
-        float lead = a.skyLead;
-        for (int i = 0; i < 60 * 10; i++) UpdateLine(a, t, 5.0f, 13.0f, 200.0f, dt); // the rush dies down (the speed eases)
-        float lead10 = a.skyLead;
-        for (int i = 0; i < 60 * 10; i++) UpdateLine(a, t, 5.0f, 13.0f, 200.0f, dt);
-        printf("    20 s on the line: %.0f s ahead; 10/20 s away: %.0f / %.0f s ahead, rate %.2f\n", lead, lead10, a.skyLead, a.skyRate);
-        CHECK(lead > 400.0f && lead < 0.5f * DAY_LENGTH_SECONDS);
-        CHECK(a.skyRate < 0.2f && a.skyLead < lead10 - 8.0f);
-        for (int i = 0; i < 3600; i++) UpdateLine(a, t, 5.0f, 13.0f, 200.0f, 1.0f);
-        CHECK(a.skyLead < 1.0f && fabsf(a.skyRate - 1.0f) < 0.02f);
-        // Well ahead: it runs on to the next day, slowing, then keeps time.
-        LineState b = onLine(90.0f);
-        float leadB = b.skyLead;
-        for (int i = 0; i < 60 * 10; i++) UpdateLine(b, t, 5.0f, 13.0f, 200.0f, dt);
-        float coast = b.skyRate;
-        bool slowing = true; float prev = b.skyRate; int steps = 0;
-        while (b.skyLead > 0.5f * DAY_LENGTH_SECONDS && steps < 60 * 3600) {
-            UpdateLine(b, t, 5.0f, 13.0f, 200.0f, dt); steps++;
-            if (b.skyRate > prev + 1e-3f) slowing = false;
-            prev = b.skyRate;
-        }
-        printf("    90 s on the line: %.0f s ahead; coasting at %.1fx, back in step after %.0f s more\n", leadB, coast, steps * dt);
-        CHECK(leadB > 0.5f * DAY_LENGTH_SECONDS && coast > 1.5f && slowing && steps < 60 * 600);
-        for (int i = 0; i < 600; i++) UpdateLine(b, t, 5.0f, 13.0f, 200.0f, 1.0f);
-        CHECK(b.skyLead < 1.0f && fabsf(b.skyRate - 1.0f) < 0.02f);
-        t.turnSeconds = 3600.0f; t.pivotMaxSpeed = LineTuning().pivotMaxSpeed;
-    }
 }
 
 static float TestTextWidth(const std::string& s, float scale) { return (float)s.size() * 8.0f * scale / 0.65f; }
@@ -2086,7 +1837,6 @@ int main() {
     TestMusicLevel();
     TestGlowLight();
     TestSky();
-    TestTheLine();
     TestPulse();
     TestGrassCover();
     TestFliers();

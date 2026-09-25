@@ -13,7 +13,6 @@
 #include "pulse.h"
 #include "fliers.h"
 #include "worldfile.h"
-#include "theline.h"
 #include "essence.h"
 #include "profiler.h"
 #include "audio.h"
@@ -41,7 +40,7 @@ int g_keyBindings[ACT_COUNT] = {
     'W', 'S', 'A', 'D', VK_SPACE, MOUSE_LEFT, MOUSE_RIGHT, VK_ESCAPE, VK_F5, VK_F9, 'M', VK_SHIFT, VK_CONTROL, 'E'
 };
 BlockID g_hotbar[HOTBAR_SLOTS] = { BLOCK_STONE, BLOCK_DIRT, BLOCK_WOOD, BLOCK_LOG, BLOCK_SAND,
-                                   BLOCK_SANDSTONE, BLOCK_GLASS, BLOCK_MUSIC, BLOCK_TIMESTREAM, BLOCK_STONE_SLAB }; // = DefaultHotbar
+                                   BLOCK_SANDSTONE, BLOCK_GLASS, BLOCK_MUSIC, BLOCK_MAGMA_ROCK, BLOCK_STONE_SLAB }; // = DefaultHotbar
 float g_sensitivityMultX = 1.0f, g_sensitivityMultY = 1.0f;
 bool g_invertX = false, g_invertY = false;
 bool g_showFPS = false;
@@ -321,7 +320,7 @@ void LoadSettings() {
 
 bool SaveGame(World& w, Player& p, int slot) {
     std::vector<uint8_t> buf;
-    EncodeSave(p, g_dayTimeSeconds, g_worldGen, w, g_evictedChunks, SnapshotScheduledUpdates(), SnapshotLine(g_line), g_essence.Snapshot(), buf);
+    EncodeSave(p, g_dayTimeSeconds, g_worldGen, w, g_evictedChunks, SnapshotScheduledUpdates(), g_essence.Snapshot(), buf);
 
     // Crash-safe write sequence (Section 7.3): write to .tmp, only then
     // rotate the previous save to .bak and rename .tmp into place.
@@ -417,7 +416,6 @@ bool LoadGame(World& w, Player& p, int slot) {
     g_residentColumns.clear();
     ClearScheduledUpdates();
     RestoreScheduledUpdates(d.updates); // unknown kinds are dropped
-    RestoreLine(g_line, g_lineTuning, d.line); // empty history for pre-v7 saves
     g_fliers.Reset(d.gen.seed ^ (uint64_t)(d.dayTime * 1000.0f)); // fliers aren't saved: a fresh population
     g_pulse.Reset(); // pipes start empty; stores keep their counts (block data), harvesters are found as their chunks arrive
     g_essence.Restore(d.gen.seed, d.essence);  // nothing discovered for pre-v8 saves

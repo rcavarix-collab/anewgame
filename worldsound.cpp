@@ -4,7 +4,6 @@
 #include "audio.h"
 #include "soundscape.h"
 #include "music_synth.h"
-#include "theline.h"
 #include "world.h"
 #include <cmath>
 
@@ -16,8 +15,6 @@ static float g_prevVelY = 0.0f;
 static float g_lastX = 0.0f, g_lastZ = 0.0f;
 static bool g_haveLast = false;
 static float g_speed = 0.0f;           // smoothed horizontal speed
-static bool g_lineNear = false;
-static float g_lineCooldown = 0.0f;
 
 static SoundMaterial MaterialUnderFeet() {
     const Player& p = g_player;
@@ -29,7 +26,6 @@ void WorldSoundReset() {
     g_soundscape.Reset();
     g_wasOnGround = true; g_wasSliding = g_wasSprinting = false;
     g_prevVelY = 0; g_haveLast = false; g_speed = 0;
-    g_lineNear = false; g_lineCooldown = 0;
 }
 
 void WorldSoundTick(float dt) {
@@ -61,14 +57,6 @@ void WorldSoundTick(float dt) {
     if (p.onGround && !sliding && g_speed > 0.8f)
         gait = p.crouching ? SoundPalette::GAIT_CROUCH : (p.sprinting && g_speed > 5.0f) ? SoundPalette::GAIT_SPRINT : SoundPalette::GAIT_WALK;
     SetWorldGait(gait, MaterialUnderFeet());
-    // The Line passing through the player's cell (Timeslip).
-    g_lineCooldown -= dt;
-    bool near = g_line.distance < 0.8f && fabsf(p.y + 0.5f - g_line.lineY) < 2.5f;
-    if (near && !g_lineNear && g_lineCooldown <= 0) {
-        SoundCue c; c.id = SND_TIMESLIP; PlayWorldSound(c);
-        g_lineCooldown = 60.0f;
-    }
-    g_lineNear = near;
 
     g_wasOnGround = p.onGround; g_wasSliding = sliding; g_wasSprinting = sprinting;
     g_prevVelY = p.velY;

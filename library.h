@@ -104,6 +104,6 @@ static inline LibraryResult LibraryRelease(LibraryGesture& g, int slotUnder) {
 // The hotbar a fresh install starts with: a spread of what there is.
 static inline void DefaultHotbar(BlockID out[HOTBAR_SLOTS]) {
     const BlockID d[HOTBAR_SLOTS] = { BLOCK_STONE, BLOCK_DIRT, BLOCK_WOOD, BLOCK_LOG, BLOCK_SAND,
-                                      BLOCK_SANDSTONE, BLOCK_GLASS, BLOCK_MUSIC, BLOCK_TIMESTREAM, BLOCK_STONE_SLAB };
+                                      BLOCK_SANDSTONE, BLOCK_GLASS, BLOCK_MUSIC, BLOCK_MAGMA_ROCK, BLOCK_STONE_SLAB };
     for (int i = 0; i < HOTBAR_SLOTS; i++) out[i] = d[i];
 }

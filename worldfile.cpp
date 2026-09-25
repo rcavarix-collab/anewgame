@@ -11,8 +11,8 @@
 //     data (flag 2): u16 count, then (u16 cell, u32 length, bytes) each
 //   u32 updateCount, then per update (v6+):
 //     i32 x, y, z; u8 kind; u32 delay (ticks from now)
-//   The Line (v7+): u32 cellCount, then (i64 cell, f32 seconds) each;
-//     f64 angular momentum; f32 angle
+//   The Line (v7+; Voxistics only, written empty): u32 cellCount, then
+//     (f32 x, z, seconds) each (v7/v8: i64 cell, f32 seconds); f64; f32
 //   Essence (v8+): u32 zoneCount, u64 zone ids; u32 attractorCount, (i32 x, y, z) each
 //   u32 FNV-1a checksum of everything before it
 //
@@ -186,7 +186,7 @@ const char* DecodeResultText(DecodeResult r) {
 
 void EncodeSave(const Player& p, float dayTime, const WorldGenParams& gen,
                 const World& world, const ChunkMap& evicted, const std::vector<PendingUpdate>& updates,
-                const LineSaveData& line, const EssenceNetwork::SaveData& essence, std::vector<uint8_t>& out) {
+                const EssenceNetwork::SaveData& essence, std::vector<uint8_t>& out) {
     out.clear();
     Writer w{ out };
     w.U32(MAGIC);
@@ -209,11 +209,11 @@ void EncodeSave(const Player& p, float dayTime, const WorldGenParams& gen,
     w.U32((uint32_t)updates.size());
     for (const PendingUpdate& u : updates) { w.I32(u.x); w.I32(u.y); w.I32(u.z); w.U8(u.kind); w.U32(u.delay); }
 
-    // The Line (Part XVIII): only its history -- everything else re-derives.
-    w.U32((uint32_t)line.cells.size());
-    for (const LineCellSave& c : line.cells) { w.F32(c.x); w.F32(c.z); w.F32(c.seconds); }
-    w.F64(line.angMom);
-    w.F32(line.theta);
+    // The Line's section (v7+), written empty: The Line isn't in walkgrid,
+    // but the v9 layout keeps its slot until the fresh format (M0.9).
+    w.U32(0);
+    w.F64(0.0);
+    w.F32(0.0f);
 
     // Essence network (Part XIX): what's been discovered, and what was built.
     w.U32((uint32_t)essence.discoveredZones.size());
@@ -302,18 +302,12 @@ DecodeResult DecodeSave(const uint8_t* data, size_t size, SaveData& out) {
         if (out.version >= 7) {
             uint32_t n = r.U32();
             if (!r.ok || n > (r.size - r.pos) / 12) return DecodeResult::Corrupt;
-            out.line.cells.resize(n);
-            for (LineCellSave& c : out.line.cells) {
-                if (out.version >= 9) { c.x = r.F32(); c.z = r.F32(); c.seconds = r.F32(); continue; }
-                // v7/v8: a 32-block cell key and its seconds; the time is
-                // taken to have been spent at the cell's centre.
-                uint64_t key = r.U64();
-                int cx = (int)(uint32_t)(key >> 32), cz = (int)(uint32_t)(key & 0xFFFFFFFFu);
-                c.x = (cx + 0.5f) * 32.0f; c.z = (cz + 0.5f) * 32.0f;
-                c.seconds = r.F32();
+            // The Line's history: read past and dropped (not in walkgrid).
+            for (uint32_t i = 0; i < n; i++) {
+                if (out.version >= 9) { r.F32(); r.F32(); r.F32(); }
+                else { r.U64(); r.F32(); } // v7/v8: a cell key and its seconds
             }
-            out.line.angMom = r.F64();
-            out.line.theta = r.F32();
+            r.F64(); r.F32();
             if (!r.ok) return DecodeResult::Truncated;
         }
         if (out.version >= 8) {

@@ -39,7 +39,7 @@ extern ID3D11ShaderResourceView* g_iconSRV;     // hotbar icon strip, one cell p
 
 // World shader b0. spots/spotInfo: up to eight patches of grass glowing
 // where a flier fell (fliers.h): xyz centre + radius; hue, strength.
-struct CBData { Mat4 mvp; Mat4 lightViewProj; float params[4]; float lineA[4]; float lineB[4]; float glowGrid[4];
+struct CBData { Mat4 mvp; Mat4 lightViewProj; float params[4]; float glowDrive[4]; float glowGrid[4];
                 float spots[8][4]; float spotInfo[8][4]; };
 
 // UVs of block `id`'s cell in the icon strip.

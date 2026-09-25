@@ -24,7 +24,7 @@
 static const int GLOW_GRID = 64;       // cells per side (a 64-block cube)
 static const int GLOW_RADIUS = 8;      // how far a glowing block's light reaches, blocks
 
-struct GlowEmitter { int x, y, z; uint8_t channel; }; // world cell; 0 = music (R), 1 = timestream (G), 2 = ember (B)
+struct GlowEmitter { int x, y, z; uint8_t channel; }; // world cell; 0 = music (R), 2 = ember (B); G is unused
 
 struct GlowGrid {
     int ox = 0, oy = 0, oz = 0;        // world position of the grid's minimum corner (chunk-aligned)

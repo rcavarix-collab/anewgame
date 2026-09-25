@@ -14,7 +14,6 @@
 #pragma once
 
 #include "world.h"
-#include "theline.h"
 #include "essence.h"
 #include <cstdint>
 #include <string>
@@ -32,7 +31,6 @@ struct SaveData {
     WorldGenParams gen;
     ChunkMap chunks; // every chunk that differs from the generator, all flagged modified
     std::vector<PendingUpdate> updates; // scheduled block updates still pending (v6+)
-    LineSaveData line;                  // The Line's pivot history, spin and angle (v7+)
     EssenceNetwork::SaveData essence;   // discovered zones and built attractors (v8+)
 
     uint32_t version = 0; // of the file that was read
@@ -55,6 +53,6 @@ const char* DecodeResultText(DecodeResult r);
 // store. Unmodified chunks are skipped.
 void EncodeSave(const Player& p, float dayTime, const WorldGenParams& gen,
                 const World& w, const ChunkMap& evicted, const std::vector<PendingUpdate>& updates,
-                const LineSaveData& line, const EssenceNetwork::SaveData& essence, std::vector<uint8_t>& out);
+                const EssenceNetwork::SaveData& essence, std::vector<uint8_t>& out);
 
 DecodeResult DecodeSave(const uint8_t* data, size_t size, SaveData& out);

@@ -27,7 +27,6 @@ enum BlockID : uint8_t {
     BLOCK_STONE_FUNNEL,
     BLOCK_STONE_FUNNEL_HALF,
     BLOCK_MUSIC,
-    BLOCK_TIMESTREAM,
     BLOCK_ATTRACTOR,
     BLOCK_GLASS,
     BLOCK_CRYSTAL,
@@ -202,12 +201,11 @@ enum BlockShape : uint8_t {
 enum BlockGlow : uint8_t {
     GLOW_NONE = 0,
     GLOW_MUSIC,       // pulses with the music actually playing
-    GLOW_TIMESTREAM,  // lights while The Line passes through it (Part XVIII)
     GLOW_EMBER,       // a steady warm light source (magma); what glows on it is the texture's glow map (4.13)
     GLOW_PULSE,       // its texture's glow map breathes slowly (well under 1 Hz: flash-safe); casts no light
 };
 // Whether a glow kind lights the world around it (glowlight.h).
-static inline bool GlowCastsLight(BlockGlow g) { return g == GLOW_MUSIC || g == GLOW_TIMESTREAM || g == GLOW_EMBER; }
+static inline bool GlowCastsLight(BlockGlow g) { return g == GLOW_MUSIC || g == GLOW_EMBER; }
 
 // How placement sets the state byte.
 enum PlaceRule : uint8_t {
@@ -282,7 +280,6 @@ inline const BlockDef g_blocks[BLOCK_COUNT] = {
     { "stone_funnel_half",  true,  true,  true,  false, false, SHAPE_FUNNEL_HALF,  PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
     // Reactive blocks: plain cubes that light up on their own.
     { "music_block",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_MUSIC, false,       TEX("music_block", nullptr, nullptr, nullptr, nullptr) },
-    { "timestream_block",   true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_TIMESTREAM, false,  TEX("timestream_block", nullptr, nullptr, nullptr, nullptr) },
     // PROVISIONAL placeholder for player-built essence attractors (Part XIX):
     // a node on the essence map that draws from convergence zones in reach.
     { "essence_attractor",  true,  true,  true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("essence_attractor", nullptr, nullptr, nullptr, nullptr) },

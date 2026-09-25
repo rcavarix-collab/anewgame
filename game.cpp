@@ -17,7 +17,6 @@
 #include "pulse.h"
 #include "pulse_colours.h"
 #include "fliers.h"
-#include "theline.h"
 #include "essence.h"
 #include "essencemap.h"
 #include <cstdio>
@@ -686,21 +685,15 @@ void TakeScreenshotIfRequested() {
 
 void GameTick(float dt) {
     {
-        // Harvesters gather steadily, faster where The Line bends time.
+        // Harvesters gather steadily (time runs at its normal rate everywhere).
         ProfScope prof(PROF_PULSE);
-        g_pulse.Tick(g_world, g_pulseTuning, dt, [](int x, int y, int z) {
-            return LineTimeRateAt(g_line, g_lineTuning, x + 0.5f, y + 0.5f, z + 0.5f);
-        });
-        FeedLine(g_line, g_pulse.TakeDiffused()); // diffusers widen the line's band
+        g_pulse.Tick(g_world, g_pulseTuning, dt, [](int, int, int) { return 1.0f; });
+        g_pulse.TakeDiffused(); // diffusers once fed The Line; what they spend now simply goes
     }
     {
-        // Fliers age by the local rate of time: The Line burns their day away.
         ProfScope prof(PROF_UPDATES);
-        g_fliers.Tick(g_world, g_flierTuning, g_player.x, g_player.y, g_player.z, dt, [](float x, float y, float z) {
-            return LineTimeRateAt(g_line, g_lineTuning, x, y, z);
-        });
+        g_fliers.Tick(g_world, g_flierTuning, g_player.x, g_player.y, g_player.z, dt, [](float, float, float) { return 1.0f; });
     }
-    UpdateLine(g_line, g_lineTuning, g_player.x, g_player.y, g_player.z, dt);
     g_essence.Update(g_player.x, g_player.z); // discovery (Part XIX)
 }
 
@@ -837,8 +830,7 @@ static void ResetWorldForNewGame() {
     g_world = World();
     g_player = Player();
     g_worldGen = DefaultNewWorldGen(); // TerrainHeight below reads it
-    ResetLine(g_line); // a new world has no history to pivot around
-    g_pulse.Reset();   // ...and nothing in its pipes
+    g_pulse.Reset();   // nothing in its pipes
     g_fliers.Reset(g_worldGen.seed); // a fresh population, of every age
     g_essence.Reset(g_worldGen.seed); // nothing discovered yet
     // Start standing on the surface (terrain height is a pure function
@@ -945,11 +937,10 @@ static MapCamera g_mapCamera;
 static bool g_mapDragging = false;
 static int g_mapDragX = 0, g_mapDragY = 0;
 static void OpenMap() {
-    // Opens on The Line's pivot (the player's favourite place) at a
-    // zoom showing a few hundred blocks around it (the view origin only;
-    // no node moves).
-    g_mapCamera.centerX = g_line.pivotX;
-    g_mapCamera.centerZ = g_line.pivotZ;
+    // Opens on the player at a zoom showing a few hundred blocks around
+    // them (the view origin only; no node moves).
+    g_mapCamera.centerX = g_player.x;
+    g_mapCamera.centerZ = g_player.z;
     g_mapCamera.scale = 0.5f;
     g_essence.RefreshRoutes();
     g_menuScreen = MenuScreen::Map;
@@ -1263,7 +1254,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         // F3 toggles the profiler overlay (Part XVI), F11 fullscreen --
         // unless the player has bound that key to an action, in which case
         // the action wins and the toggle stays reachable from Display settings.
-        if ((wParam == VK_F2 || wParam == VK_F3 || wParam == VK_F7 || wParam == VK_F8 || wParam == VK_F11) && !(lParam & (1 << 30))) {
+        if ((wParam == VK_F2 || wParam == VK_F3 || wParam == VK_F8 || wParam == VK_F11) && !(lParam & (1 << 30))) {
             bool bound = false;
             for (int a = 0; a < ACT_COUNT; a++) if (g_keyBindings[a] == (int)wParam) bound = true;
             if (!bound && wParam == VK_F3 && (GetKeyState(VK_CONTROL) & 0x8000)) { // Ctrl+F3: a 30 s performance report
@@ -1276,7 +1267,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (!bound && wParam == VK_F2) { g_screenshotRequested = true; return 0; } // taken at the end of this frame
             if (!bound && wParam == VK_F3) { g_showProfiler = !g_showProfiler; SaveSettings(); return 0; }
             if (!bound && wParam == VK_F11) { ToggleFullscreenSetting(); return 0; }
-            if (!bound && wParam == VK_F7) { g_lineDebug = !g_lineDebug; return 0; } // The Line's test marker (not saved)
             if (!bound && wParam == VK_F8) {                                          // debug: next time of day
                 if (g_gameState == GameState::InGame && g_menuScreen == MenuScreen::None) JumpToNextTimeOfDay();
                 return 0;
@@ -1639,7 +1629,7 @@ void RenderUIPass() {
         float animTime = (float)(GetTickCount64() % 1000000ull) / 1000.0f;
         MapDrawList dl;
         BuildMapDrawList(g_essence, g_mapCamera, MapTuning(), animTime,
-                         g_player.x, g_player.z, g_player.yaw, g_line.pivotX, g_line.pivotZ,
+                         g_player.x, g_player.z, g_player.yaw, g_player.x, g_player.z,
                          UITextWidth, UITextHeight(0.65f), dl);
         float wu = 0.5f * UI_WHITE_H / UIAtlasWidth(), wv = 0.5f * UI_WHITE_H / UIAtlasHeight();
         for (size_t i = 0; i + 5 < dl.tris.size(); i += 6) {
@@ -1866,26 +1856,6 @@ void RenderUIPass() {
             UIDrawText(glyphVerts, l, x, y, scale, 0.85f, 1.0f, 0.85f, 1.0f);
             y += lineH;
         }
-    }
-
-    // The Line's debug readout (F7), top right: a testing aid, not UI.
-    if (g_lineDebug && g_gameState == GameState::InGame) {
-        const LineState& L = g_line;
-        char buf[96];
-        std::vector<std::string> lines;
-        lines.push_back("THE LINE (F7 DEBUG)");
-        snprintf(buf, sizeof(buf), "DISTANCE %6.1f  (%4.1f PER DECADE)", L.distance, L.blocksPerDecade); lines.push_back(buf);
-        snprintf(buf, sizeof(buf), "INTENSITY %.4f", L.intensity); lines.push_back(buf);
-        snprintf(buf, sizeof(buf), "SPIN %s  ALIGN %+.2f", L.spin > 0 ? "COUNTERCLOCKWISE" : "CLOCKWISE", L.alignment); lines.push_back(buf);
-        snprintf(buf, sizeof(buf), "PIVOT %.0f, %.0f  ANGLE %.0f", L.pivotX, L.pivotZ, L.theta * 57.29578f); lines.push_back(buf);
-        snprintf(buf, sizeof(buf), "SKY CLOCK X%.2f  %.0f S AHEAD", L.skyRate, L.skyLead); lines.push_back(buf);
-        snprintf(buf, sizeof(buf), "BAND +-%.1f  FED %.1f/S", L.halfHeight, L.feedRate); lines.push_back(buf);
-        const float scale = 0.65f, lineH = UITextHeight(scale);
-        float w = 0;
-        for (const std::string& l : lines) w = std::max(w, UITextWidth(l, scale));
-        float x = g_screenW - w - 12.0f, y = 12.0f;
-        UIDrawRect(glyphVerts, x - 6, y - 4, x + w + 6, y + lines.size() * lineH + 4, 0, 0, 0, 0.6f);
-        for (const std::string& l : lines) { UIDrawText(glyphVerts, l, x, y, scale, 0.75f, 0.95f, 1.0f, 1.0f); y += lineH; }
     }
 
     // The first-steps tutorial: one line, top centre, over play only.

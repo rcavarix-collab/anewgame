@@ -149,6 +149,10 @@ void RebuildDirtyChunks(World& w, int camCx, int camCy, int camCz);
 void GpuFrameBegin();
 void GpuMarkUIDone(); // after the UI pass
 void GpuFrameEnd();   // before Present
+// The frame as drawn so far (world and UI), as w x h BGRA with row 0 at the
+// top -- for screenshots (F2). Waits for the GPU to finish the frame, so
+// it's only ever called when the key is pressed. False if it couldn't.
+bool ReadBackbuffer(std::vector<uint8_t>& bgra, int& w, int& h);
 
 // ---- View-frustum culling (Section 4.2-perf) ----
 //

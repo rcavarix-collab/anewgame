@@ -1,9 +1,10 @@
 // textures.cpp
 //
-// The UI font atlas, drawn with GDI+ at load time (it needs a real font
-// rasteriser) and copied out as a raw BGRA buffer for render.cpp to
-// upload once. Block textures live in blocktex.cpp. None of this touches
-// the frame loop.
+// Everything that needs GDI+, kept in this one file: the UI font atlas,
+// drawn at load time (it needs a real font rasteriser) and copied out as a
+// raw BGRA buffer for render.cpp to upload once; and PNG encoding for
+// screenshots (F2), which runs only when the key is pressed. Block
+// textures live in blocktex.cpp. None of this touches the frame loop.
 //
 // Shares its contract (FreeGeneratedPixels / GenerateUIAtlas) with
 // render.cpp by extern "C" declaration rather than a header, keeping
@@ -107,4 +108,40 @@ extern "C" bool GenerateUIAtlas(
     if (!ok) return false;
     *outPixelsBGRA = pixels;
     return true;
+}
+
+// Writes a w x h BGRA image (row 0 at the top, alpha ignored) to `path`
+// as a PNG. Screenshots only (F2): a few tens of milliseconds, on the
+// frame the key was pressed, never otherwise.
+extern "C" bool SavePngBGRA(const wchar_t* path, const uint8_t* bgra, int w, int h)
+{
+    if (!path || !bgra || w <= 0 || h <= 0) return false;
+    ULONG_PTR token;
+    GdiplusStartupInput startupInput;
+    if (GdiplusStartup(&token, &startupInput, nullptr) != Ok) return false;
+
+    bool ok = false;
+    {
+        // The PNG encoder's class ID, looked up by MIME type -- GDI+ has no
+        // constant for it.
+        CLSID pngClsid = {};
+        bool found = false;
+        UINT count = 0, bytes = 0;
+        if (GetImageEncodersSize(&count, &bytes) == Ok && bytes > 0) {
+            ImageCodecInfo* codecs = (ImageCodecInfo*)malloc(bytes);
+            if (codecs && GetImageEncoders(count, bytes, codecs) == Ok) {
+                for (UINT i = 0; i < count; i++)
+                    if (wcscmp(codecs[i].MimeType, L"image/png") == 0) { pngClsid = codecs[i].Clsid; found = true; break; }
+            }
+            free(codecs);
+        }
+        if (found) {
+            // 32bppRGB: the fourth byte is ignored, so the image is opaque
+            // whatever the backbuffer's alpha held (the bloom glow mask).
+            Bitmap bmp(w, h, w * 4, PixelFormat32bppRGB, const_cast<BYTE*>(bgra));
+            ok = bmp.GetLastStatus() == Ok && bmp.Save(path, &pngClsid, nullptr) == Ok;
+        }
+    }
+    GdiplusShutdown(token);
+    return ok;
 }

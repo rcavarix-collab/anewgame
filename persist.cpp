@@ -430,6 +430,24 @@ bool LoadGame(World& w, Player& p, int slot) {
     return true;
 }
 
+std::filesystem::path NextScreenshotPath() {
+    std::filesystem::path base = GetSaveDirectory();
+    if (base.empty()) return base;
+    std::filesystem::path dir = EnsureDirectoryBulletproof(base / L"Screenshots", "NextScreenshotPath");
+    if (dir.empty()) return dir;
+    // GetLocalTime rather than the CRT clock call, which is rejected by the
+    // owner's Visual Studio build (SDL checks, tools/check_msvc.sh).
+    SYSTEMTIME t; GetLocalTime(&t);
+    wchar_t stem[64];
+    swprintf(stem, 64, L"shot_%04u-%02u-%02u_%02u-%02u-%02u", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+    // Two shots in the same second get _2, _3, ... rather than overwriting.
+    std::error_code ec;
+    std::filesystem::path path = dir / (std::wstring(stem) + L".png");
+    for (int n = 2; std::filesystem::exists(path, ec) && n < 100; n++)
+        path = dir / (std::wstring(stem) + L"_" + std::to_wstring(n) + L".png");
+    return path;
+}
+
 std::string WriteTextToSaveFolder(const char* fileName, const std::string& text) {
     std::filesystem::path dir = GetSaveDirectory();
     std::filesystem::path path = dir.empty() ? std::filesystem::path(fileName) : dir / fileName;

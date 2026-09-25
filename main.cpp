@@ -279,6 +279,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
             RenderUIPass();
         }
         GpuMarkUIDone();
+        TakeScreenshotIfRequested(); // F2: the finished frame, UI included
         GpuFrameEnd();
 
         {

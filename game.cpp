@@ -666,6 +666,24 @@ static std::string PerfReportHeader() {
     return b + ProfBootSummary(true) + "\n";
 }
 
+// ---- Screenshots (F2) ----
+// Asked for by the key, taken once the frame is fully drawn (main.cpp calls
+// TakeScreenshotIfRequested after the UI pass), so the shot is exactly what
+// was on screen. The toast is drawn from the next frame on, so it never
+// appears in the shot it announces.
+static bool g_screenshotRequested = false;
+extern "C" bool SavePngBGRA(const wchar_t* path, const uint8_t* bgra, int w, int h); // textures.cpp (GDI+)
+
+void TakeScreenshotIfRequested() {
+    if (!g_screenshotRequested) return;
+    g_screenshotRequested = false;
+    static std::vector<uint8_t> pixels;
+    int w = 0, h = 0;
+    std::filesystem::path path = NextScreenshotPath();
+    bool ok = !path.empty() && ReadBackbuffer(pixels, w, h) && SavePngBGRA(path.c_str(), pixels.data(), w, h);
+    ShowToast(ok ? "SCREENSHOT SAVED" : "SCREENSHOT FAILED", 1.5f);
+}
+
 void PollPerfCapture() {
     std::string text;
     if (!ProfTakeCaptureReport(text)) return;
@@ -1225,7 +1243,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         // F3 toggles the profiler overlay (Part XVI), F11 fullscreen --
         // unless the player has bound that key to an action, in which case
         // the action wins and the toggle stays reachable from Display settings.
-        if ((wParam == VK_F3 || wParam == VK_F7 || wParam == VK_F8 || wParam == VK_F11) && !(lParam & (1 << 30))) {
+        if ((wParam == VK_F2 || wParam == VK_F3 || wParam == VK_F7 || wParam == VK_F8 || wParam == VK_F11) && !(lParam & (1 << 30))) {
             bool bound = false;
             for (int a = 0; a < ACT_COUNT; a++) if (g_keyBindings[a] == (int)wParam) bound = true;
             if (!bound && wParam == VK_F3 && (GetKeyState(VK_CONTROL) & 0x8000)) { // Ctrl+F3: a 30 s performance report
@@ -1235,6 +1253,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 }
                 return 0;
             }
+            if (!bound && wParam == VK_F2) { g_screenshotRequested = true; return 0; } // taken at the end of this frame
             if (!bound && wParam == VK_F3) { g_showProfiler = !g_showProfiler; SaveSettings(); return 0; }
             if (!bound && wParam == VK_F11) { ToggleFullscreenSetting(); return 0; }
             if (!bound && wParam == VK_F7) { g_lineDebug = !g_lineDebug; return 0; } // The Line's test marker (not saved)

@@ -1061,6 +1061,46 @@ void GpuFrameEnd() {
     g_gpuFrame = (g_gpuFrame + 1) % 3;
 }
 
+bool ReadBackbuffer(std::vector<uint8_t>& bgra, int& w, int& h) {
+    ID3D11Texture2D* back = nullptr;
+    if (FAILED(g_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&back)) || !back) return false;
+    D3D11_TEXTURE2D_DESC d;
+    back->GetDesc(&d);
+    // A CPU-readable copy, made on demand rather than kept: screenshots
+    // are rare, and a resident full-screen staging texture would cost
+    // video memory every frame for nothing.
+    d.Usage = D3D11_USAGE_STAGING;
+    d.BindFlags = 0;
+    d.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    d.MiscFlags = 0;
+    ID3D11Texture2D* staging = nullptr;
+    bool ok = SUCCEEDED(g_device->CreateTexture2D(&d, nullptr, &staging)) && staging;
+    if (ok) {
+        g_context->CopyResource(staging, back);
+        D3D11_MAPPED_SUBRESOURCE m;
+        ok = SUCCEEDED(g_context->Map(staging, 0, D3D11_MAP_READ, 0, &m));
+        if (ok) {
+            w = (int)d.Width; h = (int)d.Height;
+            bgra.resize((size_t)w * h * 4);
+            // The backbuffer is RGBA (InitD3D); the PNG encoder wants BGRA.
+            for (int y = 0; y < h; y++) {
+                const uint8_t* src = (const uint8_t*)m.pData + (size_t)y * m.RowPitch;
+                uint8_t* dst = bgra.data() + (size_t)y * w * 4;
+                for (int x = 0; x < w; x++) {
+                    dst[x * 4 + 0] = src[x * 4 + 2];
+                    dst[x * 4 + 1] = src[x * 4 + 1];
+                    dst[x * 4 + 2] = src[x * 4 + 0];
+                    dst[x * 4 + 3] = 255;
+                }
+            }
+            g_context->Unmap(staging, 0);
+        }
+        staging->Release();
+    }
+    back->Release();
+    return ok;
+}
+
 void RenderEmptyScene() {
     float black[4] = { 0, 0, 0, 1 };
     g_context->OMSetRenderTargets(1, &g_rtv, g_dsv);

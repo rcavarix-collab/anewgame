@@ -61,6 +61,10 @@ void TickAutosave(float dt);
 bool IsInGame();
 // Once per frame: saves a finished performance capture (Ctrl+F3).
 void PollPerfCapture();
+// Screenshots (F2): saves the finished frame as a PNG in the save folder's
+// Screenshots folder if F2 was pressed since the last call. Once per frame,
+// after the UI pass and before Present. Only acts when asked; local file only.
+void TakeScreenshotIfRequested();
 
 // A transient centred message (save/load confirmations, startup problems).
 void ShowToast(const std::string& message, float seconds);

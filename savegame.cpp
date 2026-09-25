@@ -54,13 +54,13 @@ bool LoadGame(World& w, Player& p, int slot) {
     DecodeResult res = DecodeSave(buf.data(), buf.size(), d);
     if (res != DecodeResult::Ok) {
         char msg[160];
-        snprintf(msg, sizeof(msg), "LoadGame: %s, aborting load\n", DecodeResultText(res));
+        snprintf(msg, sizeof(msg), "LoadGame: %s, aborting load\n", DecodeResultText(res)); // D26: not player text (debugger output)
         OutputDebugStringA(msg);
         return false;
     }
     for (const std::string& name : d.unknownBlockNames) {
         char msg[256];
-        snprintf(msg, sizeof(msg), "LoadGame: unknown block name '%s', mapping to air\n", name.c_str());
+        snprintf(msg, sizeof(msg), "LoadGame: unknown block name '%s', mapping to air\n", name.c_str()); // D26: not player text (debugger output)
         OutputDebugStringA(msg);
     }
 

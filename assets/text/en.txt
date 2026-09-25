@@ -1,0 +1,164 @@
+# walkgrid: every player-facing word (D26). English, the base language.
+#
+# One entry per line: key = text. A translation is a copy of this file
+# named for its language (e.g. fr.txt) with the texts changed; any key it
+# leaves out shows in English. {0}, {1}... are filled in by the game and
+# may move anywhere in the text. \n is a line break. Keep words few and
+# plain (show, don't tell). The game's text is capitals; a language
+# without capitals simply writes its own letters.
+#
+# The font to draw this language with: an installed system font, monospace.
+font = Consolas
+
+# The window and the title screen
+window.title = walkgrid
+title.name = WALKGRID
+title.new_game = NEW GAME
+title.load_game = LOAD GAME
+title.options = OPTIONS
+title.quit = QUIT
+
+# Choosing a world slot
+slots.title_new = NEW GAME - CHOOSE A SLOT
+slots.title_load = LOAD GAME - CHOOSE A SLOT
+slots.world = WORLD {0}
+slots.overwrite = {0} - CLICK AGAIN TO OVERWRITE
+slots.saved = {0} - SAVED
+slots.empty = {0} - EMPTY
+slots.current = {0} (CURRENT)
+
+# Pause
+pause.title = PAUSED
+pause.resume = RESUME
+pause.options = OPTIONS
+pause.save = SAVE GAME
+pause.load = LOAD GAME
+pause.quit_to_title = QUIT TO TITLE
+pause.quit = QUIT
+
+# Words every menu uses
+common.back = BACK
+common.reset = RESET TO DEFAULT
+common.on = ON
+common.off = OFF
+common.unavailable = UNAVAILABLE
+# A toggle row: {0} is the setting, {1} its state (ON / OFF / UNAVAILABLE).
+common.toggle = {0}: {1}
+
+# Options
+options.title = OPTIONS
+options.look = LOOK SETTINGS
+options.graphics = GRAPHICS SETTINGS
+options.display = DISPLAY SETTINGS
+options.audio = AUDIO SETTINGS
+options.access = ACCESSIBILITY
+options.keys = KEYBINDINGS
+
+look.title = LOOK SETTINGS
+look.invert_x = INVERT X LOOK
+look.invert_y = INVERT Y LOOK
+
+graphics.title = GRAPHICS SETTINGS
+graphics.vsync = VSYNC
+graphics.shadows = SUN SHADOWS
+graphics.outlines = EDGE OUTLINES
+graphics.ssao = SCREEN-SPACE AO
+graphics.bloom = GLOW (BLOOM)
+
+display.title = DISPLAY SETTINGS
+display.show_fps = SHOW FPS COUNTER
+display.profiler = PROFILER (F3)
+display.fullscreen = FULLSCREEN (F11)
+
+audio.title = AUDIO SETTINGS
+
+access.title = ACCESSIBILITY
+access.toggle_move = TOGGLE-TO-MOVE
+access.high_contrast = HIGH-CONTRAST UI
+access.mono = MONO AUDIO
+
+# Sliders: {0} is the value.
+slider.sens_x = X SENSITIVITY: {0}x
+slider.sens_y = Y SENSITIVITY: {0}x
+slider.render_distance = RENDER DISTANCE: {0} CHUNKS
+slider.fine_detail = FINE DETAIL: {0} CHUNKS
+slider.fine_detail_off = FINE DETAIL: OFF
+slider.frame_limit = FRAME LIMIT (VSYNC OFF): {0} FPS
+slider.master_volume = MASTER VOLUME: {0}%
+slider.music_volume = MUSIC VOLUME: {0}%
+slider.world_volume = WORLD SOUNDS: {0}%
+slider.fov = FIELD OF VIEW: {0} DEG
+slider.music_intensity = MUSIC INTENSITY: {0}%
+
+# Keybindings: {0} is the action, {1} the input.
+keys.title = KEYBINDINGS
+keys.hint = CLICK A ROW, THEN PRESS THE NEW INPUT
+keys.row = {0}: [{1}]
+keys.waiting = {0}: PRESS INPUT (ESC CANCELS)
+keys.waiting_menu = {0}: PRESS INPUT (ESC = ESCAPE)
+action.forward = MOVE FORWARD
+action.back = MOVE BACK
+action.left = MOVE LEFT
+action.right = MOVE RIGHT
+action.jump = JUMP
+action.break = BREAK
+action.place = PLACE
+action.menu = PAUSE MENU
+action.save = QUICK SAVE
+action.load = QUICK LOAD
+action.sprint = SPRINT
+action.crouch = CROUCH / SLIDE
+action.library = MATERIALS
+input.mouse_left = MOUSE LEFT
+input.mouse_right = MOUSE RIGHT
+input.mouse_middle = MOUSE MIDDLE
+input.unknown = ?
+
+# In play
+hud.click_to_play = CLICK TO PLAY
+hud.toggle_move = TOGGLE MOVE
+hud.fps = FPS: {0}
+hud.recording = RECORDING PERFORMANCE {0}
+
+# The materials library
+library.title = MATERIALS
+library.rows = ROWS {0}-{1} OF {2} (WHEEL)
+library.hint = CLICK A MATERIAL TO USE IT - DRAG IT ONTO A SLOT TO KEEP IT
+
+# Material names (by their registry name, blocks.h)
+material.air = AIR
+material.foundation = FOUNDATION
+material.meadow_grass = MEADOW GRASS
+material.dry_turf = DRY TURF
+material.moss = MOSS
+material.dirt = DIRT
+material.loam = LOAM
+material.clay = CLAY
+material.sand = SAND
+material.gravel = GRAVEL
+material.stone = STONE
+material.slate = SLATE
+material.sandstone = SANDSTONE
+material.snow = SNOW
+
+# Short messages
+toast.saved = GAME SAVED
+toast.save_failed = SAVE FAILED
+toast.autosaved = AUTOSAVED
+toast.autosave_failed = AUTOSAVE FAILED
+toast.loaded = GAME LOADED
+toast.load_failed = LOAD FAILED
+toast.load_corrupt = LOAD FAILED (DAMAGED SAVE?)
+toast.empty_slot = EMPTY SLOT
+toast.screenshot = SCREENSHOT SAVED: {0}
+toast.screenshot_failed = SCREENSHOT FAILED
+toast.report = PERF REPORT SAVED: {0}
+toast.report_failed = PERF REPORT COULD NOT BE SAVED
+toast.recording = RECORDING PERFORMANCE FOR 30 S - PLAY AS USUAL
+
+# Start-up problems
+startup.texture_problem = 1 TEXTURE PROBLEM - SEE ASSETS\TEXTURES\_ERRORS.TXT
+startup.texture_problems = {0} TEXTURE PROBLEMS - SEE ASSETS\TEXTURES\_ERRORS.TXT
+startup.effects_failed = SOME GRAPHICS EFFECTS FAILED TO LOAD - SEE SHADER_ERRORS.TXT
+startup.join = {0}  /  {1}
+startup.no_graphics = walkgrid can't start: it needs a graphics card with feature level 11.0 support (about 2010 or newer).

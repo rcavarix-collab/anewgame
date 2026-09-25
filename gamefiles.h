@@ -20,6 +20,10 @@
 std::filesystem::path GameDataDirectory();
 // A named folder inside it (created if need be), or empty.
 std::filesystem::path GameSubdirectory(const wchar_t* name);
+// The game's shipped files of one kind: <root>/assets/<kind>, searched for
+// from the working directory, then the exe's folder and up to three above
+// it (a Visual Studio build runs from x64\Release). Empty if not found.
+std::filesystem::path FindAssetDirectory(const wchar_t* kind);
 // Where compiled shaders are cached between runs (render.cpp; Part XVI).
 std::filesystem::path ShaderCacheDirectory();
 // A fresh file name for a screenshot (F2): Screenshots\shot_<date>_<time>.png.

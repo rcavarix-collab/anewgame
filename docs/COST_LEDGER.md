@@ -39,5 +39,6 @@ Every system, what it's allowed to cost (its budget), and what it was last measu
 | Process memory | ≤ 1.5 GB | Awaiting |
 | GPU memory | ≤ 1 GB | Awaiting |
 | Start-up to first frame | ≤ the M0 baseline | 0.99 s (cold shader cache): this is the baseline |
+| UI font atlas (M1.10) | — | 12 rows of glyphs for English (was 6): about 2.6 MB of video memory (was 1.3 MB); its bake is inside TEXTURES in the boot timeline. Awaiting a report |
 
 The per-system numbers above are the first split of the totals in FOUNDATIONS 4. The M0 baseline will show where they're wrong, and they'll be adjusted then (logged).

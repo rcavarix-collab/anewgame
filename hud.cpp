@@ -25,7 +25,7 @@ int UIBandForScale(float scale) {
     return best;
 }
 
-// Glyph cell `cell` (code-32) of font band `band`. The tiny inset only
+// Glyph cell `cell` (render.h: UIGlyphCell) of font band `band`. The tiny inset only
 // keeps float error from ever flooring into the next cell; at 1:1 with
 // point sampling every screen pixel lands on a texel centre anyway.
 void UIGlyphRect(const UIFontBand& fb, int cell, float& u0, float& v0, float& u1, float& v1) {
@@ -35,11 +35,6 @@ void UIGlyphRect(const UIFontBand& fb, int cell, float& u0, float& v0, float& u1
     const float e = 1.0f / 64.0f;
     u0 = (x + e) / texW;               u1 = (x + fb.cellW - e) / texW;
     v0 = (y + e) / texH;               v1 = (y + fb.cellH - e) / texH;
-}
-
-int UICharCell(char c) {
-    if (c < 32 || c > 126) return -1;
-    return (int)c - 32;
 }
 
 void UIAddQuad(std::vector<UIVertex>& v, float x0, float y0, float x1, float y1,
@@ -63,8 +58,22 @@ void UIDrawRect(std::vector<UIVertex>& v, float x0, float y0, float x1, float y1
     UIAddQuad(v, x0, y0, x1, y1, u, vv, u, vv, r, g, b, a);
 }
 
+// Text is UTF-8 (the string table, D26): one advance per code point.
 float UITextWidth(const std::string& text, float scale) {
-    return (float)(text.size() * UIGetFontBand(UIBandForScale(scale)).advance);
+    size_t n = 0;
+    for (size_t i = 0; i < text.size();) { DecodeUtf8(text, i); n++; }
+    return (float)(n * UIGetFontBand(UIBandForScale(scale)).advance);
+}
+// The largest scale, no bigger than `scale`, at which `text` fits in
+// `maxW` pixels -- a translation longer than the English shrinks to fit
+// its button rather than spilling out (down to the smallest band).
+float UIFitScale(const std::string& text, float scale, float maxW) {
+    while (scale > 0.5f && UITextWidth(text, scale) > maxW) {
+        int band = UIBandForScale(scale);
+        if (band == 0) break;
+        scale = UI_BAND_CELL_H[band - 1] / 28.0f;
+    }
+    return scale;
 }
 float UITextHeight(float scale) {
     return (float)UIGetFontBand(UIBandForScale(scale)).cellH;
@@ -78,8 +87,9 @@ void UIDrawText(std::vector<UIVertex>& v, const std::string& text, float x, floa
                         float scale, float r, float g, float b, float a) {
     UIFontBand fb = UIGetFontBand(UIBandForScale(scale));
     float curX = floorf(x + 0.5f) - UI_GLYPH_PAD, top = floorf(y + 0.5f);
-    for (char c : text) {
-        int cell = UICharCell(c);
+    for (size_t i = 0; i < text.size();) {
+        uint32_t cp = DecodeUtf8(text, i);
+        int cell = cp == ' ' || cp == 0xA0 ? 0 : UIGlyphCell(cp);
         if (cell > 0) { // space (cell 0) has no ink
             float u0, v0, u1, v1;
             UIGlyphRect(fb, cell, u0, v0, u1, v1);
@@ -156,15 +166,14 @@ void RenderUIPass() {
     const float hbY0 = HotbarSlotRect(g_screenW, g_screenH, 0).y0;
 
     if (!menuIsOpen) {
-        std::string name = g_blocks[g_hotbar[g_player.hotbarIndex]].name;
-        for (char& ch : name) ch = ch == '_' ? ' ' : (char)toupper((unsigned char)ch); // "stone_slab" -> "STONE SLAB"
+        const std::string& name = Str(("material." + std::string(g_blocks[g_hotbar[g_player.hotbarIndex]].name)).c_str());
         float scale = 0.8f;
         float tw = UITextWidth(name, scale);
         UIDrawText(glyphVerts, name, (g_screenW - tw) / 2.0f, hbY0 - 26.0f, scale, 1, 1, 1, 0.9f);
     }
 
     if (!g_mouseCaptured && !menuIsOpen) {
-        std::string hint = "CLICK TO PLAY";
+        const std::string& hint = Str("hud.click_to_play");
         float scale = 1.3f;
         float tw = UITextWidth(hint, scale);
         UIDrawText(glyphVerts, hint, (g_screenW - tw) / 2.0f, g_screenH * 0.42f, scale, 1, 1, 1, 0.9f);
@@ -182,7 +191,7 @@ void RenderUIPass() {
             { ACT_FORWARD, "^", 1, 0 }, { ACT_LEFT, "<", 0, 1 },
             { ACT_RIGHT, ">", 2, 1 },   { ACT_BACK, "v", 1, 2 },
         };
-        UIDrawText(glyphVerts, "TOGGLE MOVE", x0, yTop - 20.0f, 0.65f, 1, 1, 1, 0.75f);
+        UIDrawText(glyphVerts, Str("hud.toggle_move"), x0, yTop - 20.0f, 0.65f, 1, 1, 1, 0.75f);
         for (const Cell& c : cells) {
             float cx0 = x0 + c.cx * (S + G), cy0 = yTop + c.cy * (S + G);
             bool on = g_moveToggleLatch[c.act];
@@ -227,6 +236,7 @@ void RenderUIPass() {
         if (pressed) UIDrawRect(glyphVerts, r.x0, capY0, r.x1, capY0 + 2.0f, shadow, shadow, shadow + 0.02f, 1);         // pressed in: shadow along the top
         else UIDrawRect(glyphVerts, r.x0, capY0, r.x1, capY0 + 2.0f, lip, lip, lip + (g_highContrastUI ? 0.0f : 0.05f), 1); // raised: a lit top edge
         UIDrawRect(glyphVerts, r.x0, capY1 - 1.0f, r.x1, capY1, base + 0.05f, base + 0.05f, base + 0.08f, 1);          // the cap's lower edge
+        scale = UIFitScale(label, scale, (r.x1 - r.x0) - 12.0f);
         float lw = UITextWidth(label, scale);
         float tr = g_highContrastUI && (hover || pressed) ? 0.0f : 1.0f;
         UIDrawText(glyphVerts, label, r.x0 + ((r.x1 - r.x0) - lw) / 2.0f, capY0 + (capY1 - capY0 - UITextHeight(scale)) / 2.0f, scale, tr, tr, tr, 1);
@@ -267,7 +277,12 @@ void RenderUIPass() {
         }
         UIDrawRect(glyphVerts, bx - R * 0.45f, cy - R * 0.7f, bx - R * 0.05f, cy - R * 0.35f, 1, 1, hc ? 0.6f : 0.95f, hc ? 0.9f : 0.55f); // a glint
     };
-    auto drawPanelTitle = [&](const UIRect& panel, float panelW, const char* title, float scale) {
+    // A settings toggle's row: "{setting}: {ON / OFF / UNAVAILABLE}".
+    auto toggle = [](const char* key, bool on, bool available = true) {
+        return StrF("common.toggle", { Str(key), Str(!available ? "common.unavailable" : on ? "common.on" : "common.off") });
+    };
+    auto drawPanelTitle = [&](const UIRect& panel, float panelW, const std::string& title, float scale) {
+        scale = UIFitScale(title, scale, panelW - 24.0f);
         float tw = UITextWidth(title, scale);
         UIDrawText(glyphVerts, title, panel.x0 + (panelW - tw) / 2.0f, panel.y0 + 16.0f, scale, 1, 1, 1, 1);
     };
@@ -299,7 +314,7 @@ void RenderUIPass() {
         float hotbarTop = HotbarSlotRect(g_screenW, g_screenH, 0).y0 - 8.0f;
         UIDrawRect(glyphVerts, 0, 0, (float)g_screenW, hotbarTop, 0, 0, 0, 0.45f);
         UIDrawRect(glyphVerts, L.panel.x0, L.panel.y0, L.panel.x1, L.panel.y1, 0.10f, 0.10f, 0.13f, 0.95f);
-        UIDrawText(glyphVerts, "BLOCK LIBRARY", L.panel.x0 + 16, L.panel.y0 + 12, 1.0f, 0.9f, 0.9f, 1.0f, 1.0f);
+        UIDrawText(glyphVerts, Str("library.title"), L.panel.x0 + 16, L.panel.y0 + 12, 1.0f, 0.9f, 0.9f, 1.0f, 1.0f);
         int hover = LibraryCellAt(L, count, g_libScroll, (float)g_mouseX, (float)g_mouseY);
         for (int i = g_libScroll * L.columns; i < std::min(count, (g_libScroll + L.visibleRows) * L.columns); i++) {
             UiRect c = LibraryCellRect(L, g_libScroll, i);
@@ -310,14 +325,13 @@ void RenderUIPass() {
             UIAddQuad(libIconVerts, c.x0 + 12, c.y0 + 12, c.x1 - 12, c.y1 - 12, iu0, iv0, iu1, iv1, 1, 1, 1, 1);
         }
         if (L.rows > L.visibleRows) {
-            char more[48]; snprintf(more, sizeof(more), "ROWS %d-%d OF %d (WHEEL)", g_libScroll + 1, g_libScroll + L.visibleRows, L.rows);
+            std::string more = StrF("library.rows", { std::to_string(g_libScroll + 1), std::to_string(g_libScroll + L.visibleRows), std::to_string(L.rows) });
             UIDrawText(glyphVerts, more, L.panel.x1 - 16 - UITextWidth(more, 0.6f), L.panel.y0 + 16, 0.6f, 0.7f, 0.7f, 0.8f, 0.9f);
         }
         int named = g_libGesture.pressed >= 0 ? g_libGesture.pressed : hover;
-        std::string label = named >= 0 ? g_blocks[g_placeableList.ids[named]].name
-                                       : "CLICK A BLOCK TO USE IT - DRAG IT ONTO A SLOT TO KEEP IT";
-        for (char& ch : label) ch = ch == '_' ? ' ' : (char)toupper((unsigned char)ch);
-        float ls = named >= 0 ? 0.85f : 0.6f;
+        const std::string& label = named >= 0 ? Str(("material." + std::string(g_blocks[g_placeableList.ids[named]].name)).c_str())
+                                              : Str("library.hint");
+        float ls = UIFitScale(label, named >= 0 ? 0.85f : 0.6f, (float)g_screenW - 24.0f);
         UIDrawText(glyphVerts, label, (g_screenW - UITextWidth(label, ls)) / 2.0f, L.panel.y1 + 6, ls, 1, 1, 1, 0.9f);
         // The dragged block follows the cursor; the slot it would land in lights up.
         if (g_libGesture.dragging && g_libGesture.pressed >= 0) {
@@ -338,145 +352,144 @@ void RenderUIPass() {
     if (g_menuScreen == MenuScreen::Pause) {
         UIRect panel = SubmenuPanelRect(PAUSE_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, PAUSE_LAYOUT.panelW, "PAUSED", 1.3f);
+        drawPanelTitle(panel, PAUSE_LAYOUT.panelW, Str("pause.title"), 1.3f);
 
-        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_RESUME), "RESUME");
-        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_OPTIONS), "OPTIONS");
-        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_SAVE), "SAVE GAME");
-        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_LOAD), "LOAD GAME");
-        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_QUIT_TO_TITLE), "QUIT TO TITLE");
-        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_QUIT), "QUIT");
+        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_RESUME), Str("pause.resume"));
+        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_OPTIONS), Str("pause.options"));
+        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_SAVE), Str("pause.save"));
+        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_LOAD), Str("pause.load"));
+        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_QUIT_TO_TITLE), Str("pause.quit_to_title"));
+        drawRowButton(SubmenuRowRect(PAUSE_LAYOUT, PROW_QUIT), Str("pause.quit"));
     } else if (g_menuScreen == MenuScreen::OptionsHub) {
         UIRect panel = SubmenuPanelRect(OPTIONS_HUB_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, OPTIONS_HUB_LAYOUT.panelW, "OPTIONS", 1.2f);
+        drawPanelTitle(panel, OPTIONS_HUB_LAYOUT.panelW, Str("options.title"), 1.2f);
 
-        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_LOOK), "LOOK SETTINGS");
-        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_GRAPHICS), "GRAPHICS SETTINGS");
-        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_DISPLAY), "DISPLAY SETTINGS");
-        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_AUDIO), "AUDIO SETTINGS");
-        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_ACCESSIBILITY), "ACCESSIBILITY");
-        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_KEYBINDS), "KEYBINDINGS");
-        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_BACK), "BACK");
+        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_LOOK), Str("options.look"));
+        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_GRAPHICS), Str("options.graphics"));
+        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_DISPLAY), Str("options.display"));
+        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_AUDIO), Str("options.audio"));
+        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_ACCESSIBILITY), Str("options.access"));
+        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_KEYBINDS), Str("options.keys"));
+        drawRowButton(SubmenuRowRect(OPTIONS_HUB_LAYOUT, OHROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::TitleMain) {
         UIRect panel = SubmenuPanelRect(TITLE_LAYOUT);
         drawPanelBg(panel);
-        std::string gameTitle = "WALKGRID";
+        const std::string& gameTitle = Str("title.name");
         float titleScale = 1.6f;
         UIDrawText(glyphVerts, gameTitle, panel.x0 + (TITLE_LAYOUT.panelW - UITextWidth(gameTitle, titleScale)) / 2.0f, panel.y0 - 60.0f, titleScale, 1, 1, 1, 1);
 
-        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_NEW_GAME), "NEW GAME");
-        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_LOAD_GAME), "LOAD GAME");
-        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_OPTIONS), "OPTIONS");
-        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_QUIT), "QUIT");
+        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_NEW_GAME), Str("title.new_game"));
+        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_LOAD_GAME), Str("title.load_game"));
+        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_OPTIONS), Str("title.options"));
+        drawRowButton(SubmenuRowRect(TITLE_LAYOUT, TROW_QUIT), Str("title.quit"));
     } else if (g_menuScreen == MenuScreen::SlotPicker) {
         UIRect panel = SubmenuPanelRect(SLOT_PICKER_LAYOUT);
         drawPanelBg(panel);
-        const char* title = g_slotPickerMode == SlotPickerMode::New ? "NEW GAME - CHOOSE A SLOT" : "LOAD GAME - CHOOSE A SLOT";
+        const std::string& title = Str(g_slotPickerMode == SlotPickerMode::New ? "slots.title_new" : "slots.title_load");
         drawPanelTitle(panel, SLOT_PICKER_LAYOUT.panelW, title, 0.9f);
 
         for (int slot = 0; slot < MAX_SAVE_SLOTS; slot++) {
             bool occupied = SlotExists(slot);
             std::string label;
-            char slotNum[16];
-            snprintf(slotNum, sizeof(slotNum), "WORLD %d", slot + 1);
+            std::string slotNum = StrF("slots.world", { std::to_string(slot + 1) });
             if (g_slotPickerMode == SlotPickerMode::New && g_confirmOverwriteSlot == slot) {
-                label = std::string(slotNum) + " - CLICK AGAIN TO OVERWRITE";
+                label = StrF("slots.overwrite", { slotNum });
             } else {
-                label = std::string(slotNum) + (occupied ? " - SAVED" : " - EMPTY");
-                if (g_gameState == GameState::InGame && slot == g_currentSlot) label += " (CURRENT)";
+                label = StrF(occupied ? "slots.saved" : "slots.empty", { slotNum });
+                if (g_gameState == GameState::InGame && slot == g_currentSlot) label = StrF("slots.current", { label });
             }
             drawRowButton(SubmenuRowRect(SLOT_PICKER_LAYOUT, slot), label, 0.85f);
         }
-        drawRowButton(SubmenuRowRect(SLOT_PICKER_LAYOUT, SLOTROW_BACK), "BACK");
+        drawRowButton(SubmenuRowRect(SLOT_PICKER_LAYOUT, SLOTROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::LookSettings) {
         UIRect panel = SubmenuPanelRect(LOOK_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, LOOK_LAYOUT.panelW, "LOOK SETTINGS", 1.1f);
+        drawPanelTitle(panel, LOOK_LAYOUT.panelW, Str("look.title"), 1.1f);
 
-        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_INVERT_X), g_invertX ? "INVERT X LOOK: ON" : "INVERT X LOOK: OFF");
+        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_INVERT_X), toggle("look.invert_x", g_invertX));
         drawSliderRow(SubmenuRowRect(LOOK_LAYOUT, LROW_SENS_X), SLIDER_SENS_X);
-        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_INVERT_Y), g_invertY ? "INVERT Y LOOK: ON" : "INVERT Y LOOK: OFF");
+        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_INVERT_Y), toggle("look.invert_y", g_invertY));
         drawSliderRow(SubmenuRowRect(LOOK_LAYOUT, LROW_SENS_Y), SLIDER_SENS_Y);
-        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_RESET), "RESET TO DEFAULT");
-        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_BACK), "BACK");
+        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_RESET), Str("common.reset"));
+        drawRowButton(SubmenuRowRect(LOOK_LAYOUT, LROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::Graphics) {
         UIRect panel = SubmenuPanelRect(GRAPHICS_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, GRAPHICS_LAYOUT.panelW, "GRAPHICS SETTINGS", 1.0f);
+        drawPanelTitle(panel, GRAPHICS_LAYOUT.panelW, Str("graphics.title"), 1.0f);
 
         drawSliderRow(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_RENDER_DIST), SLIDER_RENDER_DIST);
         drawSliderRow(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FINE_DETAIL), SLIDER_FINE_DETAIL);
         drawSliderRow(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_FRAME_LIMIT), SLIDER_FRAME_LIMIT);
-        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_VSYNC), g_vsync ? "VSYNC: ON" : "VSYNC: OFF");
+        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_VSYNC), toggle("graphics.vsync", g_vsync));
         // An effect whose shader didn't compile here says so (shader_errors.txt
         // has the details) instead of a toggle that silently does nothing.
-        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_SHADOWS), !ShadowsAvailable() ? "SUN SHADOWS: UNAVAILABLE" : g_shadows ? "SUN SHADOWS: ON" : "SUN SHADOWS: OFF");
-        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_OUTLINES), !PostEffectsAvailable() ? "EDGE OUTLINES: UNAVAILABLE" : g_postEdges ? "EDGE OUTLINES: ON" : "EDGE OUTLINES: OFF");
-        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_SSAO), !PostEffectsAvailable() ? "SCREEN-SPACE AO: UNAVAILABLE" : g_postSSAO ? "SCREEN-SPACE AO: ON" : "SCREEN-SPACE AO: OFF");
-        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_BLOOM), !BloomAvailable() ? "GLOW (BLOOM): UNAVAILABLE" : g_bloom ? "GLOW (BLOOM): ON" : "GLOW (BLOOM): OFF");
-        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_RESET), "RESET TO DEFAULT");
-        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_BACK), "BACK");
+        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_SHADOWS), toggle("graphics.shadows", g_shadows, ShadowsAvailable()));
+        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_OUTLINES), toggle("graphics.outlines", g_postEdges, PostEffectsAvailable()));
+        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_SSAO), toggle("graphics.ssao", g_postSSAO, PostEffectsAvailable()));
+        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_BLOOM), toggle("graphics.bloom", g_bloom, BloomAvailable()));
+        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_RESET), Str("common.reset"));
+        drawRowButton(SubmenuRowRect(GRAPHICS_LAYOUT, GROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::Display) {
         UIRect panel = SubmenuPanelRect(DISPLAY_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, DISPLAY_LAYOUT.panelW, "DISPLAY SETTINGS", 1.0f);
+        drawPanelTitle(panel, DISPLAY_LAYOUT.panelW, Str("display.title"), 1.0f);
 
-        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_SHOW_FPS), g_showFPS ? "SHOW FPS COUNTER: ON" : "SHOW FPS COUNTER: OFF");
-        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_SHOW_PROFILER), g_showProfiler ? "PROFILER (F3): ON" : "PROFILER (F3): OFF");
-        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_FULLSCREEN), g_fullscreen ? "FULLSCREEN (F11): ON" : "FULLSCREEN (F11): OFF");
-        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_RESET), "RESET TO DEFAULT");
-        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_BACK), "BACK");
+        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_SHOW_FPS), toggle("display.show_fps", g_showFPS));
+        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_SHOW_PROFILER), toggle("display.profiler", g_showProfiler));
+        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_FULLSCREEN), toggle("display.fullscreen", g_fullscreen));
+        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_RESET), Str("common.reset"));
+        drawRowButton(SubmenuRowRect(DISPLAY_LAYOUT, DROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::Audio) {
         UIRect panel = SubmenuPanelRect(AUDIO_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, AUDIO_LAYOUT.panelW, "AUDIO SETTINGS", 1.0f);
+        drawPanelTitle(panel, AUDIO_LAYOUT.panelW, Str("audio.title"), 1.0f);
 
         drawSliderRow(SubmenuRowRect(AUDIO_LAYOUT, AROW_MASTER_VOLUME), SLIDER_MASTER_VOLUME);
         drawSliderRow(SubmenuRowRect(AUDIO_LAYOUT, AROW_MUSIC_VOLUME), SLIDER_MUSIC_VOLUME);
         drawSliderRow(SubmenuRowRect(AUDIO_LAYOUT, AROW_WORLD_VOLUME), SLIDER_WORLD_VOLUME);
-        drawRowButton(SubmenuRowRect(AUDIO_LAYOUT, AROW_RESET), "RESET TO DEFAULT");
-        drawRowButton(SubmenuRowRect(AUDIO_LAYOUT, AROW_BACK), "BACK");
+        drawRowButton(SubmenuRowRect(AUDIO_LAYOUT, AROW_RESET), Str("common.reset"));
+        drawRowButton(SubmenuRowRect(AUDIO_LAYOUT, AROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::Accessibility) {
         UIRect panel = SubmenuPanelRect(ACCESSIBILITY_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, ACCESSIBILITY_LAYOUT.panelW, "ACCESSIBILITY", 1.0f);
+        drawPanelTitle(panel, ACCESSIBILITY_LAYOUT.panelW, Str("access.title"), 1.0f);
 
         drawSliderRow(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_FOV), SLIDER_FOV);
-        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_TOGGLE_MOVE), g_toggleMovement ? "TOGGLE-TO-MOVE: ON" : "TOGGLE-TO-MOVE: OFF");
-        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_HIGH_CONTRAST), g_highContrastUI ? "HIGH-CONTRAST UI: ON" : "HIGH-CONTRAST UI: OFF");
+        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_TOGGLE_MOVE), toggle("access.toggle_move", g_toggleMovement));
+        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_HIGH_CONTRAST), toggle("access.high_contrast", g_highContrastUI));
         drawSliderRow(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MUSIC_INTENSITY), SLIDER_MUSIC_INTENSITY);
-        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MONO), g_monoAudio ? "MONO AUDIO: ON" : "MONO AUDIO: OFF");
-        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_RESET), "RESET TO DEFAULT");
-        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_BACK), "BACK");
+        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MONO), toggle("access.mono", g_monoAudio));
+        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_RESET), Str("common.reset"));
+        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::Keybindings) {
         UIRect panel = SubmenuPanelRect(KEYBIND_LAYOUT);
         drawPanelBg(panel);
-        drawPanelTitle(panel, KEYBIND_LAYOUT.panelW, "KEYBINDINGS", 1.0f);
-        std::string hint = "CLICK A ROW, THEN PRESS THE NEW INPUT";
-        UIDrawText(glyphVerts, hint, panel.x0 + (KEYBIND_LAYOUT.panelW - UITextWidth(hint, 0.65f)) / 2.0f, panel.y0 + 44.0f, 0.65f, 0.8f, 0.8f, 0.8f, 0.8f);
+        drawPanelTitle(panel, KEYBIND_LAYOUT.panelW, Str("keys.title"), 1.0f);
+        const std::string& hint = Str("keys.hint");
+        float hs = UIFitScale(hint, 0.65f, KEYBIND_LAYOUT.panelW - 24.0f);
+        UIDrawText(glyphVerts, hint, panel.x0 + (KEYBIND_LAYOUT.panelW - UITextWidth(hint, hs)) / 2.0f, panel.y0 + 44.0f, hs, 0.8f, 0.8f, 0.8f, 0.8f);
 
         for (int i = 0; i < ACT_COUNT; i++) {
             std::string label;
-            if (g_rebindingAction == i) label = std::string(g_actionLabels[i]) + (i == ACT_MENU ? ": PRESS INPUT (ESC = ESCAPE)" : ": PRESS INPUT (ESC CANCELS)");
-            else label = std::string(g_actionLabels[i]) + ": [" + GetInputDisplayName(g_keyBindings[i]) + "]";
+            if (g_rebindingAction == i) label = StrF(i == ACT_MENU ? "keys.waiting_menu" : "keys.waiting", { Str(g_actionLabelKeys[i]) });
+            else label = StrF("keys.row", { Str(g_actionLabelKeys[i]), GetInputDisplayName(g_keyBindings[i]) });
             drawRowButton(SubmenuRowRect(KEYBIND_LAYOUT, i), label, 0.7f);
         }
-        drawRowButton(SubmenuRowRect(KEYBIND_LAYOUT, ACT_COUNT), "RESET TO DEFAULT");
-        drawRowButton(SubmenuRowRect(KEYBIND_LAYOUT, ACT_COUNT + 1), "BACK");
+        drawRowButton(SubmenuRowRect(KEYBIND_LAYOUT, ACT_COUNT), Str("common.reset"));
+        drawRowButton(SubmenuRowRect(KEYBIND_LAYOUT, ACT_COUNT + 1), Str("common.back"));
     }
 
     if (ProfCapturing()) { // Ctrl+F3 recording: a quiet countdown, bottom left
-        char buf[48];
-        snprintf(buf, sizeof(buf), "RECORDING PERFORMANCE %d", (int)ceilf(ProfCaptureSecondsLeft()));
+        std::string buf = StrF("hud.recording", { std::to_string((int)ceilf(ProfCaptureSecondsLeft())) });
         UIDrawText(glyphVerts, buf, 12.0f, g_screenH - 30.0f, 0.6f, 1.0f, 0.55f, 0.45f, 0.9f);
     }
     if (g_showFPS) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "FPS: %d", g_fpsDisplay);
+        std::string buf = StrF("hud.fps", { std::to_string(g_fpsDisplay) });
         UIDrawText(glyphVerts, buf, 12.0f, 12.0f, 0.9f, 1, 1, 0.6f, 0.9f);
     }
 
+    // D26: debug text (the F3 overlay is for the developer, in English)
     // Profiler overlay (Part XVI): per-system CPU ms, average and worst
     // over the last ~2 s, then load counters. Monospace, so printf
     // padding lines the columns up.
@@ -519,6 +532,7 @@ void RenderUIPass() {
             lines.push_back("  CALM     " + bar(ax.activity) + " ACTIVE");
             lines.push_back("  ORGANIC  " + bar(ax.mechanical) + " MECHANICAL");
         }
+        // D26: end
         float x = 12.0f, y = g_showFPS ? 44.0f : 12.0f;
         float w = 0;
         for (const std::string& l : lines) w = std::max(w, UITextWidth(l, scale));

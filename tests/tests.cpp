@@ -23,6 +23,7 @@
 #include "../jobs.h"
 #include "../groundmesh.h"
 #include "../collide.h"
+#include "../strtable.h"
 static const uint64_t HILLS_V1_FINGERPRINT = 0xb337671eeedafb98ull; // walkgrid-hills v1, seed 1, column (0, 0): re-pinned in M1.9 when the registry was renumbered (same materials, same places; saves store names)
 #include <cstdio>
 #include <cstring>
@@ -32,6 +33,7 @@ static const uint64_t HILLS_V1_FINGERPRINT = 0xb337671eeedafb98ull; // walkgrid-
 #include <array>
 #include <algorithm>
 #include <map>
+#include <unordered_map>
 #include <sstream>
 #include <fstream>
 
@@ -1626,6 +1628,48 @@ static void TestFacets() {
     CHECK(okW);
 }
 
+// The string table (M1.10, D26): the file format, English under a
+// language, {n} slots in any order, missing keys visible, UTF-8 both ways,
+// and the shipped en.txt itself.
+static void TestStringTable() {
+    printf("string table\n");
+    std::unordered_map<std::string, std::string> t;
+    std::vector<std::string> errs;
+    ParseStrings("\xEF\xBB\xBF# a comment\n  a.b = HELLO  \r\nbad line\nc = X\\nY\n\nBad.Key = no\nd.e=\n", "t.txt", t, errs);
+    CHECK(t.size() == 3 && t["a.b"] == "HELLO" && t["c"] == "X\nY" && t.count("d.e") && t["d.e"].empty());
+    CHECK(errs.size() == 2 && errs[0] == "t.txt:3: expected `key = text`" && errs[1].rfind("t.txt:6:", 0) == 0);
+    SetStrings({ { "k", "{1} THEN {0}" }, { "one", "A{0}B{0}" }, { "odd", "{x} {5} {" } });
+    CHECK(StrF("k", { "ONE", "TWO" }) == "TWO THEN ONE");
+    CHECK(StrF("one", { "-" }) == "A-B-");
+    CHECK(StrF("odd", { "Z" }) == "{x} {5} {"); // not slots, or no such argument: left as written
+    CHECK(Str("missing.key") == "[missing.key]" && !HasStr("missing.key") && HasStr("k"));
+    const std::string& a = Str("missing.key"); Str("another"); CHECK(a == "[missing.key]"); // stays valid
+    // UTF-8: two, three and four bytes, round trip through UTF-16.
+    std::string u = "A\xC3\xA9\xE2\x82\xAC\xF0\x9F\x8C\xB2"; // A, e-acute, euro sign, a tree
+    size_t i = 0; std::vector<uint32_t> cps;
+    while (i < u.size()) cps.push_back(DecodeUtf8(u, i));
+    CHECK((cps == std::vector<uint32_t>{ 0x41, 0xE9, 0x20AC, 0x1F332 }));
+    std::wstring w = Utf8ToWide(u);
+    CHECK(WideToUtf8(w) == u);
+    std::string back; for (uint32_t c : cps) AppendUtf8(back, c);
+    CHECK(back == u);
+    i = 0; std::string broken = "\xC3("; CHECK(DecodeUtf8(broken, i) == 0xFFFD && i == 1);
+    SetStrings({ { "x", "\xC3\xA9T\xC3\xA9" }, { "font", "\xE2\x82\xAC" } });
+    CHECK((StringCodepoints() == std::vector<uint32_t>{ 'T', 0xE9 })); // sorted, no repeats, not the font's name
+    // The shipped English: loads clean, a language over it falls back to it.
+    std::vector<std::string> problems;
+    CHECK(LoadStrings("../assets/text", "en", problems) && problems.empty());
+    CHECK(Str("title.new_game") == "NEW GAME" && Str("font") == "Consolas");
+    CHECK(StrF("keys.row", { "JUMP", "Space" }) == "JUMP: [Space]");
+    bool plain = true; // English needs nothing beyond ASCII and Latin-1 (the atlas's fixed part)
+    for (uint32_t c : StringCodepoints()) plain &= c < 256;
+    CHECK(plain);
+    problems.clear();
+    CHECK(LoadStrings("../assets/text", "no_such_language", problems) && problems.size() == 1); // English loaded; the missing file noted
+    CHECK(Str("title.quit") == "QUIT"); // English still there under the missing language
+    SetStrings({});
+}
+
 int main() {
     TestVtex();
     TestBlockTextures();
@@ -1651,6 +1695,7 @@ int main() {
     TestSkyLight();
     TestFacetCollision();
     TestDetailBands();
+    TestStringTable();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

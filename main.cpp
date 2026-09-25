@@ -28,6 +28,9 @@
 #include "game.h"
 #include "profiler.h"
 #include "jobs.h"
+#include "strtable.h"   // the string table (D26)
+#include "gamefiles.h" // FindAssetDirectory
+#include "settings.h"  // g_language
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     ProfBootMark("LAUNCH"); // Windows loading the exe and its DLLs, and static set-up
@@ -68,6 +71,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
 
     RegisterGameSettings(); // the game's own settings.cfg keys (hotbar, render distance)
     LoadSettings(); // before anything reads g_sensitivityMultX/g_loadRadius/g_masterVolume/etc.
+    {
+        // Every player-facing word (D26): English, then the chosen language
+        // over it. Before the window's title and any message box.
+        std::vector<std::string> textProblems;
+        LoadStrings(FindAssetDirectory(L"text"), g_language, textProblems);
+        for (const std::string& p : textProblems) OutputDebugStringA((p + "\n").c_str());
+        SetWindowTextW(g_hwnd, Utf8ToWide(Str("window.title")).c_str());
+    }
     ProfBootMark("SETTINGS");
 
     // XAudio2Create requires COM initialized on the calling thread.
@@ -79,20 +90,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
 
     if (!InitD3D(g_hwnd)) {
         // No Direct3D 11.0 device (D20), or the core shaders failed: say so
-        // rather than vanish. (Player-facing text: moves to the string
-        // table with M1's text step, D26.)
-        MessageBoxW(g_hwnd, L"walkgrid needs a graphics card that supports DirectX 11 (feature level 11.0).",
-                    L"walkgrid", MB_OK | MB_ICONERROR);
+        // rather than vanish.
+        MessageBoxW(g_hwnd, Utf8ToWide(Str("startup.no_graphics")).c_str(),
+                    Utf8ToWide(Str("window.title")).c_str(), MB_OK | MB_ICONERROR);
         return -1;
     }
     if (g_fullscreen) ApplyFullscreen(true); // saved preference
-    std::string textureProblems;
+    int textureProblems = 0;
     if (!InitTextures(textureProblems)) return -1;
     ProfBootMark("TEXTURES");
     // One toast (a second would replace the first).
-    std::string startupProblems = textureProblems;
+    std::string startupProblems;
+    if (textureProblems > 0)
+        startupProblems = textureProblems == 1 ? Str("startup.texture_problem") : StrF("startup.texture_problems", { std::to_string(textureProblems) });
     if (!ShaderErrors().empty())
-        startupProblems += (startupProblems.empty() ? "" : "  /  ") + std::string("SOME GRAPHICS EFFECTS FAILED TO LOAD - SEE SHADER_ERRORS.TXT");
+        startupProblems = startupProblems.empty() ? Str("startup.effects_failed") : StrF("startup.join", { startupProblems, Str("startup.effects_failed") });
     if (!startupProblems.empty()) ShowToast(startupProblems, 8.0f);
     InitAudio(); // a machine with no usable audio device still gets a silent but playable game (Section 10)
     BuildSkyMesh();

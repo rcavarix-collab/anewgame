@@ -49,6 +49,9 @@ extern bool g_moveToggleLatch[ACT_COUNT]; // only ACT_FORWARD/BACK/LEFT/RIGHT in
 // arp/pulse layer at all; 1 = the full designed arc -- a ceiling, not a
 // ceiling-breaker (see audio module docs / DESIGN.md Part XIV.3).
 extern float g_musicIntensity;
+// The text's language (D26): the name of a file in assets/text, "en" by
+// default. Chosen by editing settings.cfg until there's a second language.
+extern std::string g_language;
 bool SaveSettings();
 void LoadSettings();
 void ClampSettingsToValidRanges();

@@ -63,9 +63,12 @@ static const UINT UI_VB_CAPACITY = 4096;   // vertices
 // Font-glyph atlas layout (Section 4.6). Text is drawn 1:1 -- one atlas
 // texel per screen pixel, point-sampled, snapped to whole pixels -- so
 // glyphs stay crisp instead of being resampled from one master size. To
-// still offer several text sizes, the atlas holds the full ASCII 32..126
-// set baked once per size ("band"), each in a 16 x 6 grid; a requested
-// scale picks the nearest band. Each glyph sits centred in a cell padded
+// still offer several text sizes, the atlas holds its glyphs baked once
+// per size ("band"), each band a 16-wide grid of g_uiAtlasRows rows; a
+// requested scale picks the nearest band. The glyphs are ASCII 32..126
+// (cells 0..94), Latin-1 160..255, then every other code point the loaded
+// string table uses (M1.10, D26), so a translation's letters are baked
+// without growing the atlas for languages nobody chose. Each glyph sits centred in a cell padded
 // UI_GLYPH_PAD px each side, but advances only by the font's own
 // monospace advance, so letters sit at normal text spacing rather than a
 // full cell apart. The top UI_WHITE_H rows are solid white: untextured
@@ -75,7 +78,7 @@ static const UINT UI_VB_CAPACITY = 4096;   // vertices
 // UIVertex to size g_uiVB and InitTextures needs the atlas dimensions
 // to generate it -- both purely rendering concerns.
 static const int UI_ATLAS_COLS = 16;
-static const int UI_ATLAS_ROWS = 6;
+extern int g_uiAtlasRows; // set by InitTextures from the glyph count
 static const int UI_GLYPH_PAD = 2;
 static const int UI_WHITE_H = 8;
 static const int UI_FONT_BAND_COUNT = 6;
@@ -92,15 +95,17 @@ static inline UIFontBand UIGetFontBand(int band) {
         b.advance = (int)(b.fontPx * 0.55f + 0.999f) + 1;
         b.cellW = b.advance + 2 * UI_GLYPH_PAD;
         b.atlasY = y;
-        y += UI_ATLAS_ROWS * b.cellH;
+        y += g_uiAtlasRows * b.cellH;
     }
     return b;
 }
 static inline int UIAtlasWidth() { return UI_ATLAS_COLS * UIGetFontBand(UI_FONT_BAND_COUNT - 1).cellW; }
 static inline int UIAtlasHeight() {
     UIFontBand last = UIGetFontBand(UI_FONT_BAND_COUNT - 1);
-    return last.atlasY + UI_ATLAS_ROWS * last.cellH;
+    return last.atlasY + g_uiAtlasRows * last.cellH;
 }
+// The atlas cell holding code point `cp`; '?' for one it doesn't hold.
+int UIGlyphCell(uint32_t cp);
 struct UIVertex { float x, y, u, v, r, g, b, a; };
 
 // ---- Sky pass objects (a third pass: depth off, drawn before the
@@ -128,7 +133,7 @@ const std::string& ShaderErrors();
 // procedural fallbacks) and the UI atlas. `problems` receives a one-line
 // summary if any .vtex file had errors (details are written to
 // assets/textures/_errors.txt), else stays empty.
-bool InitTextures(std::string& problems);
+bool InitTextures(int& textureProblems); // problems are listed in assets/textures/_errors.txt
 void BuildSkyMesh();
 void UpdateCBuffer(const CBData& data);
 // The whole 3D frame: shadow map (when stale), sky, world, and the post

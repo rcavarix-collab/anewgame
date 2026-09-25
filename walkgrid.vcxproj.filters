@@ -51,6 +51,9 @@
     <ClCompile Include="collide.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="strtable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="world.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -126,6 +129,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="collide.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="strtable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="world.h">

@@ -19,6 +19,7 @@
 #include "worldsound.h"
 #include "gamefiles.h"
 #include "profiler.h"
+#include "strtable.h" // every player-facing word (D26)
 #include <cstdio>
 #include <cstring>
 #include <cctype>
@@ -142,10 +143,10 @@ enum AccessibilityRow { ARROW_FOV = 0, ARROW_TOGGLE_MOVE = 1, ARROW_HIGH_CONTRAS
 // side (X1/X2) buttons aren't bindable inputs yet; the 9 hotbar-select
 // keys stay fixed rather than adding 9 more rows; and rebinding does
 // not warn about or prevent two actions sharing the same input.
-inline const char* const g_actionLabels[ACT_COUNT] = { // on-screen text
-    "MOVE FORWARD", "MOVE BACK", "MOVE LEFT", "MOVE RIGHT", "JUMP",
-    "BREAK BLOCK", "PLACE BLOCK", "PAUSE MENU", "QUICK SAVE", "QUICK LOAD",
-    "SPRINT", "CROUCH / SLIDE", "BLOCK LIBRARY"
+inline const char* const g_actionLabelKeys[ACT_COUNT] = { // on-screen names: string-table keys (assets/text)
+    "action.forward", "action.back", "action.left", "action.right", "action.jump",
+    "action.break", "action.place", "action.menu", "action.save", "action.load",
+    "action.sprint", "action.crouch", "action.library"
 };
 // Rows sized so all of them (+reset +back) fit the minimum 680 px window.
 static const SubmenuLayout KEYBIND_LAYOUT = { 480.0f, 26.0f, 5.0f, 88.0f, 18.0f, ACT_COUNT + 2 };
@@ -186,7 +187,6 @@ UIRect GetSliderHitRect(UIRect r);  // menus.cpp
 // hud.cpp
 int UIBandForScale(float scale);
 void UIGlyphRect(const UIFontBand& fb, int cell, float& u0, float& v0, float& u1, float& v1);
-int UICharCell(char c);
 void UIAddQuad(std::vector<UIVertex>& v, float x0, float y0, float x1, float y1,
                        float u0, float v0, float u1, float v1,
                        float r, float g, float b, float a);
@@ -194,6 +194,7 @@ void UIDrawRect(std::vector<UIVertex>& v, float x0, float y0, float x1, float y1
                         float r, float g, float b, float a);
 float UITextWidth(const std::string& text, float scale);
 float UITextHeight(float scale);
+float UIFitScale(const std::string& text, float scale, float maxW);
 void UIDrawText(std::vector<UIVertex>& v, const std::string& text, float x, float y,
                         float scale, float r, float g, float b, float a);
 void UIDrawBatch(const UIVertex* verts, size_t count, ID3D11ShaderResourceView* srv);

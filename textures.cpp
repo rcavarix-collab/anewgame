@@ -43,13 +43,14 @@ extern "C" void FreeGeneratedPixels(uint8_t* p) {
 
 // UI font-glyph atlas: the top whiteH rows are opaque white (for
 // untextured tinted rectangles, Section 4.6), then one band per text
-// size, each a cols-wide grid whose cell (code-32) holds ASCII `code`
-// (32..126) centred in the cell, baked at that band's pixel size so it
+// size, each a cols-wide grid whose cell i holds glyphs[i] (a code point)
+// centred in the cell, baked at that band's pixel size so it
 // is drawn 1:1. Generated once at load time, same as the block atlas --
 // GDI+ never touches the frame loop.
 extern "C" bool GenerateUIAtlas(
     int atlasW, int atlasH, int whiteH, int cols, int bandCount,
     const int* cellW, const int* cellH, const int* bandY, const float* fontPx,
+    const uint32_t* glyphs, int glyphCount, const wchar_t* fontName,
     uint8_t** outPixelsBGRA)
 {
     ULONG_PTR token;
@@ -75,9 +76,11 @@ extern "C" bool GenerateUIAtlas(
             SolidBrush white(Color(255, 255, 255, 255));
             g.FillRectangle(&white, 0, 0, atlasW, whiteH);
 
-            FontFamily consolas(L"Consolas");
-            FontFamily* fam = &consolas;
-            if (consolas.GetLastStatus() != Ok) {
+            // The string table names the font (a language may need one
+            // with its letters); GDI+ doesn't fall back between fonts.
+            FontFamily named(fontName && *fontName ? fontName : L"Consolas");
+            FontFamily* fam = &named;
+            if (named.GetLastStatus() != Ok) {
                 fam = const_cast<FontFamily*>(FontFamily::GenericMonospace());
             }
             // Typographic format: no GDI+ side padding, so centring in the
@@ -88,14 +91,16 @@ extern "C" bool GenerateUIAtlas(
 
             for (int band = 0; band < bandCount; band++) {
                 Font font(fam, (Gdiplus::REAL)fontPx[band], FontStyleBold, UnitPixel);
-                for (int code = 32; code <= 126; code++) {
-                    int i = code - 32;
+                for (int i = 0; i < glyphCount; i++) {
                     int x = (i % cols) * cellW[band], y = bandY[band] + (i / cols) * cellH[band];
                     // Clip to the cell so no glyph can spill into a neighbour.
                     g.SetClip(Rect(x, y, cellW[band], cellH[band]));
-                    wchar_t ch = (wchar_t)code;
+                    uint32_t cp = glyphs[i];
+                    wchar_t ch[2]; int n = 1; // UTF-16: a pair above U+FFFF
+                    if (cp >= 0x10000) { ch[0] = (wchar_t)(0xD800 + ((cp - 0x10000) >> 10)); ch[1] = (wchar_t)(0xDC00 + ((cp - 0x10000) & 0x3FF)); n = 2; }
+                    else ch[0] = (wchar_t)cp;
                     RectF cellRect((Gdiplus::REAL)x, (Gdiplus::REAL)y, (Gdiplus::REAL)cellW[band], (Gdiplus::REAL)cellH[band]);
-                    g.DrawString(&ch, 1, &font, cellRect, &fmt, &white);
+                    g.DrawString(ch, n, &font, cellRect, &fmt, &white);
                 }
             }
             g.ResetClip();

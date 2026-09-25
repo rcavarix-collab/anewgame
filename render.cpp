@@ -14,6 +14,7 @@
 #include "glowlight.h"
 #include "groundmesh.h"
 #include "jobs.h"
+#include "strtable.h" // the UI atlas bakes the string table's letters and font
 #include <memory>
 #include <filesystem>
 #include <fstream>
@@ -23,6 +24,7 @@
 #include <algorithm>
 #include <atomic>
 #include <thread>
+#include <unordered_map>
 #include <unordered_set>
 
 #pragma comment(lib, "d3d11.lib")
@@ -40,6 +42,7 @@ extern "C" void FreeGeneratedPixels(uint8_t* p);
 extern "C" bool GenerateUIAtlas(
     int atlasW, int atlasH, int whiteH, int cols, int bandCount,
     const int* cellW, const int* cellH, const int* bandY, const float* fontPx,
+    const uint32_t* glyphs, int glyphCount, const wchar_t* fontName,
     uint8_t** outPixelsBGRA);
 
 HWND g_hwnd = nullptr;
@@ -1865,24 +1868,14 @@ bool InitD3D(HWND hwnd) {
 
 
 
-// assets/textures, looked for next to the working directory first (a
-// Visual Studio run starts in the project folder), then beside the exe
-// and up to three folders above it (bin/Debug layouts).
-static std::filesystem::path FindTextureDirectory() {
-    namespace fs = std::filesystem;
-    std::error_code ec;
-    std::vector<fs::path> roots = { fs::current_path(ec) };
-    wchar_t exe[MAX_PATH];
-    DWORD n = GetModuleFileNameW(nullptr, exe, MAX_PATH);
-    if (n > 0 && n < MAX_PATH) {
-        fs::path dir = fs::path(exe).parent_path();
-        for (int i = 0; i < 4 && !dir.empty(); i++) { roots.push_back(dir); dir = dir.parent_path(); }
-    }
-    for (const fs::path& r : roots) {
-        fs::path candidate = r / "assets" / "textures";
-        if (fs::is_directory(candidate, ec)) return candidate;
-    }
-    return {};
+// The UI atlas's glyphs in cell order, and the reverse map (render.h).
+int g_uiAtlasRows = 6;
+static std::vector<uint32_t> g_uiGlyphs;
+static std::unordered_map<uint32_t, int> g_uiGlyphCells;
+int UIGlyphCell(uint32_t cp) {
+    if (cp >= 32 && cp <= 126) return (int)cp - 32;
+    auto it = g_uiGlyphCells.find(cp);
+    return it != g_uiGlyphCells.end() ? it->second : '?' - 32;
 }
 
 // Parses every .vtex file (sorted by name, so a later file's duplicate
@@ -1890,7 +1883,7 @@ static std::filesystem::path FindTextureDirectory() {
 // removes a stale _errors.txt when there are none.
 static void LoadAuthoredTextures(VtexSet& set, std::vector<std::string>& problems) {
     namespace fs = std::filesystem;
-    fs::path dir = FindTextureDirectory();
+    fs::path dir = FindAssetDirectory(L"textures");
     if (dir.empty()) return;
     std::error_code ec;
     std::vector<fs::path> files;
@@ -1907,7 +1900,7 @@ static void LoadAuthoredTextures(VtexSet& set, std::vector<std::string>& problem
 
 static void WriteTextureProblems(const std::vector<std::string>& problems) {
     namespace fs = std::filesystem;
-    fs::path dir = FindTextureDirectory();
+    fs::path dir = FindAssetDirectory(L"textures");
     if (dir.empty()) return;
     std::error_code ec;
     fs::path log = dir / "_errors.txt";
@@ -1917,7 +1910,7 @@ static void WriteTextureProblems(const std::vector<std::string>& problems) {
     for (const std::string& p : problems) out << p << "\n";
 }
 
-bool InitTextures(std::string& problemSummary) {
+bool InitTextures(int& textureProblems) {
     VtexSet authored;
     std::vector<std::string> problems;
     LoadAuthoredTextures(authored, problems);
@@ -1925,9 +1918,7 @@ bool InitTextures(std::string& problemSummary) {
     BuildBlockTextures(authored, set);
     problems.insert(problems.end(), set.warnings.begin(), set.warnings.end());
     WriteTextureProblems(problems);
-    if (!problems.empty())
-        problemSummary = std::to_string(problems.size()) + " TEXTURE PROBLEM" + (problems.size() == 1 ? "" : "S") +
-                         " - SEE ASSETS\\TEXTURES\\_ERRORS.TXT";
+    textureProblems = (int)problems.size(); // the toast's words are the game's (main.cpp, D26)
     RenderBlockIcons(set); // library and hotbar icons: a faceted lump of each material
     // The ground's materials: what's solid, how lumpy, which layers each
     // shows (groundmesh.h), and the same layers for the world shader (b3).
@@ -2010,6 +2001,14 @@ bool InitTextures(std::string& problemSummary) {
     g_device->CreateShaderResourceView(iconTex, nullptr, &g_iconSRV);
     iconTex->Release();
 
+    // The atlas's glyphs: ASCII, Latin-1, then the string table's others.
+    g_uiGlyphs.clear(); g_uiGlyphCells.clear();
+    for (uint32_t c = 32; c <= 126; c++) g_uiGlyphs.push_back(c);
+    for (uint32_t c = 160; c <= 255; c++) g_uiGlyphs.push_back(c);
+    for (uint32_t c : StringCodepoints())
+        if (c > 255 && c != 0xFFFD && !(c >= 0xD800 && c < 0xE000)) g_uiGlyphs.push_back(c);
+    for (size_t i = 0; i < g_uiGlyphs.size(); i++) g_uiGlyphCells[g_uiGlyphs[i]] = (int)i;
+    g_uiAtlasRows = (int)((g_uiGlyphs.size() + UI_ATLAS_COLS - 1) / UI_ATLAS_COLS);
     int bandW[UI_FONT_BAND_COUNT], bandH[UI_FONT_BAND_COUNT], bandY[UI_FONT_BAND_COUNT];
     float bandPx[UI_FONT_BAND_COUNT];
     for (int i = 0; i < UI_FONT_BAND_COUNT; i++) {
@@ -2018,8 +2017,10 @@ bool InitTextures(std::string& problemSummary) {
     }
     uint8_t* uiPixels = nullptr;
     int uiW = UIAtlasWidth(), uiH = UIAtlasHeight();
+    std::wstring fontName = Utf8ToWide(Str("font"));
     if (!GenerateUIAtlas(uiW, uiH, UI_WHITE_H, UI_ATLAS_COLS, UI_FONT_BAND_COUNT,
-                         bandW, bandH, bandY, bandPx, &uiPixels))
+                         bandW, bandH, bandY, bandPx, g_uiGlyphs.data(), (int)g_uiGlyphs.size(),
+                         fontName.c_str(), &uiPixels))
         return false;
 
     D3D11_TEXTURE2D_DESC td3 = {};

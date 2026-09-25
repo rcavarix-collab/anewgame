@@ -103,6 +103,7 @@ Problems we expect before they happen: why we expect each one, the warning signs
 - **Warning signs.** Any new string literal shown to the player outside the string table.
 - **Act.** M1 step 0, while the menus are small.
 - **Plan.** A string table; a font atlas built from the characters the table uses; layouts that measure text instead of assuming its width; a check script that flags player-facing string literals in code.
+- **Outcome (M1.10).** Done as planned (D42); `tools/check_strings.py` now fails the checks on any new player-facing literal. Remaining risk: scripts wider than the monospace cell (DESIGN 4.6.2).
 
 ## Process
 

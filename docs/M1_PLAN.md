@@ -134,6 +134,7 @@
 - **Files.** New: `strings.cpp/.h` (layer 2), `assets/text/en.txt`, `tools/check_strings.py`. Changed: `hud.cpp`, `menus.cpp`, `textures.cpp` (atlas), `render.h` (atlas layout), `main.cpp` (the message box text).
 - **Why here and not first.** It changes nothing you can see, and you wanted the new look early. Placing it after the world work means the menus it converts are final.
 - **Your check.** A test language shows no English left, and no boxes for missing characters.
+- **Status: built (D42).** The module is `strtable.cpp/.h` (a file named `strings.h` shadows the system header of that name when the tests build). Also changed beyond the list: `game.cpp`, `input.cpp` (toasts; key names as UTF-8), `game_internal.h` (action names become keys), `render.cpp` (the atlas's glyph list; the texture-problem toast's words move to `main.cpp`), `gamefiles.cpp/.h` (`FindAssetDirectory`, shared by textures and text), `settings.cpp/.h` (`language=`), `savegame.cpp` (debug lines marked), `tests/run.sh` and `tests/tests.cpp`. The test language is `assets/text/test.txt` (`language=test` in settings.cfg). Cost: the atlas grows from 6 to 12 rows for English (about 1.3 MB more video memory) and bakes twice the glyphs at start-up (see TEXTURES in the boot timeline).
 
 ### 1.11 Draw only what's seen; load ahead (D16)
 - **Change.** Hidden-chunk skipping (open-side connectivity, recorded while meshing), and loading ordered by where you look and where you're heading.

@@ -86,12 +86,14 @@ static const float DEBUG_SCRUB_RATE = DAY_LENGTH_SECONDS / 15.0f; // clock secon
 static const float kTimePresets[] = { 60.0f, 600.0f, 1500.0f, 2400.0f, 2940.0f, 3300.0f };
 bool g_timeScrubbing = false;
 
+// D26: debug text (the F8 clock toast and the performance report are debug aids)
 std::string DayTimeLabel(float t) {
     const char* phase = t < 300 ? "DAWN" : t < 1200 ? "MORNING" : t < 1800 ? "NOON" : t < 2700 ? "AFTERNOON" : t < 3000 ? "DUSK" : "NIGHT";
     char buf[48];
     snprintf(buf, sizeof(buf), "TIME %02d:%02d  %s", (int)t / 60, (int)t % 60, phase);
     return buf;
 }
+// D26: end
 
 bool DebugKeyFree(int vk) {
     for (int a = 0; a < ACT_COUNT; a++) if (g_keyBindings[a] == vk) return false; // a bound action wins
@@ -124,7 +126,7 @@ void UpdateDebugTimeScrub(float frameSeconds) {
 void DoSave() {
     bool ok = SaveGame(g_world, g_player, g_currentSlot);
     if (ok) WorldSoundCue(SND_SEALED);
-    g_toastMessage = ok ? "GAME SAVED" : "SAVE FAILED";
+    g_toastMessage = Str(ok ? "toast.saved" : "toast.save_failed");
     g_toastTimer = 2.0f;
 }
 // Autosave (Section 7.3): every AUTOSAVE_SECONDS of actual play (paused
@@ -135,12 +137,13 @@ float g_autosaveTimer = 0.0f;
 void AutosaveNow(bool announce) {
     if (g_gameState != GameState::InGame) return;
     bool ok = SaveGame(g_world, g_player, g_currentSlot);
-    if (announce || !ok) ShowToast(ok ? "AUTOSAVED" : "AUTOSAVE FAILED", ok ? 1.5f : 3.0f);
+    if (announce || !ok) ShowToast(Str(ok ? "toast.autosaved" : "toast.autosave_failed"), ok ? 1.5f : 3.0f);
     g_autosaveTimer = 0.0f;
 }
 bool IsInGame() { return g_gameState == GameState::InGame; }
 
 // The top of a performance report: what was measured, and on what.
+// D26: debug text (the report is for the developer, in English)
 std::string PerfReportHeader() {
     char b[512];
 #ifdef _DEBUG
@@ -158,6 +161,7 @@ std::string PerfReportHeader() {
              g_musicIntensity * 100.0f, DayTimeLabel(g_dayTimeSeconds).c_str(), g_player.x, g_player.y, g_player.z);
     return b + ProfBootSummary(true) + "\n";
 }
+// D26: end
 
 // ---- Screenshots (F2) ----
 // Asked for by the key, taken once the frame is fully drawn (main.cpp calls
@@ -176,7 +180,7 @@ void TakeScreenshotIfRequested() {
     bool ok = !path.empty() && ReadBackbuffer(pixels, w, h) && SavePngBGRA(path.c_str(), pixels.data(), w, h);
     // Where it went, in full, so it can be found (the folder's path shown,
     // as the performance report does).
-    ShowToast(ok ? "SCREENSHOT SAVED: " + path.string() : "SCREENSHOT FAILED", ok ? 5.0f : 2.0f);
+    ShowToast(ok ? StrF("toast.screenshot", { WideToUtf8(path.wstring()) }) : Str("toast.screenshot_failed"), ok ? 5.0f : 2.0f);
 }
 
 // ---- The game's settings.cfg keys (settings.h hooks) ----
@@ -221,7 +225,7 @@ void PollPerfCapture() {
     if (!ProfTakeCaptureReport(text)) return;
     std::string path = WriteTextToSaveFolder("perf_report.txt", text);
     // The full path, so the player knows exactly where to look.
-    ShowToast(path.empty() ? "PERF REPORT COULD NOT BE SAVED" : "PERF REPORT SAVED: " + path, 12.0f);
+    ShowToast(path.empty() ? Str("toast.report_failed") : StrF("toast.report", { path }), 12.0f);
 }
 void TickAutosave(float dt) {
     if (g_gameState != GameState::InGame || g_menuScreen != MenuScreen::None) return;
@@ -232,7 +236,7 @@ void TickAutosave(float dt) {
 
 void DoLoad() {
     bool ok = LoadGame(g_world, g_player, g_currentSlot);
-    g_toastMessage = ok ? "GAME LOADED" : "LOAD FAILED (no save?)";
+    g_toastMessage = Str(ok ? "toast.loaded" : "toast.load_failed");
     g_toastTimer = 2.0f;
 }
 

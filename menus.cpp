@@ -104,21 +104,21 @@ void SetSliderValue(int id, float v) {
     }
 }
 std::string GetSliderLabel(int id) {
-    char buf[64];
+    auto pct = [](float v) { return std::to_string((int)(v * 100.0f + 0.5f)); };
+    char x[16];
     switch (id) {
-    case SLIDER_SENS_X: snprintf(buf, sizeof(buf), "X SENSITIVITY: %.2fx", g_sensitivityMultX); break;
-    case SLIDER_SENS_Y: snprintf(buf, sizeof(buf), "Y SENSITIVITY: %.2fx", g_sensitivityMultY); break;
-    case SLIDER_RENDER_DIST: snprintf(buf, sizeof(buf), "RENDER DISTANCE: %d CHUNKS", g_loadRadius); break;
-    case SLIDER_FINE_DETAIL: if (g_fineDetail == 0) snprintf(buf, sizeof(buf), "FINE DETAIL: OFF"); else snprintf(buf, sizeof(buf), "FINE DETAIL: %d CHUNKS", g_fineDetail); break;
-    case SLIDER_FRAME_LIMIT: snprintf(buf, sizeof(buf), "FRAME LIMIT (VSYNC OFF): %d FPS", g_frameLimit); break; // vsync paces frames when on (main.cpp)
-    case SLIDER_MASTER_VOLUME: snprintf(buf, sizeof(buf), "MASTER VOLUME: %d%%", (int)(g_masterVolume * 100.0f + 0.5f)); break;
-    case SLIDER_MUSIC_VOLUME: snprintf(buf, sizeof(buf), "MUSIC VOLUME: %d%%", (int)(g_musicVolume * 100.0f + 0.5f)); break;
-    case SLIDER_WORLD_VOLUME: snprintf(buf, sizeof(buf), "WORLD SOUNDS: %d%%", (int)(g_worldVolume * 100.0f + 0.5f)); break;
-    case SLIDER_FOV: snprintf(buf, sizeof(buf), "FIELD OF VIEW: %d DEG", (int)(g_fov + 0.5f)); break;
-    case SLIDER_MUSIC_INTENSITY: snprintf(buf, sizeof(buf), "MUSIC INTENSITY: %d%%", (int)(g_musicIntensity * 100.0f + 0.5f)); break;
-    default: buf[0] = 0;
+    case SLIDER_SENS_X: snprintf(x, sizeof(x), "%.2f", g_sensitivityMultX); return StrF("slider.sens_x", { x });
+    case SLIDER_SENS_Y: snprintf(x, sizeof(x), "%.2f", g_sensitivityMultY); return StrF("slider.sens_y", { x });
+    case SLIDER_RENDER_DIST: return StrF("slider.render_distance", { std::to_string(g_loadRadius) });
+    case SLIDER_FINE_DETAIL: return g_fineDetail == 0 ? Str("slider.fine_detail_off") : StrF("slider.fine_detail", { std::to_string(g_fineDetail) });
+    case SLIDER_FRAME_LIMIT: return StrF("slider.frame_limit", { std::to_string(g_frameLimit) }); // vsync paces frames when on (main.cpp)
+    case SLIDER_MASTER_VOLUME: return StrF("slider.master_volume", { pct(g_masterVolume) });
+    case SLIDER_MUSIC_VOLUME: return StrF("slider.music_volume", { pct(g_musicVolume) });
+    case SLIDER_WORLD_VOLUME: return StrF("slider.world_volume", { pct(g_worldVolume) });
+    case SLIDER_FOV: return StrF("slider.fov", { std::to_string((int)(g_fov + 0.5f)) });
+    case SLIDER_MUSIC_INTENSITY: return StrF("slider.music_intensity", { pct(g_musicIntensity) });
+    default: return "";
     }
-    return buf;
 }
 // The slider track sits in the lower half of its row, with the label
 // above it. The hit rect is a bit taller than the visible track so it's
@@ -257,11 +257,10 @@ void HandleSlotPickerClick(int mx, int my) {
         if (!PointInRect(mx, my, SubmenuRowRect(SLOT_PICKER_LAYOUT, slot))) continue;
 
         if (g_slotPickerMode == SlotPickerMode::Load) {
-            if (!SlotExists(slot)) { g_toastMessage = "EMPTY SLOT"; g_toastTimer = 1.5f; return; }
+            if (!SlotExists(slot)) { ShowToast(Str("toast.empty_slot"), 1.5f); return; }
             g_currentSlot = slot;
             if (!LoadGame(g_world, g_player, slot)) {
-                g_toastMessage = "LOAD FAILED (corrupt save?)";
-                g_toastTimer = 2.0f;
+                ShowToast(Str("toast.load_corrupt"), 2.0f);
                 return;
             }
             // May change g_dayTimeSeconds -- EnterGameplay's

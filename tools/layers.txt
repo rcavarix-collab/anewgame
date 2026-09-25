@@ -3,7 +3,7 @@
 # tools/check_layers.py enforces this; every compiled file must be listed.
 #
 #   1 base          maths, constants, profiler, jobs
-#   2 platform      window, input, timing, file locations, settings
+#   2 platform      window, input, timing, file locations, settings, the string table
 #   3 world         cells, materials registry, streaming, terrain, edits, collision, save format
 #   4 presentation  meshing, textures, rendering, sky, light, audio engine, sound palette
 #   5 game          what walkgrid is: menus, HUD, the tick's game logic, sound choices, saving the game
@@ -22,6 +22,8 @@ gamefiles.h     2
 gamefiles.cpp   2
 settings.h      2
 settings.cpp    2
+strtable.h      2
+strtable.cpp    2
 
 blocks.h        3
 world.h         3

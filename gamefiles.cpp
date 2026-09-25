@@ -174,3 +174,20 @@ bool ReadWholeFile(const std::filesystem::path& path, std::vector<uint8_t>& out)
     in.read((char*)out.data(), size);
     return (bool)in;
 }
+
+std::filesystem::path FindAssetDirectory(const wchar_t* kind) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    std::vector<fs::path> roots = { fs::current_path(ec) };
+    wchar_t exe[MAX_PATH];
+    DWORD n = GetModuleFileNameW(nullptr, exe, MAX_PATH);
+    if (n > 0 && n < MAX_PATH) {
+        fs::path dir = fs::path(exe).parent_path();
+        for (int i = 0; i < 4 && !dir.empty(); i++) { roots.push_back(dir); dir = dir.parent_path(); }
+    }
+    for (const fs::path& r : roots) {
+        fs::path candidate = r / "assets" / kind;
+        if (fs::is_directory(candidate, ec)) return candidate;
+    }
+    return {};
+}

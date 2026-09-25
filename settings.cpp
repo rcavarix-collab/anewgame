@@ -12,6 +12,7 @@
 #include "settings.h"
 #include "gamefiles.h"
 #include "profiler.h" // g_showProfiler, kept in settings.cfg
+#include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -36,6 +37,7 @@ float g_masterVolume = 1.0f;
 float g_musicVolume = 1.0f;
 float g_worldVolume = 1.0f;
 float g_fov = 45.0f;
+std::string g_language = "en";
 bool g_toggleMovement = false;
 bool g_highContrastUI = false;
 bool g_monoAudio = false;
@@ -93,6 +95,7 @@ bool SaveSettings() {
     ss << "vsync=" << (g_vsync ? 1 : 0) << "\n";
     ss << "frameLimit=" << g_frameLimit << "\n";
     ss << "musicIntensity=" << g_musicIntensity << "\n";
+    ss << "language=" << g_language << "\n";
     for (int i = 0; i < ACT_COUNT; i++) {
         ss << "keybind." << g_actionNames[i] << "=" << g_keyBindings[i] << "\n"; // name-indexed, same reasoning as g_blockNames
     }
@@ -163,6 +166,16 @@ void LoadSettings() {
     if (g_frameLimit < 30) g_frameLimit = 30;
     if (g_frameLimit > 200) g_frameLimit = 200;
     g_musicIntensity = getF("musicIntensity", g_musicIntensity);
+    {
+        // A file name inside assets/text: letters, digits, '-' and '_' only,
+        // so a hand-edited value can't reach outside that folder.
+        auto it = kv.find("language");
+        std::string lang = it == kv.end() ? g_language : it->second;
+        while (!lang.empty() && (lang.back() == '\r' || lang.back() == ' ')) lang.pop_back();
+        bool ok = !lang.empty() && lang.size() <= 16;
+        for (char c : lang) ok = ok && (isalnum((unsigned char)c) || c == '-' || c == '_');
+        g_language = ok ? lang : "en";
+    }
     for (int i = 0; i < ACT_COUNT; i++) {
         std::string key = std::string("keybind.") + g_actionNames[i];
         g_keyBindings[i] = getI(key.c_str(), g_keyBindings[i]);

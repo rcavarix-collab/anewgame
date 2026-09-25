@@ -104,16 +104,18 @@ void ToggleMoveLatches(int code) {
 
 // Human-readable name for a bound input code, for the Keybindings rows.
 std::string GetInputDisplayName(int code) {
-    if (code == MOUSE_LEFT) return "MOUSE LEFT";
-    if (code == MOUSE_RIGHT) return "MOUSE RIGHT";
-    if (code == MOUSE_MIDDLE) return "MOUSE MIDDLE";
+    if (code == MOUSE_LEFT) return Str("input.mouse_left");
+    if (code == MOUSE_RIGHT) return Str("input.mouse_right");
+    if (code == MOUSE_MIDDLE) return Str("input.mouse_middle");
     UINT scan = MapVirtualKeyW((UINT)code, MAPVK_VK_TO_VSC);
     LONG fakeLParam = (LONG)(scan << 16);
     wchar_t buf[64] = {};
     int len = GetKeyNameTextW(fakeLParam, buf, 64);
-    if (len <= 0) return "?";
-    std::string s;
-    for (int i = 0; i < len; i++) s.push_back((char)buf[i]); // default bindings are all plain-ASCII key names
+    if (len <= 0) return Str("input.unknown");
+    // The keyboard's own name for the key, in the player's Windows
+    // language, as UTF-8 (the atlas holds Latin-1 and the table's letters;
+    // one it lacks shows as '?').
+    std::string s = WideToUtf8(std::wstring(buf, (size_t)len));
     return s;
 }
 
@@ -348,7 +350,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (!bound && wParam == VK_F3 && (GetKeyState(VK_CONTROL) & 0x8000)) { // Ctrl+F3: a 30 s performance report
                 if (g_gameState == GameState::InGame && !ProfCapturing()) {
                     ProfStartCapture(30.0f, PerfReportHeader());
-                    ShowToast("RECORDING PERFORMANCE FOR 30 S - PLAY AS USUAL", 3.0f);
+                    ShowToast(Str("toast.recording"), 3.0f);
                 }
                 return 0;
             }

@@ -9,7 +9,7 @@ compiles, and every project header, must be listed there.
 import os, re, sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-SEEDS = {'Prismative.cpp', 'drillder.cpp', 'LG2.cpp', 'cc_2_2_2.cpp'}  # reference only, never compiled
+SEEDS = set()  # reference material lives in reference/, outside the scanned folder
 
 def main():
     layers = {}

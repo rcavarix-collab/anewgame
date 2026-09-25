@@ -20,6 +20,6 @@ Each document has one job. If you're looking for something, this says where it i
 | `M0_PLAN.md` | The step-by-step plan for M0 | Until M0 is done |
 | `ENGINE_REVIEW.md` | What the Voxistics engine offered (September 2026) | Fixed: a snapshot |
 | `SOUND_PALETTE.md` | The sound palette's rules (carried over) | When the palette changes |
-| `voxistics/` | Voxistics' own design, review and scope, for reference | Never |
+| `../reference/` | Old code and docs kept only for reference (the four seed prototypes; Voxistics' design, review and scope), each removed once nothing more is wanted from it. See its README | When something is taken from it, or it's retired |
 
 **How they connect.** A goal (GOALS) is reached through milestones (ROADMAP). Along the way, ideas are tested (THEORIES) and problems are watched for (FORECASTS). Every choice is logged (DECISIONS). Every build is measured (COST_LEDGER) and looked back on (REFLECTIONS). A reflection or a forecast that comes true usually produces a new decision or a new rule.

@@ -97,6 +97,13 @@ Problems we expect before they happen: why we expect each one, the warning signs
 
 ## Process
 
+### F15. Carried-over behaviour we didn't choose stays switched on
+- **Likelihood:** High. **Cost if ignored:** Medium.
+- **Why.** M0 carried Voxistics over whole, so everything it did still happens. Falling ground and grass die-back are live today, although parked for the first test (D12).
+- **Warning signs.** Anything happening in play that isn't in the outline.
+- **Act.** M1: the list in `reference/README.md` is worked through item by item.
+- **Plan.** Every carried-over behaviour is either in the M1 scope or switched off, and the list is checked at the end of M1.
+
 ### F13. Scope creep inside a milestone
 - **Likelihood:** High. **Cost if ignored:** High.
 - **Why.** Good ideas arrive mid-work.

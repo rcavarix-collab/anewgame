@@ -1,6 +1,6 @@
 # walkgrid — design reference
 
-The design of record for walkgrid. The engine came from Voxistics (docs/FOUNDATIONS.md, decision D1), and so did most of this document: the engine parts are carried over **with their Voxistics section numbers unchanged**, so code comments that cite "DESIGN.md 4.8" and so on still point to the right place. Parts that described Voxistics-only features are kept only in `docs/voxistics/DESIGN.md`, and are marked "not in walkgrid" below. walkgrid's own design starts at Part XXII.
+The design of record for walkgrid. The engine came from Voxistics (docs/FOUNDATIONS.md, decision D1), and so did most of this document: the engine parts are carried over **with their Voxistics section numbers unchanged**, so code comments that cite "DESIGN.md 4.8" and so on still point to the right place. Parts that described Voxistics-only features are kept only in `reference/voxistics/DESIGN.md`, and are marked "not in walkgrid" below. walkgrid's own design starts at Part XXII.
 
 A carried-over passage may still mention a Voxistics feature (The Line, pulse, fliers) until M0 takes that feature out of the code. The code is the truth; a passage like that is corrected when the step that removes the feature lands.
 
@@ -17,7 +17,7 @@ walkgrid is a first-person game built on the Voxistics engine. Its world is a **
 
 ### 1.2 Non-negotiable constraints, and why each exists
 - **Carry the engine across; don't rewrite it.** Voxistics' engine code (rendering, lighting, textures, streaming, saves, audio, UI, profiler) is moved into walkgrid and unhooked from the old game, not re-written from memory. A rewrite of anything that already works needs the owner's approval and a reason (D1).
-- **The seed prototypes are ideas only.** Prismative.cpp, drillder.cpp, LG2.cpp and cc_2_2_2.cpp are the owner's hand-tested prototypes, kept for reference and never compiled. Take ideas from them, not code. *This rule is about those four files only.* It does not apply to the Voxistics engine, which is carried over as code.
+- **Reference material is ideas only.** The four seed prototypes (Prismative.cpp, drillder.cpp, LG2.cpp, cc_2_2_2.cpp) and Voxistics' own docs live in `reference/`, never compiled. Take ideas from them, not code; each is removed once nothing more is wanted from it (`reference/README.md`). *This rule is about `reference/` only.* It does not apply to the Voxistics engine, which is carried over as code.
 - **Layers** (FOUNDATIONS.md 2): a file includes only its own layer or lower ones; the engine never names the game. Checked by `tools/check_layers.py`.
 - **Resource discipline first.** Every system states its cost. Budgets per frame are set in FOUNDATIONS.md 4 and shown in F3.
 
@@ -280,7 +280,7 @@ A column with updates pending isn't evicted (a cascade must finish in its own co
 **Second kind: covered grass dies back** (`UPD_GRASS_COVER`). Placing a block that keeps the sky off (`BlockShadesGrass`: full opaque blocks, machines, slabs — not glass, plants or thin pieces like pipes) queues a check on the first grass below it, three to four and a half game minutes out (varying cell by cell, so a roof's shadow browns unevenly). If the grass is still cut off from the sky then (`OpenToSky`: nothing shading within 64 blocks above), it turns to dirt; uncovered in the meantime, it lives. Night isn't cover, so grass never dies overnight. Cost: one scan down on a placement, one scan up when a check comes due — nothing while nothing changes. (Grass creeping back over bare dirt in the open — LG2.cpp's spreading grass — is the natural counterpart, not built yet.)
 
 ## Part VI — Not in walkgrid
-Item logistics (pulse): a Voxistics feature. See `docs/voxistics/DESIGN.md`.
+Item logistics (pulse): a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 
 ---
 
@@ -361,12 +361,12 @@ Per-region multi-chunk files (grouping a 16×16 column of chunks behind one smal
 ---
 
 ## Part VIII — Not in walkgrid
-Reference material (the seed prototypes): a Voxistics feature. See `docs/voxistics/DESIGN.md`.
+Reference material (the seed prototypes): a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 
 ---
 
 ## Part IX — Not in walkgrid
-Voxistics milestones: a Voxistics feature. See `docs/voxistics/DESIGN.md`.
+Voxistics milestones: a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 
 ---
 
@@ -536,22 +536,22 @@ Collection is always on (a few dozen timer reads per frame); the overlay is togg
 `tests/run.sh` builds and runs `tests/tests.cpp` with the host compiler — no Windows needed — against the platform-free modules (`world.cpp`, `worldfile.cpp`, `vtex.cpp`, `blocktex.cpp`, `mesher.cpp`, `shapes.cpp`, `icons.cpp`), with `tests/stub/` standing in for the two Windows/D3D headers they touch. It covers the `.vtex` parser (valid input and each class of error), texture assembly (placeholders, authored overrides and upscaling, orientation, warnings), the v5 save round trip (including state, data, corruption detection), legacy v4 loading (name remapping, dug-out chunks), streaming (one-ring-past-view residency, eviction keeping only modified chunks, bit-exact regeneration on return), player spawn and unstick, the mesher (culling, AO, cross-chunk faces, orientation, the 16-bit worst case), shapes (orientation, boundary culling, collision, stepping onto a slab but not a full block), the rendered icons, and the sound system (the music's harmony query and colour, every palette sound's pitch safety and level ceiling under every chord, gestures, merge, determinism, the ambient budget, pause fades, and the soundscape census; 10.4). Every change to those modules should keep it at zero failures, and new systems should add their checks here — the harnesses that used to be written and thrown away during development now live in the repo instead.
 
 ## Part XVIII — Not in walkgrid
-The Line: a Voxistics feature. See `docs/voxistics/DESIGN.md`.
+The Line: a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 
 ---
 
 ## Part XIX — Not in walkgrid
-The essence network map: a Voxistics feature. See `docs/voxistics/DESIGN.md`.
+The essence network map: a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 
 ---
 
 ## Part XX — Not in walkgrid
-The Voxistics development pile: a Voxistics feature. See `docs/voxistics/DESIGN.md`.
+The Voxistics development pile: a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 
 ---
 
 ## Part XXI — Not in walkgrid
-Fliers: a Voxistics feature. See `docs/voxistics/DESIGN.md`.
+Fliers: a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 
 ---
 

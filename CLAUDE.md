@@ -11,7 +11,7 @@ walkgrid is a first-person game on a faceted world (angular ground over a cell g
 6. **Decisions are logged.** Don't reverse anything in `docs/DECISIONS.md` without the owner; a reversal is a new entry.
 
 ## Scope: docs/SCOPE_MOSCOW.xlsx
-The owner keeps scope with MoSCoW (Must / Should / Could / Won't) against the horizon on the "How to use" sheet. New work needs a row. New ideas enter as Could or Won't, marked "Claude (proposed)" in Decided by, until the owner decides. **Only the owner sets Must.** Won't means not this horizon (parked), not rejected. Update Status as work lands (edit with openpyxl, keeping its formatting). The Voxistics sheet is archived in `docs/voxistics/`.
+The owner keeps scope with MoSCoW (Must / Should / Could / Won't) against the horizon on the "How to use" sheet. New work needs a row. New ideas enter as Could or Won't, marked "Claude (proposed)" in Decided by, until the owner decides. **Only the owner sets Must.** Won't means not this horizon (parked), not rejected. Update Status as work lands (edit with openpyxl, keeping its formatting). The Voxistics sheet is archived in `reference/voxistics/`.
 
 ## Structure (FOUNDATIONS.md 2–3)
 - **Layers:** 1 base, 2 platform, 3 world, 4 presentation, 5 game, 6 app (`main.cpp`). A file includes only its own layer or lower ones, so the engine never names the game. Every source file has a layer in `tools/layers.txt`, and `python3 tools/check_layers.py` enforces it.
@@ -35,8 +35,8 @@ The owner keeps scope with MoSCoW (Must / Should / Could / Won't) against the ho
 - **Minimal text.** Show, don't tell. Keep words few and plain; English only for now.
 - **No numbers in player-facing displays** where a band or feel will do. Keep debug UI minimal.
 
-## The seed prototypes: ideas only
-Prismative.cpp, drillder.cpp, LG2.cpp and cc_2_2_2.cpp are the owner's hand-tested prototypes: reference only, never compiled. Take ideas from them, not code. `docs/voxistics/DESIGN.md` Part VIII indexes what each offers (cc_2_2_2.cpp's 145 texture generators; LG2.cpp's cellular automata). **This rule is about those four files only. It never applies to the Voxistics engine, which is carried over as code.**
+## Reference material: ideas only, kept separate, removed when spent
+Everything old that isn't part of walkgrid lives in `reference/`: the four seed prototypes (`reference/seeds/`: Prismative.cpp, drillder.cpp, LG2.cpp, cc_2_2_2.cpp) and Voxistics' own design, review and scope (`reference/voxistics/`). It's never compiled and never included. Take ideas from it, not code. `reference/README.md` lists what is still worth taking from each item; when nothing is left (or the owner says so), the item is deleted, logged in `docs/DECISIONS.md`. **This rule is about `reference/` only.** It never applies to the Voxistics engine code that was carried into walkgrid; that is walkgrid's code now. Voxistics-specific pieces still inside the build are listed in `reference/README.md` too, so they can be removed deliberately.
 
 ## Building and checking
 - The owner builds with Visual Studio (x64, C++17, SDL checks on). Debug builds optimise the hot loops per file; judge performance in Release.

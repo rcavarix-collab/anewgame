@@ -127,6 +127,107 @@ Each item says who can check it. **"Me"** means native tests, still images or of
 
 ---
 
-## 7. Open questions
+## 7. What walkgrid has running at the first test
 
-None blocking. **Waiting on your approval of this outline to start M0.**
+**Kept** = works as in Voxistics. **Adapted** = the Voxistics feature, reworked for the faceted world. **New** = not in Voxistics. **Parked** = left out of the prototype, and the code is kept for later.
+
+### The world
+| Feature | Status |
+|---|---|
+| Endless world streamed around you, nearest ground first, with a render distance setting (1–8 chunks) | Kept |
+| Faceted ground instead of cubes, finer near you | New |
+| Seeded rolling landscape with meadow, dirt, stone and sand regions | New (replaces the flat test plain) |
+| Placing and removing ground, one cell at a time, where the crosshair points | Adapted |
+| Unsupported ground falls, a cell per tick (Voxistics gravity) | Adapted, **your call (Q1)** |
+| Grass left under cover dies back to dirt after a few minutes | Kept, **your call (Q1)** |
+| Glowing materials (magma-type) that light their surroundings, with shadows | Kept |
+| Day and night: a one-hour day with sun, moon, stars and drifting cloud | Kept |
+| Saves: 5 slots, autosave every 5 minutes and on quit, crash-safe, only your changes stored | Kept (new format version) |
+
+### Looks
+| Feature | Status |
+|---|---|
+| Sun shadows, sky and ground ambient light, distance fog into the sky colour, filmic tone | Kept |
+| Surface relief (normal maps), shine on glossy materials, glowing texture detail | Kept |
+| Large-scale colour drift so ground doesn't look tiled | Kept |
+| Smooth texture filtering | Adapted (was pixel-crisp) |
+| Natural blending between materials (grass into dirt, and so on) | New |
+| Darkness inside pits, overhangs and hollows (sky light) | New |
+| Screen-space ambient occlusion, outlines, bloom (each can be switched off) | Kept |
+| Smooth motion above 60 fps | New |
+| Plants that turn to face you (grass tufts, flowers, reeds) | Parked, **your call (Q2)** |
+| See-through materials (glass, ice, water) | Parked |
+
+### Sound
+| Feature | Status |
+|---|---|
+| Day-cycle music: six sections, dawn to night, locked to the clock; silent when paused | Kept |
+| Footsteps on the beat, by gait (crouch, walk, sprint) and by ground material | Kept |
+| Landing, slide, place and remove sounds, all in key with the music | Kept |
+| Hotbar and library sounds | Kept |
+| Ambient sounds from what's around you (wind, birdsong, night shimmer, drips, embers), and discovery sounds | Kept (retuned to the new materials) |
+| The ground around you colouring the music and sound (calm or active, natural or worked) | Kept (retuned) |
+| Sounds placed in stereo and softened by distance; a mono option | Kept |
+| Effects on their own thread, with a voice cap, so a busy moment can't click or cut out | New |
+
+### Moving and building
+| Feature | Status |
+|---|---|
+| Walk, sprint, crouch, jump; half-block step-up | Kept (on facets) |
+| Power slide with the camera lean | Kept |
+| Mouse look with per-axis sensitivity and invert; field-of-view setting | Kept (raw mouse input: New) |
+| Ten-slot hotbar: 1–0 keys and mouse wheel | Kept |
+| Material library (E): click or drag materials onto the hotbar | Kept |
+
+### Menus and settings
+| Feature | Status |
+|---|---|
+| Title screen, save-slot picker, pause menu | Kept |
+| Options: Look, Graphics (render distance, shadows, outlines, SSAO, bloom, vsync, frame cap), Display (borderless fullscreen, F11), Audio (master, music, world sounds, music intensity, mono) | Kept |
+| Keybindings, all rebindable | Kept |
+| Accessibility: toggle-to-move, high-contrast menus | Kept |
+| Colour-vision modes | Parked (they only served the pulse colours) |
+| First-steps tutorial | Parked (it taught pulse building); a two-line move-and-dig version could replace it |
+| Resizable, DPI-aware window with a minimum size | Kept |
+
+### Debug and checking (only when pressed; local files only)
+| Feature | Status |
+|---|---|
+| F3 profiler: CPU per system, GPU per pass, counts; Ctrl+F3 30-second report; boot timeline | Kept |
+| F8 and ] / [ to jump or scrub the time of day; F5 save and F9 load | Kept |
+| Screenshot key, saving to the save folder | New |
+| Native tests, shader check, MSVC check, offline sound check | Kept |
+| Still-image preview of faceted ground, rendered on the CPU | New |
+
+### Left behind from Voxistics
+The Line, pulse logistics (harvesters, pipes, stores, diffusers), fliers and their glowing patches, mold, the essence network and its map (M), the store screen, the F7 Line marker, cube props and building shapes (slabs, ramps, beams, pipes), and the Voxistics block roster (the textures stay in the library to choose from).
+
+---
+
+## 8. What we need to build it
+
+**From you**
+- Approval of this outline.
+- Answers to Q1 and Q2 below.
+- For each milestone: a Visual Studio build on your machine, a few screenshots (the new key), and an F3 or Ctrl+F3 report. These are the only way anything visible or audible gets checked.
+- Your picks from the texture library for the starting materials (I'll propose a dozen).
+
+**Already in hand (from Voxistics)**
+- The renderer, lighting and sky; the texture format, the 93 textures and their generators; streaming and saves; the music and sound engine; menus, settings and input; the profiler and all the test and check tools.
+
+**To build**
+- M0: separate the engine from the game, the walkgrid rename, the screenshot key, raw mouse input, interpolated rendering, and the new `CLAUDE.md`.
+- M1: the faceted mesher with detail bands; material blending and sky light in the shader; collision and picking on facets; the test landscape; the starting materials and their sounds; the effects audio thread; the still-image preview tool.
+
+**Tools**
+- Here: the native compiler and test harness (working); `glslangValidator` for the shader check (not installed yet; I'll install it before any shader work).
+- Yours: Visual Studio 2022 (v143), as now.
+
+---
+
+## 9. Open questions
+
+- **Q1.** Ground behaviour from Voxistics: should unsupported ground fall, and should covered grass die back to dirt? Both are cheap and already built.
+- **Q2.** Plants that face you (grass tufts, flowers, reeds) dressing the ground: in the first test, or later?
+
+Otherwise, **waiting on your approval of this outline to start M0.**

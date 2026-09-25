@@ -684,6 +684,26 @@ void TakeScreenshotIfRequested() {
     ShowToast(ok ? "SCREENSHOT SAVED" : "SCREENSHOT FAILED", 1.5f);
 }
 
+void GameTick(float dt) {
+    {
+        // Harvesters gather steadily, faster where The Line bends time.
+        ProfScope prof(PROF_PULSE);
+        g_pulse.Tick(g_world, g_pulseTuning, dt, [](int x, int y, int z) {
+            return LineTimeRateAt(g_line, g_lineTuning, x + 0.5f, y + 0.5f, z + 0.5f);
+        });
+        FeedLine(g_line, g_pulse.TakeDiffused()); // diffusers widen the line's band
+    }
+    {
+        // Fliers age by the local rate of time: The Line burns their day away.
+        ProfScope prof(PROF_UPDATES);
+        g_fliers.Tick(g_world, g_flierTuning, g_player.x, g_player.y, g_player.z, dt, [](float x, float y, float z) {
+            return LineTimeRateAt(g_line, g_lineTuning, x, y, z);
+        });
+    }
+    UpdateLine(g_line, g_lineTuning, g_player.x, g_player.y, g_player.z, dt);
+    g_essence.Update(g_player.x, g_player.z); // discovery (Part XIX)
+}
+
 void PollPerfCapture() {
     std::string text;
     if (!ProfTakeCaptureReport(text)) return;

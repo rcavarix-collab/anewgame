@@ -38,6 +38,11 @@ extern float g_fpsTimer;
 // delta each frame rather than going through a function call.
 static const float BASE_MOUSE_SENS = 0.0025f;
 
+// The game's own per-tick systems (FOUNDATIONS.md 2): main.cpp's fixed
+// 60 Hz loop calls this once per tick, after the engine's world work
+// (streaming, player physics, scheduled updates) and before the world
+// sounds read the tick's results. The engine never names what runs here.
+void GameTick(float dt);
 // Whether an action is currently "held" per its bound input, honoring
 // toggle-to-move for the four movement actions (Accessibility, Section
 // 11) -- main.cpp's fixed-timestep tick calls this once per movement

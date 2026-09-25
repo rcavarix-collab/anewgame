@@ -1,6 +1,7 @@
-// worldfile.cpp -- see worldfile.h. Layout of a v5 file (little-endian):
+// worldfile.cpp -- see worldfile.h. Layout of a walkgrid v1 file
+// (little-endian):
 //
-//   u32 magic "VXLG", u32 version
+//   u32 magic "WGRD", u32 version (1)
 //   player: f32 x, y, z, yaw, pitch; i32 hotbarIndex; f32 dayTime
 //   generator: str name, u32 version, u64 seed
 //   u32 nameCount, str name[nameCount]        (block identity, Section 3.1)
@@ -9,12 +10,8 @@
 //     blocks: runs of (u16 length, u16 nameIndex) covering all 4096 cells
 //     state (flag 1): runs of (u16 length, u8 value) covering 4096 cells
 //     data (flag 2): u16 count, then (u16 cell, u32 length, bytes) each
-//   u32 updateCount, then per update (v6+):
-//     i32 x, y, z; u8 kind; u32 delay (ticks from now)
-//   The Line (v7+; Voxistics only, written empty): u32 cellCount, then
-//     (f32 x, z, seconds) each (v7/v8: i64 cell, f32 seconds); f64; f32
-//   Essence (v8+; Voxistics only, written empty): u32 zoneCount, u64 zone ids;
-//     u32 attractorCount, (i32 x, y, z) each
+//   u32 updateCount, then per update: i32 x, y, z; u8 kind; u32 delay (ticks from now)
+//   u32 gameLength, bytes[gameLength]          (the game layer's section)
 //   u32 FNV-1a checksum of everything before it
 //
 // Cells run in Chunk::LocalIndex order (x fastest, then z, then y), so
@@ -26,7 +23,8 @@
 
 namespace {
 
-const uint32_t MAGIC = ('G' << 24) | ('L' << 16) | ('X' << 8) | 'V';
+const uint32_t MAGIC = ('D' << 24) | ('R' << 16) | ('G' << 8) | 'W'; // "WGRD" in file order
+const uint32_t MAX_GAME_SECTION = 16u << 20;
 
 uint32_t Fnv1a(const uint8_t* data, size_t len) {
     uint32_t h = 2166136261u;
@@ -137,38 +135,6 @@ bool DecodeChunk(Reader& r, const std::vector<BlockID>& remap, ChunkMap& out) {
     return true;
 }
 
-// v2-v4: a flat list of (x, y, z, nameIndex) for every non-air block,
-// made with the original hills terrain.
-bool DecodeLegacyBlocks(Reader& r, const std::vector<BlockID>& remap, SaveData& out) {
-    uint32_t blockCount = r.U32();
-    if (!r.ok || blockCount > (r.size - r.pos) / 13) return false;
-    for (uint32_t i = 0; i < blockCount; i++) {
-        int32_t x = r.I32(), y = r.I32(), z = r.I32();
-        uint8_t idx = r.U8();
-        if (!r.ok) return false;
-        if (y < Y_MIN || y > Y_MAX) continue;
-        BlockID id = idx < remap.size() ? remap[idx] : BLOCK_AIR;
-        ChunkCoord cc = World::ToChunk(x, y, z);
-        std::unique_ptr<Chunk>& c = out.chunks[cc];
-        if (!c) { c = std::make_unique<Chunk>(); c->modified = true; }
-        c->blocks[Chunk::LocalIndex(LocalOf(x, cc.x), LocalOf(y, cc.y), LocalOf(z, cc.z))] = (uint8_t)id;
-    }
-    out.gen.type = GEN_HILLS;
-    out.gen.version = 1;
-    out.gen.seed = 0;
-    // A legacy save holds every non-air block, so a hills chunk the
-    // player dug out completely isn't in it at all -- without an explicit
-    // empty chunk, regeneration would quietly refill it. Hills v1 never
-    // reaches above y = 60 (chunk row 3).
-    std::vector<std::pair<int, int>> columns;
-    for (const auto& kv : out.chunks) columns.push_back({ kv.first.x, kv.first.z });
-    for (const auto& col : columns)
-        for (int cy = 0; cy <= 60 / CHUNK_SIZE; cy++) {
-            std::unique_ptr<Chunk>& c = out.chunks[{ col.first, cy, col.second }];
-            if (!c) { c = std::make_unique<Chunk>(); c->modified = true; }
-        }
-    return true;
-}
 
 } // namespace
 
@@ -187,7 +153,7 @@ const char* DecodeResultText(DecodeResult r) {
 
 void EncodeSave(const Player& p, float dayTime, const WorldGenParams& gen,
                 const World& world, const ChunkMap& evicted, const std::vector<PendingUpdate>& updates,
-                std::vector<uint8_t>& out) {
+                const std::vector<uint8_t>& game, std::vector<uint8_t>& out) {
     out.clear();
     Writer w{ out };
     w.U32(MAGIC);
@@ -210,16 +176,10 @@ void EncodeSave(const Player& p, float dayTime, const WorldGenParams& gen,
     w.U32((uint32_t)updates.size());
     for (const PendingUpdate& u : updates) { w.I32(u.x); w.I32(u.y); w.I32(u.z); w.U8(u.kind); w.U32(u.delay); }
 
-    // The Line's section (v7+), written empty: The Line isn't in walkgrid,
-    // but the v9 layout keeps its slot until the fresh format (M0.9).
-    w.U32(0);
-    w.F64(0.0);
-    w.F32(0.0f);
-
-    // The essence section (v8+), written empty: not in walkgrid; the v9
-    // layout keeps its slot until the fresh format (M0.9).
-    w.U32(0);
-    w.U32(0);
+    // The game's own section: opaque to the engine (FOUNDATIONS.md 2).
+    size_t n = game.size() < MAX_GAME_SECTION ? game.size() : MAX_GAME_SECTION;
+    w.U32((uint32_t)n);
+    out.insert(out.end(), game.begin(), game.begin() + n);
 
     w.U32(Fnv1a(out.data(), out.size()));
 }
@@ -233,42 +193,20 @@ DecodeResult DecodeSave(const uint8_t* data, size_t size, SaveData& out) {
     Reader r{ data, size - 4 };
     if (r.U32() != MAGIC) return DecodeResult::BadMagic;
     out.version = r.U32();
-    // v2 embedded preferences, v3 moved them out, v4 added the day clock,
-    // v5 added the generator and per-chunk storage, v6 pending updates,
-    // v7 The Line, v8 the essence map's discoveries, v9 where in each of
-    // The Line's cells the time was spent (Section 7.2).
-    if (out.version < 2 || out.version > SAVE_VERSION) return DecodeResult::UnsupportedVersion;
+    if (out.version != SAVE_VERSION) return DecodeResult::UnsupportedVersion;
 
     Player& p = out.player;
     p.x = r.F32(); p.y = r.F32(); p.z = r.F32(); p.yaw = r.F32(); p.pitch = r.F32();
     p.hotbarIndex = r.I32();
-    out.dayTime = out.version >= 4 ? r.F32() : 0.0f; // pre-clock saves resume at dawn
+    out.dayTime = r.F32();
 
-    if (out.version == 2) {
-        out.hasLegacySettings = true;
-        out.legacySensX = r.F32(); out.legacySensY = r.F32();
-        out.legacyInvertX = r.U8() != 0; out.legacyInvertY = r.U8() != 0;
-        out.legacyRenderDist = r.I32();
-        out.legacyShowFPS = r.U8() != 0;
-        out.legacyVolume = r.F32();
-        uint32_t bindCount = r.U32();
-        if (!r.ok || bindCount > 256) return DecodeResult::Corrupt;
-        out.legacyBindings.resize(bindCount);
-        for (uint32_t i = 0; i < bindCount; i++) {
-            out.legacyBindings[i].first = r.Str();
-            out.legacyBindings[i].second = r.I32();
-        }
-    }
-
-    if (out.version >= 5) {
-        std::string genName = r.Str();
-        out.gen.version = r.U32();
-        out.gen.seed = r.U64();
-        if (!r.ok) return DecodeResult::Truncated;
-        if (!WorldGenFromName(genName.c_str(), out.gen.type) || out.gen.version == 0 ||
-            out.gen.version > WorldGenLatestVersion(out.gen.type))
-            return DecodeResult::UnknownGenerator;
-    }
+    std::string genName = r.Str();
+    out.gen.version = r.U32();
+    out.gen.seed = r.U64();
+    if (!r.ok) return DecodeResult::Truncated;
+    if (!WorldGenFromName(genName.c_str(), out.gen.type) || out.gen.version == 0 ||
+        out.gen.version > WorldGenLatestVersion(out.gen.type))
+        return DecodeResult::UnknownGenerator;
 
     // Saved name index -> current BlockID. A name this build doesn't know
     // becomes air (Section 7.4) rather than whatever ID has that slot now.
@@ -284,44 +222,25 @@ DecodeResult DecodeSave(const uint8_t* data, size_t size, SaveData& out) {
     }
     if (!r.ok) return DecodeResult::Truncated;
 
-    if (out.version >= 5) {
-        uint32_t chunkCount = r.U32();
-        if (!r.ok) return DecodeResult::Truncated;
-        for (uint32_t i = 0; i < chunkCount; i++)
-            if (!DecodeChunk(r, remap, out.chunks)) return r.ok ? DecodeResult::Corrupt : DecodeResult::Truncated;
-        if (out.version >= 6) {
-            uint32_t n = r.U32();
-            if (!r.ok || n > (r.size - r.pos) / 17) return DecodeResult::Corrupt;
-            out.updates.resize(n);
-            for (PendingUpdate& u : out.updates) {
-                u.x = r.I32(); u.y = r.I32(); u.z = r.I32();
-                u.kind = (UpdateKind)r.U8(); u.delay = r.U32();
-            }
-            if (!r.ok) return DecodeResult::Truncated;
-        }
-        if (out.version >= 7) {
-            uint32_t n = r.U32();
-            if (!r.ok || n > (r.size - r.pos) / 12) return DecodeResult::Corrupt;
-            // The Line's history: read past and dropped (not in walkgrid).
-            for (uint32_t i = 0; i < n; i++) {
-                if (out.version >= 9) { r.F32(); r.F32(); r.F32(); }
-                else { r.U64(); r.F32(); } // v7/v8: a cell key and its seconds
-            }
-            r.F64(); r.F32();
-            if (!r.ok) return DecodeResult::Truncated;
-        }
-        if (out.version >= 8) {
-            // Essence discoveries and attractors: read past and dropped.
-            uint32_t nz = r.U32();
-            if (!r.ok || nz > (r.size - r.pos) / 8) return DecodeResult::Corrupt;
-            for (uint32_t i = 0; i < nz; i++) r.U64();
-            uint32_t na = r.U32();
-            if (!r.ok || na > (r.size - r.pos) / 12) return DecodeResult::Corrupt;
-            for (uint32_t i = 0; i < na * 3; i++) r.I32();
-            if (!r.ok) return DecodeResult::Truncated;
-        }
-    } else {
-        if (!DecodeLegacyBlocks(r, remap, out)) return r.ok ? DecodeResult::Corrupt : DecodeResult::Truncated;
+    uint32_t chunkCount = r.U32();
+    if (!r.ok) return DecodeResult::Truncated;
+    for (uint32_t i = 0; i < chunkCount; i++)
+        if (!DecodeChunk(r, remap, out.chunks)) return r.ok ? DecodeResult::Corrupt : DecodeResult::Truncated;
+
+    uint32_t n = r.U32();
+    if (!r.ok || n > (r.size - r.pos) / 17) return DecodeResult::Corrupt;
+    out.updates.resize(n);
+    for (PendingUpdate& u : out.updates) {
+        u.x = r.I32(); u.y = r.I32(); u.z = r.I32();
+        u.kind = (UpdateKind)r.U8(); u.delay = r.U32();
     }
+    if (!r.ok) return DecodeResult::Truncated;
+
+    uint32_t gameLen = r.U32();
+    if (!r.ok || gameLen > MAX_GAME_SECTION || !r.need(gameLen)) return r.ok ? DecodeResult::Corrupt : DecodeResult::Truncated;
+    out.game.assign(r.data + r.pos, r.data + r.pos + gameLen);
+    r.pos += gameLen;
+    // Nothing may follow: a longer file than its sections describe is damaged.
+    if (r.pos != r.size) return DecodeResult::Corrupt;
     return DecodeResult::Ok;
 }

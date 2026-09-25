@@ -289,10 +289,10 @@ Item logistics (pulse): a Voxistics feature. See `docs/voxistics/DESIGN.md`.
 ### 7.1 Why the legacy approach was unacceptable
 All four reference files persisted state via `file.write(reinterpret_cast<const char*>(&block), sizeof(Block))` — a raw struct dump. This fails three ways: (1) any struct field change silently corrupts every old save with no error; (2) no corruption detection — an interrupted write loads however far it got with no signal anything's wrong; (3) block identity is positional (enum/array order *is* the format), so adding a new block type during ongoing development reinterprets every existing save's blocks as the wrong type. A concrete bug was also found in LG2.cpp: `LoadGame` clears the quadtree and never rebuilds it, and separately, the quadtree holds pointers invalidated by `blocks.insert`/`erase` elsewhere — save/load interacting with a raw-pointer spatial index made the whole system fragile in a way that would have been very hard to diagnose from symptoms alone.
 
-### 7.2 Format actually implemented (v8)
-The byte format lives in `worldfile.cpp` (pure C++, no OS calls — tested natively); `persist.cpp` does the disk side and applies a decoded save to live state.
+### 7.2 Format actually implemented (walkgrid v1)
+The byte format lives in `worldfile.cpp` (pure C++, no OS calls — tested natively, world layer); `savegame.cpp` (game layer) applies a decoded save to live state; `gamefiles.cpp` (platform layer) does the crash-safe disk write.
 ```
-magic (u32 "VXLG") | version (u32, currently 9)
+magic (u32 "WGRD") | version (u32, 1)
 player: pos.x,y,z (f32×3)  yaw,pitch (f32×2)  hotbarSelection (i32)  dayTime (f32)
 generator: name (str)  version (u32)  seed (u64)                      (2.5)
 blockNameCount (u32) | [ nameLen(u16) nameBytes ] × count             (3.1)
@@ -301,15 +301,15 @@ chunkCount (u32) | per chunk:
     blocks: runs of (length u16, nameIndex u16) covering all 4096 cells
     state (if flag 1): runs of (length u16, value u8)
     data  (if flag 2): count (u16), then (cell u16, length u32, bytes)
-updateCount (u32) | [ x,y,z (i32×3)  kind (u8)  delay (u32, ticks from now) ] × count   (v6, 5.4)
-lineCells (u32) | [ meanX, meanZ, seconds (f32×3) ] × count; angMom (f64); angle (f32)   (v9, Part XVIII;
-    v7/v8 stored [ 32-block cell (i64)  seconds (f32) ], loaded as time spent at each cell's centre)
-zoneCount (u32) | zone id (u64) × count; attractorCount (u32) | [ x,y,z (i32×3) ] × count   (v8, Part XIX)
+updateCount (u32) | [ x,y,z (i32×3)  kind (u8)  delay (u32, ticks from now) ] × count   (5.4)
+gameLength (u32) | bytes × gameLength   -- the game layer's own section, opaque to the engine
 checksum (u32)  — FNV-1a over every byte above
 ```
-**Only modified chunks are written** (2.4); everything else regenerates from the recorded generator. Cells run in `LocalIndex` order (x fastest, then z, then y), so the horizontal layers typical of terrain and buildings collapse into a handful of runs. The effect on size is large: the old format spent 13 bytes on every non-air block (x, y, z as i32 plus an ID), so a radius-8 hills world was tens of megabytes; now an untouched world is a few hundred bytes of header, and a modest build costs a few hundred bytes to a few KB per chunk it touched (the native test's two-chunk edit encodes to 209 bytes).
+**Only modified chunks are written** (2.4); everything else regenerates from the recorded generator. Cells run in `LocalIndex` order (x fastest, then z, then y), so the horizontal layers typical of terrain and buildings collapse into a handful of runs. An untouched world is a few hundred bytes; a modest build costs a few hundred bytes to a few KB per chunk it touched.
 
-**Older versions still load:** v2 (preferences embedded, 7.2.2), v3 (preferences moved out), v4 (added the day clock), v5 (generator + per-chunk storage, no pending updates), v6 (no Line state), v7 (no essence discoveries), v8 (Line cells without positions). Their block lists are all hills v1 terrain, so they load as hills worlds with every stored chunk flagged modified; because those formats stored only non-air blocks, a hills chunk the player had dug out entirely would be absent — so each stored column's chunk rows 0–3 (hills v1 tops out at y = 60) are filled in as explicit empty chunks rather than letting regeneration refill them. Saving such a world again writes the current version.
+**The game section** lets walkgrid store its own state without the engine format naming game systems (FOUNDATIONS.md 2). It is empty today. A file longer than its sections describe is refused as corrupt.
+
+**Voxistics formats (v2–v9) are not read.** walkgrid had no saves before v1, so the legacy loaders were removed (M0.9, D13). A Voxistics save is refused cleanly ("not a save file"), never misread.
 
 ### 7.2.1 Save location
 `Documents\My Games\Voxistics\` — the conventional PC-game save location (Skyrim and most Bethesda/Paradox titles use the same pattern), chosen over a hidden `%LOCALAPPDATA%` folder specifically because it's visible and easy for players to find, back up, or copy between machines. The directory is resolved fresh on every save/load (`SHGetKnownFolderPath(FOLDERID_Documents, ...)` plus the `My Games\Voxistics` subfolder, created if missing) rather than cached once, so a transient failure doesn't permanently strand the game on a fallback it no longer needs.
@@ -317,11 +317,11 @@ checksum (u32)  — FNV-1a over every byte above
 Two things can go wrong with a known-folder lookup in the real world, and both are handled by falling back to the current working directory (this prototype's original behavior) rather than failing the save outright: the `SHGetKnownFolderPath` call itself failing (rare, but has no reason to be fatal when a working fallback exists), and something unexpected already occupying part of the intended path — concretely, a plain file sitting where a folder needs to be. The code checks `exists() && !is_directory()` before calling `create_directories()` specifically to catch that second case rather than letting a failed directory creation surface as a mysterious save failure. `EnsureDirectoryBulletproof()` factors this check out of `GetSaveDirectory()` so `GetSavesDirectory()` (7.2.4) can reuse the identical logic for its own subfolder rather than duplicating it.
 
 ### 7.2.4 Multi-slot saves
-Individual save files live in `Documents\My Games\Voxistics\Saves\slot1.sav` .. `slot5.sav` (`MAX_SAVE_SLOTS = 5`) rather than the single fixed `voxelproto.sav` this prototype originally had — the title screen's New Game / Load Game (Part XII) needs more than one world to choose between. The per-slot file format is completely unchanged (7.2's v3 format, byte-for-byte) — only *which path* `SaveGame`/`LoadGame` read and write moved, so this required no version bump.
+Individual save files live in `Documents\My Games\Voxistics\Saves\slot1.sav` .. `slot5.sav` (`MAX_SAVE_SLOTS = 5`) rather than the single fixed `voxelproto.sav` this prototype originally had — the title screen's New Game / Load Game (Part XII) needs more than one world to choose between. Each slot holds one walkgrid v1 save (7.2).
 
 A slot's occupied/empty status for the picker list (12.3) is read straight off the filesystem (`std::filesystem::exists`) rather than a stored index or catalog file, so it can never drift out of sync with what's actually on disk. Slots are auto-named "World N" by position rather than player-chosen names — building a full text-entry keyboard widget for renaming was scoped out of this pass (documented as real future work, not forgotten) in favor of shipping multiple slots that work correctly first.
 
-**Migration:** a save from before multi-slot support existed lived directly at `Documents\My Games\Voxistics\voxelproto.sav`. `MigrateLegacySingleSaveIfPresent()`, called once at startup, moves that file into `Saves\slot1.sav` if it exists and slot 1 doesn't already have its own save — the same "migrate once, on first encounter, never overwrite something newer" philosophy as the v2-settings migration (7.2.2), so a save from before this change isn't silently orphaned.
+**Migration:** Voxistics moved an older single save into slot 1 at start-up; walkgrid has no older saves, so that migration was removed (M0.9).
 
 ### 7.2.5 Day clock field (v4)
 `SaveGame`/`LoadGame` gained one field, `g_dayTimeSeconds` (Part XIII), appended right after `hotbarIndex` — save version bumped to v4. It's world state, not a settings.cfg preference, since different saves can legitimately be at different points in their day. v2 and v3 saves (predating the day clock) still load; they default to 0.0 (dawn) rather than needing a value that was never meaningful for them.
@@ -333,15 +333,15 @@ The format is plain `key=value` lines (`sensitivityX=1.000000`, `keybind.forward
 
 It's saved incrementally rather than only at one moment: every toggle click, every Reset to Default, every completed slider drag (once when the drag ends, not on every pixel of motion), and every committed keybind rebind writes it immediately, so a preference change survives even if the process is later killed without a clean exit.
 
-**Migration from v2 saves:** loading a v2 save (7.2 above) parses its embedded settings block as before and applies it to the running session, and — only if `settings.cfg` doesn't exist yet — writes it out once via the same `SaveSettings()` used everywhere else. Once that file exists it's the sole source of truth from then on; this path only ever fires for the first v2 save loaded on a machine that hasn't run the new format yet.
+**The game's own keys** (the hotbar, and the render distance the world layer owns) are written and read through a hook the game layer registers (`SetGameSettingsHooks`, settings.h), so the platform-layer settings file never names them. Same keys, same file as before (M0.9).
 
 ### 7.2.3 Write sequence (crash safety) — settings file
 Same shape as the save file's (7.3): the whole file is one `ostringstream`-built buffer, written to `settings.cfg.tmp`, then renamed into place — never edited in-place, so a crash mid-write leaves the previous version of the file intact rather than truncated.
 
 ### 7.3 Write sequence (crash safety)
 1. Serialize the entire save into an in-memory buffer.
-2. Write that buffer to `voxelproto.sav.tmp`.
-3. Only if the write completes without error: rotate the existing `voxelproto.sav` to `voxelproto.sav.bak`, then rename `.tmp` into place as `voxelproto.sav`.
+2. Write that buffer to `slotN.sav.tmp`.
+3. Only if the write completes without error: rotate the existing `slotN.sav` to `slotN.sav.bak`, then rename `.tmp` into place as `slotN.sav` (`WriteFileSafely`, gamefiles.cpp).
 
 A crash or power loss at any point before step 3 completes leaves the previously-good save completely untouched — there is no window where the live save file is partially overwritten.
 

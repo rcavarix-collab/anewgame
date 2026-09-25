@@ -309,7 +309,7 @@ static uint32_t Fnv1a(const uint8_t* data, size_t len) {
 }
 
 static void TestSaveRoundTrip() {
-    printf("save format v5 round trip\n");
+    printf("save format (walkgrid v1) round trip\n");
     World w; ResetWorldState(w);
     g_loadRadius = 2;
     g_worldGen.type = GEN_FLAT; g_worldGen.version = 1; g_worldGen.seed = 0x1234567890ABCDEFull;
@@ -329,7 +329,8 @@ static void TestSaveRoundTrip() {
     Player p; p.x = 1.5f; p.y = 13; p.z = 2.5f; p.yaw = 0.7f; p.hotbarIndex = 3;
     std::vector<uint8_t> buf;
     std::vector<PendingUpdate> pend = { { 7, 20, 7, UPD_GRAVITY, 3 }, { -1, 5, 9, UPD_GRAVITY, 0 } };
-    EncodeSave(p, 1234.5f, g_worldGen, w, g_evictedChunks, pend, buf);
+    std::vector<uint8_t> game = { 9, 0, 255, 42 }; // the game layer's section: opaque bytes
+    EncodeSave(p, 1234.5f, g_worldGen, w, g_evictedChunks, pend, game, buf);
     printf("    %zu generated chunks, 2 modified -> %zu bytes\n", generated, buf.size());
     CHECK(buf.size() < 3000);
 
@@ -341,6 +342,7 @@ static void TestSaveRoundTrip() {
     CHECK(d.gen.type == GEN_FLAT && d.gen.seed == g_worldGen.seed);
     CHECK(d.chunks.size() == 2);
     CHECK(d.updates.size() == 2 && d.updates[0].x == 7 && d.updates[0].delay == 3 && d.updates[1].y == 5);
+    CHECK(d.game == game);
     for (auto& kv : d.chunks) {
         Chunk* orig = w.FindChunk(kv.first);
         CHECK(orig && orig->modified && ChunksEqual(*orig, *kv.second));
@@ -350,42 +352,23 @@ static void TestSaveRoundTrip() {
     std::vector<uint8_t> broken = buf; broken[buf.size() / 2] ^= 0x40;
     SaveData d2; CHECK(DecodeSave(broken.data(), broken.size(), d2) == DecodeResult::BadChecksum);
     SaveData d3; CHECK(DecodeSave(buf.data(), 20, d3) != DecodeResult::Ok);
-}
 
-// Writes a v4 file the way the old SaveGame did (every non-air block).
-static std::vector<uint8_t> MakeLegacyV4(const std::vector<std::array<int, 4>>& blocks) {
-    std::vector<uint8_t> b;
-    auto u32 = [&](uint32_t v) { for (int i = 0; i < 4; i++) b.push_back((uint8_t)(v >> (8 * i))); };
-    auto f32 = [&](float v) { uint32_t x; memcpy(&x, &v, 4); u32(x); };
-    auto str = [&](const char* s) { uint16_t n = (uint16_t)strlen(s); b.push_back((uint8_t)n); b.push_back((uint8_t)(n >> 8)); b.insert(b.end(), s, s + n); };
-    u32(('G' << 24) | ('L' << 16) | ('X' << 8) | 'V'); u32(4);
-    f32(8); f32(50); f32(8); f32(0); f32(0); u32(0); f32(99.0f);
-    const char* names[] = { "air", "foundation", "stone", "dirt", "wood", "chest", "machine", "pipe_straight" };
-    u32(8); for (const char* n : names) str(n);
-    u32((uint32_t)blocks.size());
-    for (auto& bl : blocks) { u32((uint32_t)bl[0]); u32((uint32_t)bl[1]); u32((uint32_t)bl[2]); b.push_back((uint8_t)bl[3]); }
-    uint32_t h = 2166136261u; for (uint8_t x : b) { h ^= x; h *= 16777619u; }
-    u32(h);
-    return b;
-}
-
-static void TestLegacyLoad() {
-    printf("legacy v4 load\n");
-    std::vector<std::array<int, 4>> blocks = { { 1, 0, 1, 1 }, { 1, 1, 1, 2 }, { 1, 2, 1, 7 }, { -5, 3, -5, 4 } };
-    std::vector<uint8_t> buf = MakeLegacyV4(blocks);
-    SaveData d;
-    CHECK(DecodeSave(buf.data(), buf.size(), d) == DecodeResult::Ok);
-    CHECK(d.version == 4 && d.dayTime == 99.0f);
-    CHECK(d.gen.type == GEN_HILLS && d.gen.version == 1);
-    CHECK(d.unknownBlockNames.size() == 1); // pipe_straight -> air
-    // 2 columns x chunk rows 0..3 (hills v1 max height), all explicit.
-    CHECK(d.chunks.size() == 8);
-    Chunk* c = d.chunks[{ 0, 0, 0 }].get();
-    CHECK(c && c->blocks[Chunk::LocalIndex(1, 0, 1)] == BLOCK_FOUNDATION && c->blocks[Chunk::LocalIndex(1, 1, 1)] == BLOCK_STONE);
-    CHECK(c && c->blocks[Chunk::LocalIndex(1, 2, 1)] == BLOCK_AIR);
-    Chunk* e = d.chunks[{ 0, 2, 0 }].get();
-    bool empty = true; for (int i = 0; i < CHUNK_CELLS; i++) if (e->blocks[i]) empty = false;
-    CHECK(e && e->modified && empty); // a dug-out chunk stays dug out
+    // Extra bytes the sections don't account for mean damage: refused.
+    {
+        std::vector<uint8_t> longer(buf.begin(), buf.end() - 4);
+        longer.push_back(0);
+        uint32_t sum = Fnv1a(longer.data(), longer.size());
+        for (int i = 0; i < 4; i++) longer.push_back((uint8_t)(sum >> (8 * i)));
+        SaveData d4; CHECK(DecodeSave(longer.data(), longer.size(), d4) == DecodeResult::Corrupt);
+    }
+    // A Voxistics save (magic "VXLG") is refused cleanly, never misread.
+    {
+        std::vector<uint8_t> vox;
+        auto u32 = [&](uint32_t v) { for (int i = 0; i < 4; i++) vox.push_back((uint8_t)(v >> (8 * i))); };
+        u32(('G' << 24) | ('L' << 16) | ('X' << 8) | 'V'); u32(9); u32(0);
+        u32(Fnv1a(vox.data(), vox.size()));
+        SaveData d5; CHECK(DecodeSave(vox.data(), vox.size(), d5) == DecodeResult::BadMagic);
+    }
 }
 
 static void TestStreaming() {
@@ -1392,7 +1375,6 @@ int main() {
     TestVtex();
     TestBlockTextures();
     TestSaveRoundTrip();
-    TestLegacyLoad();
     TestStreaming();
     TestPatchwork();
     TestPlayer();

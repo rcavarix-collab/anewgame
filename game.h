@@ -14,7 +14,9 @@
 #pragma once
 
 #include "world.h"
-#include "persist.h" // GameAction
+#include "settings.h" // GameAction, preferences
+#include "savegame.h"
+#include "library.h"  // HOTBAR_SLOTS
 #include <string>
 
 // The two top-level state machines main.cpp's loop itself branches on
@@ -38,6 +40,12 @@ extern float g_fpsTimer;
 // delta each frame rather than going through a function call.
 static const float BASE_MOUSE_SENS = 0.0025f;
 
+// The hotbar's ten blocks (library.h), chosen from the block library and
+// saved by block name in settings.cfg so registry changes can't scramble them.
+extern BlockID g_hotbar[HOTBAR_SLOTS];
+// Hands settings.cpp the game's own keys (hotbar, render distance): call
+// once, before LoadSettings.
+void RegisterGameSettings();
 // The game's own per-tick systems (FOUNDATIONS.md 2): main.cpp's fixed
 // 60 Hz loop calls this once per tick, after the engine's world work
 // (streaming, player physics, scheduled updates) and before the world

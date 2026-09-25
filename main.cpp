@@ -25,7 +25,6 @@
 #include "render.h"
 #include "audio.h"
 #include "worldsound.h"
-#include "persist.h"
 #include "game.h"
 #include "profiler.h"
 
@@ -65,8 +64,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     ShowWindow(g_hwnd, nCmdShow);
     ProfBootMark("WINDOW");
 
+    RegisterGameSettings(); // the game's own settings.cfg keys (hotbar, render distance)
     LoadSettings(); // before anything reads g_sensitivityMultX/g_loadRadius/g_masterVolume/etc.
-    MigrateLegacySingleSaveIfPresent(); // before the title screen's slot picker can show slot 1
     ProfBootMark("SETTINGS");
 
     // XAudio2Create requires COM initialized on the calling thread.

@@ -25,7 +25,7 @@
 #include "audio.h"
 #include "music_synth.h"
 #include "world.h"   // g_dayTimeSeconds
-#include "persist.h" // g_masterVolume / g_musicVolume / g_musicIntensity
+#include "settings.h" // g_masterVolume / g_musicVolume / g_musicIntensity
 #include "musiclevel.h"
 #include <cstdint>
 #include <cmath>

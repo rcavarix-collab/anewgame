@@ -8,7 +8,8 @@
 #include "icons.h"
 #include "sky.h"
 #include "audio.h"
-#include "persist.h"
+#include "settings.h"
+#include "gamefiles.h" // ShaderCacheDirectory
 #include "vtex.h"
 #include "glowlight.h"
 #include <filesystem>

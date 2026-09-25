@@ -16,8 +16,10 @@ common.h        1
 profiler.h      1
 profiler.cpp    1
 
-persist.h       2
-persist.cpp     2
+gamefiles.h     2
+gamefiles.cpp   2
+settings.h      2
+settings.cpp    2
 
 blocks.h        3
 world.h         3
@@ -53,6 +55,8 @@ soundscape.h    4
 soundscape.cpp  4
 
 library.h       5
+savegame.h      5
+savegame.cpp    5
 game.h          5
 game.cpp        5
 worldsound.h    5

@@ -18,6 +18,15 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="gamefiles.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="settings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="savegame.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="world.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -25,9 +34,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="audio.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="persist.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="game.cpp">
@@ -77,6 +83,15 @@
     <ClInclude Include="common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="gamefiles.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="settings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="savegame.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="world.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -84,9 +99,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="audio.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="persist.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="game.h">

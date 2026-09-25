@@ -12,7 +12,7 @@
 #include "render.h"
 #include "audio.h"
 #include "worldsound.h"
-#include "persist.h"
+#include "gamefiles.h"
 #include "profiler.h"
 #include <cstdio>
 #include <cstring>
@@ -669,6 +669,39 @@ void TakeScreenshotIfRequested() {
     bool ok = !path.empty() && ReadBackbuffer(pixels, w, h) && SavePngBGRA(path.c_str(), pixels.data(), w, h);
     ShowToast(ok ? "SCREENSHOT SAVED" : "SCREENSHOT FAILED", 1.5f);
 }
+
+// ---- The game's settings.cfg keys (settings.h hooks) ----
+// Same keys and rules as Voxistics had: the render distance (the world
+// layer's g_loadRadius, clamped to the slider's 1-8 -- an out-of-range
+// hand edit would have EnsureChunksLoaded queue millions of columns) and
+// the hotbar by block name (an unknown or no-longer-placeable name keeps
+// that slot's default).
+BlockID g_hotbar[HOTBAR_SLOTS] = { BLOCK_STONE, BLOCK_DIRT, BLOCK_WOOD, BLOCK_LOG, BLOCK_SAND,
+                                   BLOCK_SANDSTONE, BLOCK_GLASS, BLOCK_MUSIC, BLOCK_MAGMA_ROCK, BLOCK_STONE_SLAB }; // = DefaultHotbar
+
+static void WriteGameSettings(std::string& out) {
+    out += "renderDistance=" + std::to_string(g_loadRadius) + "\n";
+    out += "hotbar=";
+    for (int i = 0; i < HOTBAR_SLOTS; i++) out += std::string(i ? "," : "") + g_blocks[g_hotbar[i]].name;
+    out += "\n";
+}
+
+static void ReadGameSettings(const SettingsMap& kv) {
+    g_loadRadius = SettingsGetI(kv, "renderDistance", g_loadRadius);
+    if (g_loadRadius < 1) g_loadRadius = 1;
+    if (g_loadRadius > 8) g_loadRadius = 8;
+    auto it = kv.find("hotbar");
+    if (it == kv.end()) return;
+    std::string list = it->second + ",";
+    int i = 0;
+    for (size_t start = 0, comma; i < HOTBAR_SLOTS && (comma = list.find(',', start)) != std::string::npos; start = comma + 1, i++) {
+        std::string name = list.substr(start, comma - start);
+        for (int id = 1; id < BLOCK_COUNT; id++)
+            if (name == g_blocks[id].name && g_blocks[id].placeable) { g_hotbar[i] = (BlockID)id; break; }
+    }
+}
+
+void RegisterGameSettings() { SetGameSettingsHooks(WriteGameSettings, ReadGameSettings); }
 
 void GameTick(float) {
     // Nothing yet: walkgrid's own per-tick systems arrive from M1 on.

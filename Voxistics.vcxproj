@@ -122,8 +122,6 @@
     </ClCompile>
     <ClCompile Include="shapes.cpp" />
     <ClCompile Include="icons.cpp" />
-    <ClCompile Include="fliers.cpp" />
-    <ClCompile Include="essencemap.cpp" />
     <ClCompile Include="glowlight.cpp">
       <!-- Hot loop: optimised even in Debug so a Debug build stays playable (runtime checks and
            edit-and-continue are incompatible with /O2, so they're off for this file only). -->
@@ -140,7 +138,6 @@
     </ClCompile>
     <ClCompile Include="soundscape.cpp" />
     <ClCompile Include="worldsound.cpp" />
-    <ClCompile Include="essence.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
@@ -158,8 +155,6 @@
     <ClInclude Include="mesher.h" />
     <ClInclude Include="shapes.h" />
     <ClInclude Include="icons.h" />
-    <ClInclude Include="fliers.h" />
-    <ClInclude Include="essencemap.h" />
     <ClInclude Include="glowlight.h" />
     <ClInclude Include="musiclevel.h" />
     <ClInclude Include="synth_kit.h" />
@@ -167,7 +162,6 @@
     <ClInclude Include="soundscape.h" />
     <ClInclude Include="worldsound.h" />
     <ClInclude Include="library.h" />
-    <ClInclude Include="essence.h" />
     <ClInclude Include="sky.h" />
   </ItemGroup>
   <ItemGroup>

@@ -17,9 +17,6 @@
 #include "../shapes.h"
 #include "../icons.h"
 #include "../sky.h"
-#include "../fliers.h"
-#include "../essence.h"
-#include "../essencemap.h"
 #include "../music_synth.h"
 #include "../sfx_synth.h"
 #include "../soundscape.h"
@@ -146,7 +143,7 @@ static void TestBlockTextures() {
     BlockTextureSet t;
     BuildBlockTextures(none, t);
     CHECK(t.warnings.empty());
-    CHECK(t.layerCount == 13 + 80); // 13 procedural (foundation .. crystal) + 80 more names only the generated art provides (magenta without it)
+    CHECK(t.layerCount == 12 + 80); // 12 procedural (foundation .. crystal) + 80 more names only the generated art provides (magenta without it)
 
     // The natural materials' art in the repo loads cleanly and covers
     // every natural block (no magenta fallback), with seamless wrap.
@@ -332,8 +329,7 @@ static void TestSaveRoundTrip() {
     Player p; p.x = 1.5f; p.y = 13; p.z = 2.5f; p.yaw = 0.7f; p.hotbarIndex = 3;
     std::vector<uint8_t> buf;
     std::vector<PendingUpdate> pend = { { 7, 20, 7, UPD_GRAVITY, 3 }, { -1, 5, 9, UPD_GRAVITY, 0 } };
-    EssenceNetwork::SaveData es; es.discoveredZones = { 42, 7 }; es.attractors = { 1, 13, -5 };
-    EncodeSave(p, 1234.5f, g_worldGen, w, g_evictedChunks, pend, es, buf);
+    EncodeSave(p, 1234.5f, g_worldGen, w, g_evictedChunks, pend, buf);
     printf("    %zu generated chunks, 2 modified -> %zu bytes\n", generated, buf.size());
     CHECK(buf.size() < 3000);
 
@@ -345,7 +341,6 @@ static void TestSaveRoundTrip() {
     CHECK(d.gen.type == GEN_FLAT && d.gen.seed == g_worldGen.seed);
     CHECK(d.chunks.size() == 2);
     CHECK(d.updates.size() == 2 && d.updates[0].x == 7 && d.updates[0].delay == 3 && d.updates[1].y == 5);
-    CHECK(d.essence.discoveredZones.size() == 2 && d.essence.discoveredZones[1] == 7 && d.essence.attractors.size() == 3 && d.essence.attractors[2] == -5);
     for (auto& kv : d.chunks) {
         Chunk* orig = w.FindChunk(kv.first);
         CHECK(orig && orig->modified && ChunksEqual(*orig, *kv.second));
@@ -1032,50 +1027,6 @@ static void TestGrassCover() {
     ClearScheduledUpdates();
 }
 
-static void TestFliers() {
-    printf("fliers\n");
-    const float dt = 1.0f / 60.0f;
-    auto ground = [](World& w, BlockID top) { for (int x = -48; x < 48; x++) for (int z = -48; z < 48; z++) { w.Set(x, 9, z, BLOCK_DIRT); w.Set(x, 10, z, top); } };
-    FlierTuning t;
-    {   // A population appears around the player, low over the ground.
-        World w; ground(w, BLOCK_MEADOW_GRASS);
-        FlierSystem f; f.Reset(7);
-        for (int i = 0; i < 60 * 20; i++) f.Tick(w, t, 0.5f, 11.0f, 0.5f, dt);
-        bool low = true;
-        for (const Flier& fl : f.Fliers()) low = low && fl.y > 11.0f + t.minHeight - 0.5f && fl.y < 11.0f + t.maxHeight + 0.6f;
-        printf("    %zu fliers, low over the grass: %d\n", f.Fliers().size(), (int)low);
-        CHECK((int)f.Fliers().size() == t.population && low);
-    }
-    {   // One game day of life at normal time; on The Line (30x) about two minutes.
-        World w; ground(w, BLOCK_MEADOW_GRASS);
-        FlierSystem f; f.Reset(11);
-        FlierTuning one = t; one.population = 1;
-        f.Tick(w, one, 0.5f, 11.0f, 0.5f, dt);
-        float start = f.Fliers().empty() ? 0.0f : f.Fliers()[0].age;
-        float left = (one.lifeSeconds - start) / 30.0f;
-        int ticks = 0;
-        while (f.deaths == 0 && ticks < 60 * 200) { f.Tick(w, one, 0.5f, 11.0f, 0.5f, dt, [](float, float, float) { return 30.0f; }); ticks++; }
-        printf("    on the line: died after %.0f s (expected %.0f), by the line %d\n", ticks * dt, left, f.deathsByLine);
-        CHECK(f.deaths == 1 && f.deathsByLine == 1 && fabsf(ticks * dt - left) < 1.0f);
-        // It fell on grass: a glowing patch, which fades and goes.
-        CHECK(f.Spots().size() == 1 && fabsf(f.Spots()[0].y - 11.0f) < 1e-3f);
-        FlierTuning none = one; none.population = 0;
-        for (int i = 0; i < 60 * 5; i++) f.Tick(w, none, 0.5f, 11.0f, 0.5f, dt);
-        CHECK(FlierSystem::SpotStrength(f.Spots()[0], none) > 0.99f);
-        for (int i = 0; i < (int)(60 * none.spotSeconds); i++) f.Tick(w, none, 0.5f, 11.0f, 0.5f, dt);
-        CHECK(f.Spots().empty());
-    }
-    {   // On bare dirt, mold grows where it fell.
-        World w; ground(w, BLOCK_DIRT);
-        FlierSystem f; f.Reset(13);
-        FlierTuning one = t; one.population = 1;
-        int ticks = 0;
-        while (f.deaths == 0 && ticks < 60 * 300) { f.Tick(w, one, 0.5f, 11.0f, 0.5f, dt, [](float, float, float) { return 60.0f; }); ticks++; }
-        int mold = 0;
-        for (int x = -48; x < 48; x++) for (int z = -48; z < 48; z++) mold += w.Get(x, 11, z) == BLOCK_MOLD_PATCH;
-        CHECK(f.deaths >= 1 && f.molds >= 1 && mold == f.molds && f.Spots().empty());
-    }
-}
 
 // Each colour-vision mode keeps the three pulse colours apart as that kind
 // of vision sees them (simulated with the standard dichromat matrices;
@@ -1085,95 +1036,6 @@ static void TestFliers() {
 
 static float TestTextWidth(const std::string& s, float scale) { return (float)s.size() * 8.0f * scale / 0.65f; }
 
-static void TestEssence() {
-    printf("essence network and map\n");
-    CHECK(EssenceBand(0.5) == 0 && EssenceBand(9.99) == 0 && EssenceBand(10) == 1 && EssenceBand(999) == 2 && EssenceBand(1000) == 3);
-
-    EssenceNetwork a, b;
-    a.Reset(12345); b.Reset(12345);
-    // Deterministic zones, spanning orders of magnitude.
-    int bands[6] = {};
-    for (int rx = -10; rx < 10; rx++) for (int rz = -10; rz < 10; rz++) {
-        std::vector<EssenceNode> za = a.ZonesOfRegion(rx, rz), zb = b.ZonesOfRegion(rx, rz);
-        CHECK(za.size() == zb.size());
-        for (size_t i = 0; i < za.size() && i < zb.size(); i++) {
-            CHECK(za[i].id == zb[i].id && za[i].x == zb[i].x && za[i].magnitude == zb[i].magnitude);
-            CHECK(za[i].x >= rx * 128.0f && za[i].x < (rx + 1) * 128.0f);
-            bands[std::min(5, EssenceBand(za[i].magnitude))]++;
-        }
-    }
-    printf("    zones by band (400 regions): %d %d %d %d %d\n", bands[0], bands[1], bands[2], bands[3], bands[4]);
-    CHECK(bands[0] + bands[1] > bands[2] + bands[3] + bands[4]); // mostly minor
-    CHECK(bands[3] + bands[4] > 0);                              // but some strong
-
-    // Discovery: nothing is known until the player comes close.
-    EssenceNetwork n; n.Reset(777);
-    CHECK(n.Nodes().empty());
-    n.Update(-1000, -1000);
-    size_t seen = n.Nodes().size();
-    for (const EssenceNode& z : n.Nodes()) CHECK(sqrtf((z.x + 1000) * (z.x + 1000) + (z.z + 1000) * (z.z + 1000)) <= n.tuning.discoverRadius + 1e-3f);
-    // Walk a long line: discovers what passes within the radius only.
-    for (float x = -2000; x < 2000; x += 4) n.Update(x, 64.0f);
-    CHECK(n.Nodes().size() > seen);
-    for (const EssenceNode& z : n.Nodes()) CHECK(fabsf(z.z - 64.0f) <= n.tuning.discoverRadius + 1e-3f || (fabsf(z.x + 1000) < 60 && fabsf(z.z + 1000) < 60));
-
-    // Attractors: built, so known at once; they draw from zones in reach.
-    const EssenceNode* strong = nullptr;
-    for (const EssenceNode& z : n.Nodes()) if (EssenceBand(z.magnitude) >= 2 && (!strong || z.magnitude > strong->magnitude)) strong = &z;
-    CHECK(strong != nullptr);
-    if (strong) {
-        int ax = (int)strong->x + 10, az = (int)strong->z;
-        n.AddAttractor(ax, 13, az);
-        n.RefreshRoutes();
-        int att = -1;
-        for (int i = 0; i < (int)n.Nodes().size(); i++) if (n.Nodes()[i].kind == NodeKind::Attractor) att = i;
-        CHECK(att >= 0);
-        bool fed = false;
-        for (const EssenceRoute& r : n.Routes()) if (r.b == att && r.style != RouteStyle::Planned && !r.bound) fed = true;
-        CHECK(fed);
-        CHECK(n.Nodes()[att].magnitude > 1.0);
-        // Bound (curved) routes are only ever between distant zones.
-        for (const EssenceRoute& r : n.Routes()) {
-            float d = sqrtf(powf(n.Nodes()[r.a].x - n.Nodes()[r.b].x, 2) + powf(n.Nodes()[r.a].z - n.Nodes()[r.b].z, 2));
-            if (r.bound) CHECK(d > n.tuning.naturalRouteReach);
-        }
-        // Hierarchy is grouping only: a parent is always stronger and near.
-        for (const EssenceNode& x : n.Nodes()) if (x.parent >= 0) CHECK(n.Nodes()[x.parent].magnitude > x.magnitude);
-
-        // Save/restore: same discovered set and attractors.
-        EssenceNetwork::SaveData sd = n.Snapshot();
-        EssenceNetwork r; r.Restore(777, sd);
-        CHECK(r.Nodes().size() == n.Nodes().size());
-        n.RemoveAttractor(ax, 13, az);
-        CHECK(n.Nodes().size() == r.Nodes().size() - 1);
-    }
-
-    // Map: node size by decade; labels limited to the top N unless zoomed in.
-    CHECK(MapNodeRadius(1000, 0.5f) - MapNodeRadius(100, 0.5f) > 2.5f);
-    CHECK(MapNodeRadius(1e4, 0.5f) < 3.0f * MapNodeRadius(10, 0.5f));  // compressed, not linear
-    n.RefreshRoutes();
-    MapCamera cam; cam.centerX = 0; cam.centerZ = 64; cam.scale = 0.12f;
-    MapTuning mt;
-    MapDrawList dl;
-    BuildMapDrawList(n, cam, mt, 1.0f, 0, 64, 0, 0, 64, TestTextWidth, 12.0f, dl);
-    printf("    map at 0.12 px/block: %d nodes, %d labeled, %d routes, %d belts, %zu triangles\n",
-           dl.nodesDrawn, dl.nodesLabeled, dl.routesDrawn, dl.belts, dl.tris.size() / 18);
-    CHECK(dl.nodesDrawn > 0 && dl.nodesLabeled <= mt.labelTopNodes && dl.routesLabeled <= mt.labelTopRoutes);
-    CHECK(dl.tris.size() % 18 == 0);
-    for (const MapLabel& l : dl.labels) CHECK(l.text.find_first_of("0123456789") == std::string::npos); // qualitative only
-    // Labels never overlap.
-    for (size_t i = 0; i < dl.labels.size(); i++) for (size_t j = i + 1; j < dl.labels.size(); j++) {
-        const MapLabel& p = dl.labels[i]; const MapLabel& q = dl.labels[j];
-        float pw = TestTextWidth(p.text, p.scale), qw = TestTextWidth(q.text, q.scale);
-        bool overlap = p.x < q.x + qw && q.x < p.x + pw && p.y < q.y + 12 && q.y < p.y + 12;
-        CHECK(!overlap);
-    }
-    // Zoom keeps the point under the cursor fixed.
-    MapCamera z = cam;
-    float wx = MapWorldX(z, 300), wz = MapWorldZ(z, 200);
-    MapZoomAt(z, 2.0f, 300, 200);
-    CHECK(fabsf(MapWorldX(z, 300) - wx) < 1e-2f && fabsf(MapWorldZ(z, 200) - wz) < 1e-2f && fabsf(z.scale - 0.24f) < 1e-5f);
-}
 
 
 // ---------------------------------------------------------------------
@@ -1545,8 +1407,6 @@ int main() {
     TestGlowLight();
     TestSky();
     TestGrassCover();
-    TestFliers();
-    TestEssence();
     TestMusicHarmony();
     TestSoundPalette();
     TestSoundscape();

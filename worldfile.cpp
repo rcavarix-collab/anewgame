@@ -13,7 +13,8 @@
 //     i32 x, y, z; u8 kind; u32 delay (ticks from now)
 //   The Line (v7+; Voxistics only, written empty): u32 cellCount, then
 //     (f32 x, z, seconds) each (v7/v8: i64 cell, f32 seconds); f64; f32
-//   Essence (v8+): u32 zoneCount, u64 zone ids; u32 attractorCount, (i32 x, y, z) each
+//   Essence (v8+; Voxistics only, written empty): u32 zoneCount, u64 zone ids;
+//     u32 attractorCount, (i32 x, y, z) each
 //   u32 FNV-1a checksum of everything before it
 //
 // Cells run in Chunk::LocalIndex order (x fastest, then z, then y), so
@@ -186,7 +187,7 @@ const char* DecodeResultText(DecodeResult r) {
 
 void EncodeSave(const Player& p, float dayTime, const WorldGenParams& gen,
                 const World& world, const ChunkMap& evicted, const std::vector<PendingUpdate>& updates,
-                const EssenceNetwork::SaveData& essence, std::vector<uint8_t>& out) {
+                std::vector<uint8_t>& out) {
     out.clear();
     Writer w{ out };
     w.U32(MAGIC);
@@ -215,11 +216,10 @@ void EncodeSave(const Player& p, float dayTime, const WorldGenParams& gen,
     w.F64(0.0);
     w.F32(0.0f);
 
-    // Essence network (Part XIX): what's been discovered, and what was built.
-    w.U32((uint32_t)essence.discoveredZones.size());
-    for (uint64_t id : essence.discoveredZones) w.U64(id);
-    w.U32((uint32_t)(essence.attractors.size() / 3));
-    for (size_t i = 0; i + 2 < essence.attractors.size(); i += 3) { w.I32(essence.attractors[i]); w.I32(essence.attractors[i + 1]); w.I32(essence.attractors[i + 2]); }
+    // The essence section (v8+), written empty: not in walkgrid; the v9
+    // layout keeps its slot until the fresh format (M0.9).
+    w.U32(0);
+    w.U32(0);
 
     w.U32(Fnv1a(out.data(), out.size()));
 }
@@ -311,14 +311,13 @@ DecodeResult DecodeSave(const uint8_t* data, size_t size, SaveData& out) {
             if (!r.ok) return DecodeResult::Truncated;
         }
         if (out.version >= 8) {
+            // Essence discoveries and attractors: read past and dropped.
             uint32_t nz = r.U32();
             if (!r.ok || nz > (r.size - r.pos) / 8) return DecodeResult::Corrupt;
-            out.essence.discoveredZones.resize(nz);
-            for (uint64_t& id : out.essence.discoveredZones) id = r.U64();
+            for (uint32_t i = 0; i < nz; i++) r.U64();
             uint32_t na = r.U32();
             if (!r.ok || na > (r.size - r.pos) / 12) return DecodeResult::Corrupt;
-            out.essence.attractors.resize((size_t)na * 3);
-            for (int32_t& v : out.essence.attractors) v = r.I32();
+            for (uint32_t i = 0; i < na * 3; i++) r.I32();
             if (!r.ok) return DecodeResult::Truncated;
         }
     } else {

@@ -57,11 +57,5 @@ game.h          5
 game.cpp        5
 worldsound.h    5
 worldsound.cpp  5
-fliers.h        5
-fliers.cpp      5
-essence.h       5
-essence.cpp     5
-essencemap.h    5
-essencemap.cpp  5
 
 main.cpp        6

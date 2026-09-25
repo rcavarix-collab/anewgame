@@ -27,7 +27,7 @@ std::filesystem::path ShaderCacheDirectory();
 
 enum GameAction {
     ACT_FORWARD, ACT_BACK, ACT_LEFT, ACT_RIGHT, ACT_JUMP,
-    ACT_BREAK, ACT_PLACE, ACT_MENU, ACT_SAVE, ACT_LOAD, ACT_MAP,
+    ACT_BREAK, ACT_PLACE, ACT_MENU, ACT_SAVE, ACT_LOAD,
     ACT_SPRINT, ACT_CROUCH, ACT_LIBRARY, // appended: saved bindings are by name, so older settings files still load
     ACT_COUNT
 };

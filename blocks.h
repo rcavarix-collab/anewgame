@@ -27,7 +27,6 @@ enum BlockID : uint8_t {
     BLOCK_STONE_FUNNEL,
     BLOCK_STONE_FUNNEL_HALF,
     BLOCK_MUSIC,
-    BLOCK_ATTRACTOR,
     BLOCK_GLASS,
     BLOCK_CRYSTAL,
     BLOCK_SNOW,
@@ -272,9 +271,6 @@ inline const BlockDef g_blocks[BLOCK_COUNT] = {
     { "stone_funnel_half",  true,  true,  true,  false, false, SHAPE_FUNNEL_HALF,  PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
     // Reactive blocks: plain cubes that light up on their own.
     { "music_block",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_MUSIC, false,       TEX("music_block", nullptr, nullptr, nullptr, nullptr) },
-    // PROVISIONAL placeholder for player-built essence attractors (Part XIX):
-    // a node on the essence map that draws from convergence zones in reach.
-    { "essence_attractor",  true,  true,  true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("essence_attractor", nullptr, nullptr, nullptr, nullptr) },
     // See-through blocks (DESIGN.md 4.11): clear glass and a tinted crystal.
     { "glass",              true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, true,         TEX("glass", nullptr, nullptr, nullptr, nullptr) },
     { "crystal",            true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, true,         TEX("crystal", nullptr, nullptr, nullptr, nullptr) },

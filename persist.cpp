@@ -10,9 +10,7 @@
 #include <windows.h>
 #include <shlobj.h> // SHGetKnownFolderPath
 #include "persist.h"
-#include "fliers.h"
 #include "worldfile.h"
-#include "essence.h"
 #include "profiler.h"
 #include "audio.h"
 #include <cstdio>
@@ -33,10 +31,10 @@
 // =======================================================================
 
 const char* g_actionNames[ACT_COUNT] = {
-    "forward", "back", "left", "right", "jump", "break", "place", "menu", "save", "load", "map", "sprint", "crouch", "library"
+    "forward", "back", "left", "right", "jump", "break", "place", "menu", "save", "load", "sprint", "crouch", "library"
 };
 int g_keyBindings[ACT_COUNT] = {
-    'W', 'S', 'A', 'D', VK_SPACE, MOUSE_LEFT, MOUSE_RIGHT, VK_ESCAPE, VK_F5, VK_F9, 'M', VK_SHIFT, VK_CONTROL, 'E'
+    'W', 'S', 'A', 'D', VK_SPACE, MOUSE_LEFT, MOUSE_RIGHT, VK_ESCAPE, VK_F5, VK_F9, VK_SHIFT, VK_CONTROL, 'E'
 };
 BlockID g_hotbar[HOTBAR_SLOTS] = { BLOCK_STONE, BLOCK_DIRT, BLOCK_WOOD, BLOCK_LOG, BLOCK_SAND,
                                    BLOCK_SANDSTONE, BLOCK_GLASS, BLOCK_MUSIC, BLOCK_MAGMA_ROCK, BLOCK_STONE_SLAB }; // = DefaultHotbar
@@ -315,7 +313,7 @@ void LoadSettings() {
 
 bool SaveGame(World& w, Player& p, int slot) {
     std::vector<uint8_t> buf;
-    EncodeSave(p, g_dayTimeSeconds, g_worldGen, w, g_evictedChunks, SnapshotScheduledUpdates(), g_essence.Snapshot(), buf);
+    EncodeSave(p, g_dayTimeSeconds, g_worldGen, w, g_evictedChunks, SnapshotScheduledUpdates(), buf);
 
     // Crash-safe write sequence (Section 7.3): write to .tmp, only then
     // rotate the previous save to .bak and rename .tmp into place.
@@ -411,8 +409,6 @@ bool LoadGame(World& w, Player& p, int slot) {
     g_residentColumns.clear();
     ClearScheduledUpdates();
     RestoreScheduledUpdates(d.updates); // unknown kinds are dropped
-    g_fliers.Reset(d.gen.seed ^ (uint64_t)(d.dayTime * 1000.0f)); // fliers aren't saved: a fresh population
-    g_essence.Restore(d.gen.seed, d.essence);  // nothing discovered for pre-v8 saves
     g_pendingColumns.clear();
     g_pendingColumnSet.clear();
     g_pendingEvictions.clear();

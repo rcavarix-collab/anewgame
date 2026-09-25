@@ -28,8 +28,6 @@ world.h         3
 world.cpp       3
 worldfile.h     3
 worldfile.cpp   3
-shapes.h        3
-shapes.cpp      3
 facetmesh.h     3
 facetmesh.cpp   3
 terrain.h       3
@@ -37,8 +35,6 @@ terrain.cpp     3
 collide.h       3
 collide.cpp     3
 
-mesher.h        4
-mesher.cpp      4
 groundmesh.h    4
 groundmesh.cpp  4
 vtex.h          4

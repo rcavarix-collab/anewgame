@@ -66,26 +66,27 @@ Because unmodified terrain is regenerated rather than stored — on eviction and
 ### 3.1 Identity: name-based, not position-based
 `BlockID` (an enum) is a *runtime* convenience only. The actual identity written to disk is the block's **string name** (`g_blocks[id].name`). This single decision is what allows the block list to grow indefinitely during development — adding, removing, or reordering enum entries never corrupts an existing save, because loading remaps saved names onto whatever the current build's names are, substituting a safe "unknown" (air) for anything genuinely removed, with a logged warning rather than a silent misread.
 
-### 3.2 The block registry
-`blocks.h` holds one row per block type in `g_blocks[BLOCK_COUNT]`, the single source of truth every system reads — meshing, gravity, picking, the hotbar (`g_placeableList` is derived from the `placeable` flag), the save format's name table and the texture builder:
+### 3.2 The materials registry (walkgrid M1.9)
+`blocks.h` holds one row per material in `g_blocks[BLOCK_COUNT]`, the single source of truth every system reads — the ground mesh, collision, picking, the library and hotbar (`g_placeableList` is derived from the `placeable` flag), the save format's name table and the texture builder:
 ```
 name         — identity on disk (3.1)
-solid        — collision, raycast hits, hides neighbouring faces
-foundational — never falls, always supports (Part V)
-placeable    — appears on the hotbar
-orientable   — stores a facing; its `front` texture goes on that side
-hasData      — may carry a per-block data record
-texAll / texTop / texBottom / texSide / texFront — texture names (4.3)
+solid        — part of the ground: the surface wraps it; collision and picking meet it
+foundational — never falls, always supports (Part V; nothing falls in walkgrid today)
+placeable    — appears in the library
+glow         — lights up by itself (engine kept; no material uses it yet)
+texTop / texSide / texBottom — the top shows on ground up to ~50°, the side on steeper ground (23.3)
+bump         — how lumpy its fine detail is, in blocks (23.1)
 ```
-Adding a block is one enum entry plus one row. No virtual dispatch, no per-block class hierarchy — virtual calls inside the meshing and simulation inner loops would violate the "no virtual dispatch in hot paths" rule.
+Adding a material is one enum entry plus one row. The `.vtex` art files no longer carry `block` entries: the registry names each material's textures, so grassy ground can show its soil on steep sides. (The names still say "block": the cells are the grid the faceted ground is built through.)
 
-**Per-block state.** Every chunk stores a state byte per cell alongside the block ID (and saves it). The low 3 bits are a facing (`BlockFace`) for orientable blocks — set on placement so the front faces the player; the other 5 bits are reserved (a machine's on/off, a slab's half...) so they can be claimed without a storage or format change. It travels with a block when it falls.
+**Per-cell state.** Every chunk stores a state byte per cell alongside the material and saves it. No material uses it yet (Voxistics kept a facing there); it's reserved so it can be claimed without a storage or format change.
 
-**Per-block data.** A sparse map per chunk (`Chunk::data`, keyed by cell, null for the vast majority of chunks) holds variable-length records for blocks that need more than a byte — a chest's contents, a machine's buffers (the item-handler interface of Part VI will live here). A record is dropped automatically when its cell's block changes, and is saved with its chunk. Nothing writes one yet; the storage and save path exist so machines don't need a format change.
+**Per-cell data.** A sparse map per chunk (`Chunk::data`) can hold variable-length records, saved with the chunk and dropped when the cell's material changes. Nothing writes one in walkgrid; the engine keeps it.
 
-### 3.3 Prototype block roster
-| Block | Foundational | Orientable | Purpose |
-|---|---|---|---|
+### 3.3 The materials
+Air; the foundation (the world's floor at y = 0, never dug, never placed); and the twelve starting materials (D36): meadow grass, dry turf, moss, dirt, loam, clay, sand, gravel, stone, slate, sandstone, snow. Tops, sides and lumpiness are in `blocks.h` and `TEXTURE_BRIEF.md`. Voxistics' roster of about 130 blocks, its shapes and props, the cube mesher and falling ground and grass die-back left the build in M1.9 (D41; `reference/README.md`). Their unused textures are parked in `assets/textures/parked/`.
+
+---|---|---|---|
 | Air | — | — | Absence of a block |
 | Foundation | yes | no | Never falls; the base layer of any build |
 | Stone | no | no | Terrain, subject to gravity |

@@ -90,12 +90,6 @@
     <ClCompile Include="blocktex.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mesher.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shapes.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="icons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -162,12 +156,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="blocktex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mesher.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="shapes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="icons.h">

@@ -91,8 +91,6 @@ void WorldSoundPlace(BlockID id, int x, int y, int z) {
     SoundCue c; c.id = SND_SET; c.material = BlockSoundMaterial(id);
     c.placed = true; c.x = x + 0.5f; c.y = y + 0.5f; c.z = z + 0.5f;
     PlayWorldSound(c);
-    // The placeholder machine stands in for a machine starting up (5.6 P4).
-    if (id == BLOCK_MACHINE) { SoundCue o = c; o.id = SND_ONLINE; PlayWorldSound(o); }
 }
 
 void WorldSoundBreak(BlockID id, int x, int y, int z) {

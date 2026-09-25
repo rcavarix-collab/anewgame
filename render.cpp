@@ -1928,8 +1928,7 @@ bool InitTextures(std::string& problemSummary) {
     if (!problems.empty())
         problemSummary = std::to_string(problems.size()) + " TEXTURE PROBLEM" + (problems.size() == 1 ? "" : "S") +
                          " - SEE ASSETS\\TEXTURES\\_ERRORS.TXT";
-    memcpy(g_blockFaceLayer, set.faceLayer, sizeof(g_blockFaceLayer));
-    RenderBlockIcons(set); // hotbar icons from the real meshes (needs the face layers above)
+    RenderBlockIcons(set); // library and hotbar icons: a faceted lump of each material
     // The ground's materials: what's solid, how lumpy, which layers each
     // shows (groundmesh.h), and the same layers for the world shader (b3).
     InitGroundMaterials(set.faceLayer);

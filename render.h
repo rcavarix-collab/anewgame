@@ -13,7 +13,7 @@
 #endif
 #include "common.h"
 #include "world.h"
-#include "mesher.h"
+#include "groundmesh.h"
 #include <d3d11.h>
 #include <cstdint>
 #include <vector>

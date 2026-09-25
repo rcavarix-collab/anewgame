@@ -5,84 +5,28 @@
 #include <cmath>
 #include <cstring>
 
+// The twelve materials (M1.9, D36): what each sounds like underfoot and
+// when set or taken. Grassy ground is the softest (a second grain, the
+// crunch, in Footfall), soils next, stones hard. Sand sounds like soil for
+// now: its own sound needs a new palette material (M1.12's footstep work).
 SoundMaterial BlockSoundMaterial(BlockID id) {
     switch (id) {
-    case BLOCK_DIRT: case BLOCK_CLAY: case BLOCK_CRACKED_EARTH: case BLOCK_PEAT_BOG: case BLOCK_SAND:
-    case BLOCK_COASTAL_SAND: case BLOCK_SALT_FLAT: case BLOCK_SNOW: case BLOCK_VOLCANIC_ASH: case BLOCK_MEADOW_GRASS:
-    case BLOCK_MOSS: case BLOCK_AUTUMN_LEAF_LITTER: case BLOCK_SHALLOW_WATER:
-        return MAT_EARTH;
-    case BLOCK_STONE: case BLOCK_STONE_SLAB: case BLOCK_STONE_PYRAMID: case BLOCK_STONE_PYRAMID_HALF:
-    case BLOCK_STONE_FUNNEL: case BLOCK_STONE_FUNNEL_HALF: case BLOCK_SANDSTONE: case BLOCK_BASALT:
-    case BLOCK_MAGMA_ROCK: case BLOCK_MOSS_STONE: case BLOCK_RIVER_PEBBLE: case BLOCK_FOUNDATION:
-    case BLOCK_VOID_STATIC_GROUND: case BLOCK_ARCHIVIST_WALL: case BLOCK_CORAL_REEF:
-        return MAT_STONE;
-    case BLOCK_WOOD: case BLOCK_WOOD_RAMP: case BLOCK_LOG: case BLOCK_CHEST:
-        return MAT_WOOD;
-    case BLOCK_JUNGLE_CANOPY: case BLOCK_WILDFLOWER_YELLOW: case BLOCK_WILDFLOWER_BLUE: case BLOCK_GLOW_MUSHROOM_CLUSTER:
-    case BLOCK_FERN_FROND: case BLOCK_THORN_BRAMBLE: case BLOCK_REED_GRASS:
+    case BLOCK_MEADOW_GRASS: case BLOCK_DRY_TURF: case BLOCK_MOSS:
         return MAT_PLANT;
-    case BLOCK_GLASS: case BLOCK_CRYSTAL: case BLOCK_RAW_FRAGMENT_ORE: case BLOCK_GLACIER_ICE:
-        return MAT_GLASS;
-    case BLOCK_MACHINE: case BLOCK_TUBE: case BLOCK_CUSTODIAN_LATTICE: case BLOCK_MUSIC:
-    case BLOCK_STAR_FORGE:
-        return MAT_METAL;
-    case BLOCK_VEINED_FLESH: case BLOCK_FLESH_WOUND: case BLOCK_PULSING_MEMBRANE: case BLOCK_WEEPING_SORE: case BLOCK_CORRUPTED_FLESH:
-        return MAT_FLESH;
-    case BLOCK_GENESIS_SOIL: case BLOCK_SEEDLING_SPROUT: case BLOCK_DAWN_LIGHT: case BLOCK_NEW_LOG:
-        return MAT_GENESIS;
-    // Props and pieces (4.15) sound like what they're made of.
-    case BLOCK_MOSS_CLUMP: case BLOCK_MOSS_TUFT: case BLOCK_MEADOW_TUSSOCK: case BLOCK_EARTH_CLOD: case BLOCK_PEAT_CLOD:
-    case BLOCK_SALT_BLISTER: case BLOCK_SNOW_DRIFT: case BLOCK_WATER_RIPPLE:
+    case BLOCK_DIRT: case BLOCK_LOAM: case BLOCK_CLAY: case BLOCK_SAND: case BLOCK_SNOW:
         return MAT_EARTH;
-    case BLOCK_STONE_SHARD: case BLOCK_BASALT_SHARD: case BLOCK_MAGMA_SHARD: case BLOCK_SANDSTONE_SHARD: case BLOCK_MOSS_STONE_SHARD:
-    case BLOCK_CORAL_NODE: case BLOCK_STONE_CORBEL:
+    case BLOCK_GRAVEL: case BLOCK_STONE: case BLOCK_SLATE: case BLOCK_SANDSTONE: case BLOCK_FOUNDATION:
         return MAT_STONE;
-    case BLOCK_LOG_BEAM: case BLOCK_WOOD_BEAM: case BLOCK_WOOD_CORBEL: case BLOCK_WOOD_SHUTTER: case BLOCK_WOOD_AWNING: case BLOCK_WOOD_STRUT:
-        return MAT_WOOD;
-    case BLOCK_LEAF_PAD:
-        return MAT_PLANT;
-    case BLOCK_ORE_SHARD: case BLOCK_GLACIER_SHARD:
-        return MAT_GLASS;
-    case BLOCK_CONDUIT_PIPE: case BLOCK_LATTICE_PIPE: case BLOCK_MACHINE_GEAR: case BLOCK_FOUNDATION_VENT: case BLOCK_ORE_HOPPER: case BLOCK_LATTICE_STRUT:
-        return MAT_METAL;
-    case BLOCK_SORE_BULB: case BLOCK_CORRUPTED_BULB: case BLOCK_MEMBRANE_SAC:
-        return MAT_FLESH;
-    case BLOCK_GENESIS_CLOD: case BLOCK_GENESIS_ROOT_KNUCKLE:
-        return MAT_GENESIS;
     default:
         return MAT_NONE;
     }
 }
 
+// Every walkgrid material is natural ground; the foundation floor is
+// neutral. (The mechanical, dark and genesis classes served Voxistics'
+// roster; the axes they drive stay at their calm defaults.)
 SoundClass BlockSoundClass(BlockID id) {
-    switch (id) {
-    case BLOCK_DIRT: case BLOCK_MEADOW_GRASS: case BLOCK_MOSS: case BLOCK_MOSS_STONE: case BLOCK_LOG:
-    case BLOCK_JUNGLE_CANOPY: case BLOCK_AUTUMN_LEAF_LITTER: case BLOCK_PEAT_BOG: case BLOCK_SHALLOW_WATER:
-    case BLOCK_CORAL_REEF: case BLOCK_RIVER_PEBBLE: case BLOCK_COASTAL_SAND: case BLOCK_SAND: case BLOCK_SNOW:
-    case BLOCK_CLAY: case BLOCK_WILDFLOWER_YELLOW: case BLOCK_WILDFLOWER_BLUE: case BLOCK_GLOW_MUSHROOM_CLUSTER:
-    case BLOCK_FERN_FROND: case BLOCK_THORN_BRAMBLE: case BLOCK_REED_GRASS: case BLOCK_GLACIER_ICE:
-    case BLOCK_MOSS_CLUMP: case BLOCK_MOSS_TUFT: case BLOCK_MEADOW_TUSSOCK: case BLOCK_EARTH_CLOD: case BLOCK_PEAT_CLOD:
-    case BLOCK_SALT_BLISTER: case BLOCK_SNOW_DRIFT: case BLOCK_CORAL_NODE:
-    case BLOCK_MOSS_STONE_SHARD: case BLOCK_WATER_RIPPLE: case BLOCK_LEAF_PAD:
-        return SC_NATURAL;
-    case BLOCK_CONDUIT_PIPE: case BLOCK_LATTICE_PIPE: case BLOCK_MACHINE_GEAR: case BLOCK_FOUNDATION_VENT: case BLOCK_ORE_HOPPER:
-    case BLOCK_LATTICE_STRUT:
-        return SC_MECHANICAL;
-    case BLOCK_SORE_BULB: case BLOCK_CORRUPTED_BULB: case BLOCK_MEMBRANE_SAC:
-        return SC_DARK;
-    case BLOCK_GENESIS_CLOD: case BLOCK_GENESIS_ROOT_KNUCKLE:
-        return SC_GENESIS;
-    case BLOCK_MACHINE: case BLOCK_TUBE: case BLOCK_CHEST: case BLOCK_FOUNDATION: case BLOCK_CUSTODIAN_LATTICE:
-    case BLOCK_ARCHIVIST_WALL:
-        return SC_MECHANICAL;
-    case BLOCK_VEINED_FLESH: case BLOCK_FLESH_WOUND: case BLOCK_PULSING_MEMBRANE: case BLOCK_WEEPING_SORE:
-    case BLOCK_CORRUPTED_FLESH: case BLOCK_VOID_STATIC_GROUND:
-        return SC_DARK;
-    case BLOCK_GENESIS_SOIL: case BLOCK_SEEDLING_SPROUT: case BLOCK_DAWN_LIGHT: case BLOCK_STAR_FORGE: case BLOCK_NEW_LOG:
-        return SC_GENESIS;
-    default:
-        return SC_NEUTRAL;
-    }
+    return id == BLOCK_AIR || id == BLOCK_FOUNDATION ? SC_NEUTRAL : SC_NATURAL;
 }
 
 static inline float Presence(float count, float scale) { return 1.0f - expf(-count / scale); }
@@ -125,22 +69,12 @@ void Soundscape::CensusStep(World& w, int px, int py, int pz) {
                 case SC_GENESIS: cur.genesis++; break;
                 default: break;
                 }
-                if (BlockSoundMaterial(id) == MAT_PLANT) cur.plants++;
-                if (id == BLOCK_SHALLOW_WATER || id == BLOCK_GLACIER_ICE || id == BLOCK_PEAT_BOG || id == BLOCK_MOSS) cur.water++;
-                if (id == BLOCK_MAGMA_ROCK || id == BLOCK_STAR_FORGE) cur.ember++;
-                if (id == BLOCK_GLOW_MUSHROOM_CLUSTER || id == BLOCK_PULSING_MEMBRANE) cur.glow++;
-                if (id == BLOCK_MACHINE || id == BLOCK_TUBE) cur.machines++;
-                if (id == BLOCK_RAW_FRAGMENT_ORE) cur.ore++;
-                if (g_blocks[id].glow == GLOW_STEADY || g_blocks[id].glow == GLOW_BREATHE || id == BLOCK_GLOW_MUSHROOM_CLUSTER || id == BLOCK_DAWN_LIGHT)
-                    cur.emissive++;
-                if (id == BLOCK_MUSIC) {
-                    int dx = wx - px, dy = y - py, dz = wz - pz, d2 = dx * dx + dy * dy + dz * dz;
-                    uint32_t key = (uint32_t)wx * 73856093u ^ (uint32_t)y * 19349663u ^ (uint32_t)wz * 83492791u;
-                    // Keep the nearest three.
-                    int slot = musicN < 3 ? musicN++ : -1;
-                    if (slot < 0) { int far = 0; for (int k = 1; k < 3; k++) if (musicD2[k] > musicD2[far]) far = k; if (musicD2[far] > d2) slot = far; }
-                    if (slot >= 0) { musicKey[slot] = key; musicY[slot] = y; musicD2[slot] = d2; musicX[slot] = wx + 0.5f; musicZ[slot] = wz + 0.5f; }
-                }
+                // Grassy ground is the plants' presence; moss is the damp
+                // (the water presence). Nothing else walkgrid has yet glows,
+                // burns or runs.
+                if (id == BLOCK_MEADOW_GRASS || id == BLOCK_DRY_TURF || id == BLOCK_MOSS) cur.plants++;
+                if (id == BLOCK_MOSS) cur.water++;
+                // (Music blocks, which drew a clave's pitch here, left with the old roster in M1.9.)
             }
     }
     if (++slab >= BOX_Y) { slab = 0; EndSweep(); }
@@ -157,10 +91,10 @@ void Soundscape::EndSweep() {
     else if (last.ore > 0 && sinceOre > 120.0f && !grace) { Discover(SND_VEIN); sinceOre = 0; }
     else if (!grace && newThisSweep >= 3) Discover(SND_HORIZON);
     if (last.ore > 0) sinceOre = 0;
-    // Glint: the first emissive block of each kind this session.
-    static const BlockID emissive[] = { BLOCK_MAGMA_ROCK, BLOCK_STAR_FORGE, BLOCK_GLOW_MUSHROOM_CLUSTER, BLOCK_DAWN_LIGHT, BLOCK_PULSING_MEMBRANE };
-    for (BlockID e : emissive)
-        if (seenThisSweep[e] && !glinted[e]) { glinted[e] = true; if (!grace) Discover(SND_GLINT); }
+    // Glint: the first glowing material of each kind this session (none of
+    // walkgrid's glow yet, so this waits for one that does).
+    for (int e = 0; e < BLOCK_COUNT; e++)
+        if (g_blocks[e].glow != GLOW_NONE && seenThisSweep[e] && !glinted[e]) { glinted[e] = true; if (!grace) Discover(SND_GLINT); }
 }
 
 void Soundscape::ProbeSky(World& w, int px, int py, int pz) {

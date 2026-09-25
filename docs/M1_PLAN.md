@@ -126,6 +126,7 @@
   - materials are chosen from the library menu (D30); its icons become faceted lumps of each material;
   - the hotbar stays as a placeholder, possibly for other GUI later (D30).
 - **Files.** Changed: `blocks.h` (becomes the materials registry), `blocktex.cpp`, `icons.cpp`, `soundscape.cpp`, `world.cpp`. Removed from the build: `shapes.*`.
+- **Status: built (D41).** Also changed beyond the list: `game.cpp` (placement rules and the default hotbar), `worldsound.cpp` (the machine sound), `library.h`, `groundmesh.cpp` (lumpiness from the registry), the loaded `.vtex` files (split; the rest in `assets/textures/parked/`), `tests/tests.cpp` (tests of removed features retired: the cube mesher, shapes, props, grass cover, glowing blocks; the rest restated). Icons: `docs/pictures/m1_9/icons.png`.
 - **Your check.** Nothing from Voxistics' roster left in the library.
 
 ### 1.10 Text for any language (D26)

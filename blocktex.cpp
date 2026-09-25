@@ -390,10 +390,7 @@ void BuildBlockTextures(const VtexSet& authored, BlockTextureSet& out) {
         std::string n;
         if (face == FACE_POS_Y) n = o->top;
         else if (face == FACE_NEG_Y) n = o->bottom;
-        else {
-            if (g_blocks[id].orientable && face == facing) n = o->front;
-            if (n.empty()) n = o->side;
-        }
+        else n = o->side;
         if (n.empty()) n = o->all;
         if (n.empty()) n = g_blocks[id].name;
         return n;

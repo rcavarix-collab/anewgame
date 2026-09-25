@@ -101,9 +101,10 @@ static inline LibraryResult LibraryRelease(LibraryGesture& g, int slotUnder) {
     return r;
 }
 
-// The hotbar a fresh install starts with: a spread of what there is.
+// The hotbar a fresh install starts with: a spread of the materials. (The
+// library is where materials are chosen, D30; the hotbar is kept for now.)
 static inline void DefaultHotbar(BlockID out[HOTBAR_SLOTS]) {
-    const BlockID d[HOTBAR_SLOTS] = { BLOCK_STONE, BLOCK_DIRT, BLOCK_WOOD, BLOCK_LOG, BLOCK_SAND,
-                                      BLOCK_SANDSTONE, BLOCK_GLASS, BLOCK_MUSIC, BLOCK_MAGMA_ROCK, BLOCK_STONE_SLAB };
+    const BlockID d[HOTBAR_SLOTS] = { BLOCK_MEADOW_GRASS, BLOCK_DIRT, BLOCK_STONE, BLOCK_SAND, BLOCK_GRAVEL,
+                                      BLOCK_CLAY, BLOCK_SANDSTONE, BLOCK_SLATE, BLOCK_LOAM, BLOCK_SNOW };
     for (int i = 0; i < HOTBAR_SLOTS; i++) out[i] = d[i];
 }

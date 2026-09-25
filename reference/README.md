@@ -37,15 +37,17 @@ Not reference material: this is live code and data, carried over whole in M0 so 
 
 | What | Where | Plan |
 |---|---|---|
-| The Voxistics block roster (~130 blocks: flesh, genesis, custodian, trial batch and more) | `blocks.h`, `blocktex.cpp` placeholder tiles | M1: replaced by walkgrid's starting materials |
-| The cube mesher | `mesher.*` | M1: replaced by the facet mesher |
-| Cube props and building shapes | `shapes.*` | M1: parked (D12's spirit; nothing faceted uses them) |
-| Hotbar icons rendered from cube meshes | `icons.*` | M1: render faceted lumps |
-| **Falling ground** (gravity on placed blocks) | `world.cpp` (`MaybeQueueFall` in `LiveEdit`) | **Still active today.** Parked for the first test (D12): switch off in M1 |
-| **Grass dying back under cover** | `world.cpp` (`UPD_GRASS_COVER`) | **Still active today.** Parked for the first test (D12): switch off in M1 |
-| Test world generators (flat patchwork, sine hills) | `world.cpp` | M1: replaced by walkgrid's versioned test landscape |
+| ~~The Voxistics block roster~~ | `blocks.h` | **Done (M1.9):** replaced by the twelve materials (D36, D41) |
+| ~~The cube mesher~~ | `mesher.*` | **Done (M1.9):** removed; the facet mesher draws the ground |
+| ~~Cube props and building shapes~~ | `shapes.*` | **Done (M1.9):** removed from the build (git history keeps them) |
+| ~~Hotbar icons rendered from cube meshes~~ | `icons.*` | **Done (M1.9):** faceted lumps |
+| ~~Falling ground~~ | `world.cpp` | **Done (M1.9):** switched off (D12); the update engine and its handler stay |
+| ~~Grass dying back under cover~~ | `world.cpp` | **Done (M1.9):** switched off (D12); handler stays |
+| Flat test ground (patchwork of grass, sand, gravel) | `world.cpp` | Kept as the test ground (D37); sine hills removed (M1.4) |
 | Sounds named for Voxistics events (Timeslip, Omen, Vein, Rift closed) | `sfx_synth.*`, `worldsound.cpp` | Keep the sounds, which are good; rename or re-map them when walkgrid's events are designed |
-| The soundscape's block classes (natural, dark, genesis, mechanical) | `soundscape.cpp` | M1: retuned for walkgrid's materials |
-| The trial-batch and flesh textures | `assets/textures/*.vtex` | M1: the owner picks the starting set; the rest are parked |
-| The texture brief (describes cubes and Minecraft-scale blocks) | `assets/textures/TEXTURE_BRIEF.md` | M1: rewritten for faceted ground and smooth filtering |
-| Chests and machines holding data records | `blocks.h`, `world.h` | Decide in M1: keep the data-record system (engine), drop the blocks |
+| ~~The soundscape's block classes~~ | `soundscape.cpp` | **Done (M1.9):** retuned for the materials; its dark, genesis and mechanical axes rest at their calm defaults |
+| ~~The trial-batch and flesh textures~~ | `assets/textures/*.vtex` | **Done (M1.9):** parked in `assets/textures/parked/` (natural_parked, batch_sept_parked) |
+| ~~The texture brief~~ | `TEXTURE_BRIEF.md` | **Done (M1.3)** |
+| Chests and machines holding data records | `world.h`, `worldfile.cpp` | The blocks went in M1.9; the data-record system (engine) stays, unused |
+| The glow grid and glowing blocks | `glowlight.*`, world shader | Engine kept, inert: no walkgrid material glows |
+| The scheduled-update engine (Part V) | `world.cpp` | Kept, idle: nothing in walkgrid schedules updates |

@@ -1,11 +1,12 @@
 // blocks.h
 //
-// The block registry (DESIGN.md Part III): every block type is defined
-// by exactly one row in g_blocks below -- its save identity, physical
-// flags, and which texture goes on which face. Adding a block means one
-// enum entry plus one row; meshing, gravity, picking, the hotbar, the
-// save format and the texture loader all read this table rather than
-// keeping their own lists.
+// The materials registry (DESIGN.md Part III; walkgrid M1.9): every
+// material is exactly one row in g_blocks below -- its save identity,
+// physical flags, textures and lumpiness. Adding a material means one enum
+// entry plus one row; the ground mesh, collision, picking, the library,
+// the save format and the texture loader all read this table rather than
+// keeping their own lists. (The names still say "block": the cells are
+// the grid the faceted ground is built through.) Layer 3.
 
 #pragma once
 
@@ -13,408 +14,86 @@
 
 enum BlockID : uint8_t {
     BLOCK_AIR = 0,
-    BLOCK_FOUNDATION,
-    BLOCK_STONE,
-    BLOCK_DIRT,
-    BLOCK_WOOD,
-    BLOCK_CHEST,
-    BLOCK_MACHINE,
-    BLOCK_STONE_SLAB,
-    BLOCK_WOOD_RAMP,
-    BLOCK_TUBE,
-    BLOCK_STONE_PYRAMID,
-    BLOCK_STONE_PYRAMID_HALF,
-    BLOCK_STONE_FUNNEL,
-    BLOCK_STONE_FUNNEL_HALF,
-    BLOCK_MUSIC,
-    BLOCK_GLASS,
-    BLOCK_CRYSTAL,
-    BLOCK_SNOW,
-    BLOCK_SAND,
-    BLOCK_SANDSTONE,
-    BLOCK_CRACKED_EARTH,
-    BLOCK_CLAY,
-    BLOCK_BASALT,
-    BLOCK_MAGMA_ROCK,
-    BLOCK_LOG,
-    BLOCK_MOSS,
-    BLOCK_MOSS_STONE,
+    BLOCK_FOUNDATION,    // the world's floor (y = 0): never dug, never placed
+    // The twelve starting materials (D36), top down roughly by softness.
     BLOCK_MEADOW_GRASS,
-    BLOCK_SHALLOW_WATER,
-    BLOCK_GLACIER_ICE,
-    BLOCK_VOLCANIC_ASH,
-    BLOCK_CORAL_REEF,
-    BLOCK_JUNGLE_CANOPY,
-    BLOCK_AUTUMN_LEAF_LITTER,
-    BLOCK_PEAT_BOG,
-    BLOCK_SALT_FLAT,
-    BLOCK_RIVER_PEBBLE,
-    BLOCK_COASTAL_SAND,
-    BLOCK_VEINED_FLESH,
-    BLOCK_FLESH_WOUND,
-    BLOCK_PULSING_MEMBRANE,
-    BLOCK_WEEPING_SORE,
-    BLOCK_CORRUPTED_FLESH,
-    BLOCK_GENESIS_SOIL,
-    BLOCK_SEEDLING_SPROUT,
-    BLOCK_DAWN_LIGHT,
-    BLOCK_STAR_FORGE,
-    BLOCK_NEW_LOG,
-    BLOCK_VOID_STATIC_GROUND,
-    BLOCK_CUSTODIAN_LATTICE,
-    BLOCK_RAW_FRAGMENT_ORE,
-    BLOCK_ARCHIVIST_WALL,
-    BLOCK_WILDFLOWER_YELLOW,
-    BLOCK_WILDFLOWER_BLUE,
-    BLOCK_GLOW_MUSHROOM_CLUSTER,
-    BLOCK_FERN_FROND,
-    BLOCK_THORN_BRAMBLE,
-    BLOCK_REED_GRASS,
-    BLOCK_MOSS_CLUMP,
-    BLOCK_MOSS_TUFT,
-    BLOCK_MEADOW_TUSSOCK,
-    BLOCK_EARTH_CLOD,
-    BLOCK_PEAT_CLOD,
-    BLOCK_GENESIS_CLOD,
-    BLOCK_GENESIS_ROOT_KNUCKLE,
-    BLOCK_SALT_BLISTER,
-    BLOCK_CORAL_NODE,
-    BLOCK_SORE_BULB,
-    BLOCK_CORRUPTED_BULB,
-    BLOCK_MEMBRANE_SAC,
-    BLOCK_SNOW_DRIFT,
-    BLOCK_STONE_SHARD,
-    BLOCK_BASALT_SHARD,
-    BLOCK_MAGMA_SHARD,
-    BLOCK_SANDSTONE_SHARD,
-    BLOCK_MOSS_STONE_SHARD,
-    BLOCK_ORE_SHARD,
-    BLOCK_GLACIER_SHARD,
-    BLOCK_WATER_RIPPLE,
-    BLOCK_LEAF_PAD,
-    BLOCK_LOG_BEAM,
-    BLOCK_WOOD_BEAM,
-    BLOCK_WOOD_CORBEL,
-    BLOCK_STONE_CORBEL,
-    BLOCK_WOOD_SHUTTER,
-    BLOCK_WOOD_AWNING,
-    BLOCK_CONDUIT_PIPE,
-    BLOCK_LATTICE_PIPE,
-    BLOCK_MACHINE_GEAR,
-    BLOCK_FOUNDATION_VENT,
-    BLOCK_ORE_HOPPER,
-    BLOCK_WOOD_STRUT,
-    BLOCK_LATTICE_STRUT,
-    BLOCK_MOLD_PATCH,      // grows where a flier dies on bare dirt or wood (Part XXI)
-    // The September trial batch (tools/batch_textures.py): land, building,
-    // industry, strange -- for the owner to sort; rejects get removed.
-    BLOCK_LOAM,
-    BLOCK_DARK_HUMUS,
-    BLOCK_GRAVEL,
-    BLOCK_COARSE_SAND,
-    BLOCK_SILT,
-    BLOCK_WET_MUD,
-    BLOCK_CLAY_BANK,
-    BLOCK_RIVER_COBBLES,
-    BLOCK_SLATE,
-    BLOCK_GRANITE,
-    BLOCK_LIMESTONE,
-    BLOCK_CHALK,
-    BLOCK_MOSSY_GRAVEL,
-    BLOCK_HEATHER_TURF,
     BLOCK_DRY_TURF,
-    BLOCK_FROST_TURF,
-    BLOCK_FIELDSTONE_WALL,
-    BLOCK_ASHLAR,
-    BLOCK_PLANK_FLOOR,
-    BLOCK_WEATHERED_BOARDS,
-    BLOCK_THATCH,
-    BLOCK_ADOBE_BRICK,
-    BLOCK_TERRACOTTA_TILE,
-    BLOCK_WHITEWASH,
-    BLOCK_FIRED_BRICK,
-    BLOCK_COBBLE_PATH,
-    BLOCK_STEEL_PLATE,
-    BLOCK_FLOOR_GRATE,
-    BLOCK_ENAMEL_PANEL,
-    BLOCK_ENAMEL_PANEL_DARK,
-    BLOCK_CONCRETE,
-    BLOCK_CORRUGATED_SHEET,
-    BLOCK_PULSE_CRYSTAL,
-    BLOCK_TIMEWORN_STONE,
-    BLOCK_VOID_SLATE,
-    BLOCK_ESSENCE_MOSS,
+    BLOCK_MOSS,
+    BLOCK_DIRT,
+    BLOCK_LOAM,
+    BLOCK_CLAY,
+    BLOCK_SAND,
+    BLOCK_GRAVEL,
+    BLOCK_STONE,
+    BLOCK_SLATE,
+    BLOCK_SANDSTONE,
+    BLOCK_SNOW,
     BLOCK_COUNT
 };
 
-// Geometry (shapes.h). Everything but CUBE is baked into the chunk mesh
-// from a canonical definition rotated by the block's state.
-enum BlockShape : uint8_t {
-    SHAPE_CUBE = 0,
-    SHAPE_SLAB,          // half height; STATE_UPPER puts it in the top half
-    SHAPE_RAMP,          // rises toward its facing
-    SHAPE_TUBE,          // quarter-block bar along its facing's axis
-    SHAPE_PYRAMID,
-    SHAPE_PYRAMID_HALF,  // half-height pyramid
-    SHAPE_FUNNEL,        // upside-down pyramid
-    SHAPE_FUNNEL_HALF,   // upside-down half pyramid, in the top half
-    SHAPE_CARD,          // a plant: one upright card that turns to face the viewer (4.14); not solid
-    // Faceted props (DESIGN.md 4.15), anchored flush on the face they were
-    // placed against -- the same mesh reads as a mound on a floor, a drape
-    // from a ceiling, a snag or ledge from a wall:
-    SHAPE_SWELL_MOUND,   // low octagonal mound (clump, tussock, clod)
-    SHAPE_SWELL_BULB,    // lopsided bulb, pinched at the base
-    SHAPE_SWELL_KNOB,    // tall pinched knob / bud (root knuckle)
-    SHAPE_SWELL_BOULDER, // wide, flat, worn smooth (weathered rock, drift)
-    SHAPE_SWELL_BREAKER, // very flat and wide: a rock tip or pad at a water surface
-    SHAPE_SHARD,         // an angular broken chunk (scree; a ledge on a wall)
-    SHAPE_RIPPLE_LIP,    // a thin lapping ridge along one edge, on a water surface
-    // Dwelling
-    SHAPE_BEAM,          // a diagonal rafter, rising away; chains corner to corner
-    SHAPE_CORBEL,        // a stepped right-angle bracket off a wall
-    SHAPE_SHUTTER,       // a thin louvered panel flush on a face
-    SHAPE_AWNING,        // a thin sloped overhang off a wall
-    // Industry
-    SHAPE_PIPE,          // an octagonal conduit along the clicked axis
-    SHAPE_GEAR,          // a notched disc in relief on a face
-    SHAPE_VENT,          // a column flaring at the top
-    SHAPE_HOPPER,        // an open inverted frustum that catches what falls in
-    SHAPE_STRUT,         // an X-brace in the plane facing the player
-    // Landmarks: distinctive, meant to be placed deliberately and sparingly
-    // Logistics
-    SHAPE_BEVEL_CUBE,    // a full block with its edges chamfered: machines, softened (26 polygons)
-    SHAPE_COUNT
-};
-
-// Blocks that light up on their own (world shader, Section 4.2): the
-// kind rides in spare vertex bits (mesher.h, 3 bits: up to 8 kinds), the
-// driving value is one per-frame constant, so a glowing block costs
-// nothing on the CPU. The kinds are engine-generic: what drives GLOW_DRIVEN
-// is the game's choice (today, the music's note onsets).
+// Materials that light up on their own (world shader; glowlight.h): the
+// kinds are engine-generic, carried from Voxistics. No walkgrid material
+// glows yet, so the glow grid stays empty and costs nothing.
 enum BlockGlow : uint8_t {
     GLOW_NONE = 0,
-    GLOW_DRIVEN,      // follows one per-frame level the game supplies (render.cpp glowDrive.x: the music)
-    GLOW_STEADY,      // a steady warm light source (magma); what glows on it is the texture's glow map (4.13)
+    GLOW_DRIVEN,      // follows one per-frame level the game supplies (render.cpp glowDrive.x)
+    GLOW_STEADY,      // a steady warm light source; what glows on it is the texture's glow map (4.13)
     GLOW_BREATHE,     // its texture's glow map breathes slowly (well under 1 Hz: flash-safe); casts no light
 };
 // Whether a glow kind lights the world around it (glowlight.h).
 static inline bool GlowCastsLight(BlockGlow g) { return g == GLOW_DRIVEN || g == GLOW_STEADY; }
 
-// How placement sets the state byte.
-enum PlaceRule : uint8_t {
-    PLACE_PLAIN = 0,     // state 0
-    PLACE_FACE_PLAYER,   // front turns toward the player (chest, machine)
-    PLACE_AWAY,          // facing = the way the player looks (a ramp rises away from you)
-    PLACE_CLICKED_AXIS,  // facing = normal of the face clicked (tubes run out from what you click)
-    PLACE_SLAB_HALF,     // upper or lower half, by where on the face you click
-};
-
-// Face order is shared by the mesher, the per-face shading table and a
-// block's stored facing: +X, -X, +Y (top), -Y (bottom), +Z, -Z.
+// Face order shared by the texture layer table and the ground mesh:
+// +X, -X, +Y (top), -Y (bottom), +Z, -Z.
 enum BlockFace : uint8_t {
     FACE_POS_X = 0, FACE_NEG_X, FACE_POS_Y, FACE_NEG_Y, FACE_POS_Z, FACE_NEG_Z, FACE_COUNT
 };
 
-// Per-block state byte, stored alongside the block ID in every chunk and
-// in saves. Low 3 bits: facing (a BlockFace, horizontal only in
-// practice) for orientable blocks. The other 5 bits are reserved -- e.g.
-// a machine's on/off, a slab's half -- so they can be claimed without a
-// storage or save-format change.
+// The per-cell state byte, stored beside the material in every chunk and
+// in saves. Reserved: no walkgrid material uses it yet (Voxistics kept a
+// facing there), so it can be claimed without a storage or format change.
 static const uint8_t STATE_FACING_MASK = 0x07;
-static const uint8_t STATE_UPPER = 0x08; // slab in the top half
-static inline BlockFace StateFacing(uint8_t state) {
-    uint8_t f = state & STATE_FACING_MASK;
-    return f < FACE_COUNT ? (BlockFace)f : FACE_POS_Z;
-}
 
 struct BlockDef {
     const char* name;     // identity on disk (Section 3.1) -- never renumbered, only renamed with a migration
-    bool solid;           // collision, raycast hits, hides neighbouring faces
+    bool solid;           // part of the ground: the surface wraps it, collision and picking meet it
     bool foundational;    // never falls, always supports (Part V)
-    bool placeable;       // appears on the hotbar
-    bool orientable;      // stores a facing; its `front` texture goes on that side
-    bool hasData;         // may carry a per-block data record (contents, machine state)
-    BlockShape shape;
-    PlaceRule place;
+    bool placeable;       // appears in the library
     BlockGlow glow;
-    bool translucent;     // see-through (glass): drawn after the opaque world, blended; hides only its own kind
-    // Texture names (assets/textures/TEXTURE_BRIEF.md). The most specific
-    // one set wins: front > side > all for the four sides, top/bottom >
-    // all for those faces. nullptr = not set. A texture with no authored
-    // .vtex art falls back to the procedural texture of the same name,
-    // then to the block's own name.
-    const char* texAll;
+    // Texture names (assets/textures/TEXTURE_BRIEF.md): the top shows on
+    // ground up to about 50 degrees, the side on steeper ground and
+    // cliffs, the bottom on overhangs. A texture with no authored .vtex art
+    // falls back to the procedural texture of the same name.
     const char* texTop;
-    const char* texBottom;
     const char* texSide;
-    const char* texFront;
+    const char* texBottom;
+    float bump;           // how lumpy its fine detail is, in blocks (DESIGN.md 23.1)
 };
 
-// Columns: name, solid, foundational, placeable, orientable, hasData,
-// shape, place rule, glow, translucent, then textures all / top / bottom
-// / side / front.
-#define TEX(all, top, bottom, side, front) all, top, bottom, side, front
+// Columns: name, solid, foundational, placeable, glow, then textures top /
+// side / bottom, then lumpiness.
 inline const BlockDef g_blocks[BLOCK_COUNT] = {
-    { "air",                false, false, false, false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "foundation",         true,  true,  true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("foundation", nullptr, nullptr, nullptr, nullptr) },
-    { "stone",              true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    { "dirt",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("dirt", nullptr, nullptr, nullptr, nullptr) },
-    { "wood",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("wood", nullptr, nullptr, nullptr, nullptr) },
-    { "chest",              true,  true,  true,  true,  true,  SHAPE_CUBE,         PLACE_FACE_PLAYER, GLOW_NONE, false,  TEX("chest", nullptr, nullptr, nullptr, "chest_front") },
-    { "machine",            true,  true,  true,  true,  true,  SHAPE_BEVEL_CUBE,       PLACE_FACE_PLAYER, GLOW_NONE, false,  TEX("machine", nullptr, nullptr, nullptr, "machine_front") },
-    // Shape test blocks (the Prismative.cpp primitives), foundational for
-    // now so a test build doesn't collapse while it's being looked at.
-    { "stone_slab",         true,  true,  true,  false, false, SHAPE_SLAB,         PLACE_SLAB_HALF, GLOW_NONE, false,    TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    { "wood_ramp",          true,  true,  true,  false, false, SHAPE_RAMP,         PLACE_AWAY, GLOW_NONE, false,         TEX("wood", nullptr, nullptr, nullptr, nullptr) },
-    { "tube",               true,  true,  true,  false, false, SHAPE_TUBE,         PLACE_CLICKED_AXIS, GLOW_NONE, false, TEX("tube", nullptr, nullptr, nullptr, nullptr) },
-    { "stone_pyramid",      true,  true,  true,  false, false, SHAPE_PYRAMID,      PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    { "stone_pyramid_half", true,  true,  true,  false, false, SHAPE_PYRAMID_HALF, PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    { "stone_funnel",       true,  true,  true,  false, false, SHAPE_FUNNEL,       PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    { "stone_funnel_half",  true,  true,  true,  false, false, SHAPE_FUNNEL_HALF,  PLACE_PLAIN, GLOW_NONE, false,        TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    // Reactive blocks: plain cubes that light up on their own.
-    { "music_block",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_DRIVEN, false,       TEX("music_block", nullptr, nullptr, nullptr, nullptr) },
-    // See-through blocks (DESIGN.md 4.11): clear glass and a tinted crystal.
-    { "glass",              true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, true,         TEX("glass", nullptr, nullptr, nullptr, nullptr) },
-    { "crystal",            true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, true,         TEX("crystal", nullptr, nullptr, nullptr, nullptr) },
-    // Natural materials (art: assets/textures/natural.vtex, made by
-    // tools/natural_textures.py from the art batch's palettes).
-    { "snow",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("snow", nullptr, nullptr, nullptr, nullptr) },
-    { "sand",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("sand", nullptr, nullptr, nullptr, nullptr) },
-    { "sandstone",          true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX(nullptr, "sandstone_top", "sandstone_top", "sandstone_layered", nullptr) },
-    { "cracked_earth",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("cracked_earth", nullptr, nullptr, nullptr, nullptr) },
-    { "clay",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("clay", nullptr, nullptr, nullptr, nullptr) },
-    { "basalt",             true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("basalt", nullptr, nullptr, nullptr, nullptr) },
-    { "magma_rock",         true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_STEADY, false,       TEX("magma_rock", nullptr, nullptr, nullptr, nullptr) },
-    { "log",                true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX(nullptr, "log_top", "log_top", "log_bark", nullptr) },
-    { "moss",               true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE, false,        TEX("moss", nullptr, nullptr, nullptr, nullptr) },
-    // More natural materials (the second art batch), then the dark set and
-    // its light counterpart, the genesis set. Water and ice are provisional
-    // solid see-through blocks until fluids exist.
-    { "moss_stone",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("moss_stone", nullptr, nullptr, nullptr, nullptr) },
-    { "meadow_grass",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("meadow_grass", nullptr, nullptr, nullptr, nullptr) },
-    { "shallow_water",     true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      true ,       TEX("shallow_water", nullptr, nullptr, nullptr, nullptr) },
-    { "glacier_ice",       true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      true ,       TEX("glacier_ice", nullptr, nullptr, nullptr, nullptr) },
-    { "volcanic_ash",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("volcanic_ash", nullptr, nullptr, nullptr, nullptr) },
-    { "coral_reef",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("coral_reef", nullptr, nullptr, nullptr, nullptr) },
-    { "jungle_canopy",     true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("jungle_canopy", nullptr, nullptr, nullptr, nullptr) },
-    { "autumn_leaf_litter", true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("autumn_leaf_litter", nullptr, nullptr, nullptr, nullptr) },
-    { "peat_bog",          true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("peat_bog", nullptr, nullptr, nullptr, nullptr) },
-    { "salt_flat",         true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("salt_flat", nullptr, nullptr, nullptr, nullptr) },
-    { "river_pebble",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("river_pebble", nullptr, nullptr, nullptr, nullptr) },
-    { "coastal_sand",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("coastal_sand", nullptr, nullptr, nullptr, nullptr) },
-    { "veined_flesh",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("veined_flesh", nullptr, nullptr, nullptr, nullptr) },
-    { "flesh_wound",       true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("flesh_wound", nullptr, nullptr, nullptr, nullptr) },
-    { "pulsing_membrane",  true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_BREATHE,     false,       TEX("pulsing_membrane", nullptr, nullptr, nullptr, nullptr) },
-    { "weeping_sore",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("weeping_sore", nullptr, nullptr, nullptr, nullptr) },
-    { "corrupted_flesh",   true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("corrupted_flesh", nullptr, nullptr, nullptr, nullptr) },
-    { "genesis_soil",      true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("genesis_soil", nullptr, nullptr, nullptr, nullptr) },
-    { "seedling_sprout",   true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("seedling_sprout", nullptr, nullptr, nullptr, nullptr) },
-    { "dawn_light",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("dawn_light", nullptr, nullptr, nullptr, nullptr) },
-    { "star_forge",        true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_STEADY,     false,       TEX("star_forge", nullptr, nullptr, nullptr, nullptr) },
-    { "new_log",           true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX(nullptr, "log_top", "log_top", "new_bark", nullptr) },
-    // The custodian set: void ground, the lattice, a raw ore, archival masonry.
-    { "void_static_ground", true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("void_static_ground", nullptr, nullptr, nullptr, nullptr) },
-    { "custodian_lattice", true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("custodian_lattice", nullptr, nullptr, nullptr, nullptr) },
-    { "raw_fragment_ore",  true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("raw_fragment_ore", nullptr, nullptr, nullptr, nullptr) },
-    { "archivist_wall",    true,  false, true,  false, false, SHAPE_CUBE,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("archivist_wall", nullptr, nullptr, nullptr, nullptr) },
-    // Plants: cards that turn to face the viewer (4.14). Walk-through, but targetable.
-    { "wildflower_yellow",   false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("wildflower_yellow", nullptr, nullptr, nullptr, nullptr) },
-    { "wildflower_blue",     false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("wildflower_blue", nullptr, nullptr, nullptr, nullptr) },
-    { "glow_mushroom_cluster", false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_STEADY,     false,       TEX("glow_mushroom_cluster", nullptr, nullptr, nullptr, nullptr) },
-    { "fern_frond",          false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("fern_frond", nullptr, nullptr, nullptr, nullptr) },
-    { "thorn_bramble",       false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("thorn_bramble", nullptr, nullptr, nullptr, nullptr) },
-    { "reed_grass",          false, false, true,  false, false, SHAPE_CARD,         PLACE_PLAIN, GLOW_NONE,      false,       TEX("reed_grass", nullptr, nullptr, nullptr, nullptr) },
-    // Faceted props (4.15): scatter set-dressing, anchored on the face they're placed against.
-    { "moss_clump",            true,  true,  true,  false, false, SHAPE_SWELL_MOUND,   PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("moss_stone", nullptr, nullptr, nullptr, nullptr) },
-    { "moss_tuft",             true,  true,  true,  false, false, SHAPE_SWELL_MOUND,   PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("moss", nullptr, nullptr, nullptr, nullptr) },
-    { "meadow_tussock",        true,  true,  true,  false, false, SHAPE_SWELL_MOUND,   PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("meadow_grass", nullptr, nullptr, nullptr, nullptr) },
-    { "earth_clod",            true,  true,  true,  false, false, SHAPE_SWELL_MOUND,   PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("cracked_earth", nullptr, nullptr, nullptr, nullptr) },
-    { "peat_clod",             true,  true,  true,  false, false, SHAPE_SWELL_MOUND,   PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("peat_bog", nullptr, nullptr, nullptr, nullptr) },
-    { "genesis_clod",          true,  true,  true,  false, false, SHAPE_SWELL_MOUND,   PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("genesis_soil", nullptr, nullptr, nullptr, nullptr) },
-    { "genesis_root_knuckle",  true,  true,  true,  false, false, SHAPE_SWELL_KNOB,    PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("genesis_soil", nullptr, nullptr, nullptr, nullptr) },
-    { "salt_blister",          true,  true,  true,  false, false, SHAPE_SWELL_BREAKER, PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("salt_flat", nullptr, nullptr, nullptr, nullptr) },
-    { "coral_node",            true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("coral_reef", nullptr, nullptr, nullptr, nullptr) },
-    { "sore_bulb",             true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("weeping_sore", nullptr, nullptr, nullptr, nullptr) },
-    { "corrupted_bulb",        true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("corrupted_flesh", nullptr, nullptr, nullptr, nullptr) },
-    { "membrane_sac",          true,  true,  true,  false, false, SHAPE_SWELL_BULB,    PLACE_CLICKED_AXIS, GLOW_BREATHE, false, TEX("pulsing_membrane", nullptr, nullptr, nullptr, nullptr) },
-    { "snow_drift",            true,  true,  true,  false, false, SHAPE_SWELL_BOULDER, PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("snow", nullptr, nullptr, nullptr, nullptr) },
-    { "stone_shard",           true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    { "basalt_shard",          true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("basalt", nullptr, nullptr, nullptr, nullptr) },
-    { "magma_shard",           true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_STEADY, false, TEX("magma_rock", nullptr, nullptr, nullptr, nullptr) },
-    { "sandstone_shard",       true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX(nullptr, "sandstone_top", "sandstone_top", "sandstone_layered", nullptr) },
-    { "moss_stone_shard",      true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("moss_stone", nullptr, nullptr, nullptr, nullptr) },
-    { "ore_shard",             true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("raw_fragment_ore", nullptr, nullptr, nullptr, nullptr) },
-    { "glacier_shard",         true,  true,  true,  false, false, SHAPE_SHARD,         PLACE_CLICKED_AXIS, GLOW_NONE,  true,  TEX("glacier_ice", nullptr, nullptr, nullptr, nullptr) },
-    // On a water surface: a lapping edge for shorelines, and things breaking the surface.
-    { "water_ripple",          true,  true,  true,  false, false, SHAPE_RIPPLE_LIP,    PLACE_AWAY,         GLOW_NONE,  true,  TEX("shallow_water", nullptr, nullptr, nullptr, nullptr) },
-    { "leaf_pad",              true,  true,  true,  false, false, SHAPE_SWELL_BREAKER, PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("jungle_canopy", nullptr, nullptr, nullptr, nullptr) },
-    // Dwelling pieces.
-    { "log_beam",              true,  true,  true,  false, false, SHAPE_BEAM,          PLACE_AWAY,         GLOW_NONE,  false, TEX(nullptr, "log_top", "log_top", "log_bark", nullptr) },
-    { "wood_beam",             true,  true,  true,  false, false, SHAPE_BEAM,          PLACE_AWAY,         GLOW_NONE,  false, TEX("wood", nullptr, nullptr, nullptr, nullptr) },
-    { "wood_corbel",           true,  true,  true,  false, false, SHAPE_CORBEL,        PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("wood", nullptr, nullptr, nullptr, nullptr) },
-    { "stone_corbel",          true,  true,  true,  false, false, SHAPE_CORBEL,        PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("stone", nullptr, nullptr, nullptr, nullptr) },
-    { "wood_shutter",          true,  true,  true,  false, false, SHAPE_SHUTTER,       PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("wood", nullptr, nullptr, nullptr, nullptr) },
-    { "wood_awning",           true,  true,  true,  false, false, SHAPE_AWNING,        PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("wood", nullptr, nullptr, nullptr, nullptr) },
-    // Industry pieces.
-    { "conduit_pipe",          true,  true,  true,  false, false, SHAPE_PIPE,          PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("tube", nullptr, nullptr, nullptr, nullptr) },
-    { "lattice_pipe",          true,  true,  true,  false, false, SHAPE_PIPE,          PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("custodian_lattice", nullptr, nullptr, nullptr, nullptr) },
-    { "machine_gear",          true,  true,  true,  false, false, SHAPE_GEAR,          PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("machine", nullptr, nullptr, nullptr, nullptr) },
-    { "foundation_vent",       true,  true,  true,  false, false, SHAPE_VENT,          PLACE_PLAIN,        GLOW_NONE,  false, TEX("foundation", nullptr, nullptr, nullptr, nullptr) },
-    { "ore_hopper",            true,  true,  true,  false, false, SHAPE_HOPPER,        PLACE_PLAIN,        GLOW_NONE,  false, TEX("foundation", nullptr, nullptr, nullptr, nullptr) },
-    { "wood_strut",            true,  true,  true,  false, false, SHAPE_STRUT,         PLACE_FACE_PLAYER,  GLOW_NONE,  false, TEX("wood", nullptr, nullptr, nullptr, nullptr) },
-    { "lattice_strut",         true,  true,  true,  false, false, SHAPE_STRUT,         PLACE_FACE_PLAYER,  GLOW_NONE,  false, TEX("custodian_lattice", nullptr, nullptr, nullptr, nullptr) },
-    { "mold_patch",            true,  true,  true,  false, false, SHAPE_SWELL_BREAKER, PLACE_CLICKED_AXIS, GLOW_NONE,  false, TEX("mold", nullptr, nullptr, nullptr, nullptr) },
-    // The September trial batch: each wears the texture of its own name (batch_sept.vtex).
-    { "loam",                 true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "dark_humus",           true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "gravel",               true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "coarse_sand",          true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "silt",                 true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "wet_mud",              true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "clay_bank",            true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "river_cobbles",        true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "slate",                true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "granite",              true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "limestone",            true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "chalk",                true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "mossy_gravel",         true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "heather_turf",         true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "dry_turf",             true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "frost_turf",           true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "fieldstone_wall",      true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "ashlar",               true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "plank_floor",          true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "weathered_boards",     true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "thatch",               true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "adobe_brick",          true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "terracotta_tile",      true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "whitewash",            true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "fired_brick",          true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "cobble_path",          true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "steel_plate",          true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "floor_grate",          true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "enamel_panel",         true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "enamel_panel_dark",    true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "concrete",             true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "corrugated_sheet",     true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "pulse_crystal",        true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "timeworn_stone",       true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "void_slate",           true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
-    { "essence_moss",         true,  false, true,  false, false, SHAPE_CUBE,          PLACE_PLAIN,        GLOW_NONE,  false, TEX(nullptr, nullptr, nullptr, nullptr, nullptr) },
+    { "air",          false, false, false, GLOW_NONE, nullptr,         nullptr,             nullptr,         0.0f   },
+    { "foundation",   true,  true,  false, GLOW_NONE, "foundation",    "foundation",        "foundation",    0.0f   },
+    { "meadow_grass", true,  false, true,  GLOW_NONE, "meadow_grass",  "dirt",              "dirt",          0.07f  },
+    { "dry_turf",     true,  false, true,  GLOW_NONE, "dry_turf",      "dirt",              "dirt",          0.06f  },
+    { "moss",         true,  false, true,  GLOW_NONE, "moss",          "dirt",              "dirt",          0.06f  },
+    { "dirt",         true,  false, true,  GLOW_NONE, "dirt",          "dirt",              "dirt",          0.05f  },
+    { "loam",         true,  false, true,  GLOW_NONE, "loam",          "loam",              "loam",          0.05f  },
+    { "clay",         true,  false, true,  GLOW_NONE, "clay",          "clay",              "clay",          0.03f  },
+    { "sand",         true,  false, true,  GLOW_NONE, "sand",          "sand",              "sand",          0.012f },
+    { "gravel",       true,  false, true,  GLOW_NONE, "gravel",        "gravel",            "gravel",        0.035f },
+    { "stone",        true,  false, true,  GLOW_NONE, "stone",         "stone",             "stone",         0.045f },
+    { "slate",        true,  false, true,  GLOW_NONE, "slate",         "slate",             "slate",         0.04f  },
+    { "sandstone",    true,  false, true,  GLOW_NONE, "sandstone_top", "sandstone_layered", "sandstone_top", 0.015f },
+    { "snow",         true,  false, true,  GLOW_NONE, "snow",          "snow",              "snow",          0.02f  },
 };
-#undef TEX
 
 static inline bool BlockSolid(BlockID id) { return g_blocks[id].solid; }
-// Solid and a full cube (collision, geometry).
-static inline bool BlockFullCube(BlockID id) { return g_blocks[id].solid && g_blocks[id].shape == SHAPE_CUBE; }
-static inline bool BlockIsCard(BlockID id) { return g_blocks[id].shape == SHAPE_CARD; }
-// The faceted props (4.15): hull-built, anchored on the clicked face.
-static inline bool ShapeIsProp(int s) { return s >= SHAPE_SWELL_MOUND && s < SHAPE_BEVEL_CUBE; }
-// A full cube you can't see through: hides the faces beside it and
-// darkens AO. Glass is a full cube but not opaque.
-static inline bool BlockOpaqueCube(BlockID id) { return BlockFullCube(id) && !g_blocks[id].translucent; }
+// Hides the light behind it (the glow grid).
+static inline bool BlockOpaqueCube(BlockID id) { return g_blocks[id].solid; }
 
-// The placeable blocks in registry order: the hotbar's contents.
+// The placeable materials in registry order: the library's contents.
 struct PlaceableList {
     BlockID ids[BLOCK_COUNT];
     int count;
@@ -427,19 +106,12 @@ inline PlaceableList BuildPlaceableList() { // inline, not static: the inline va
 }
 inline const PlaceableList g_placeableList = BuildPlaceableList();
 
-// Texture name for one face of a block with the given facing -- resolved
-// once per (block, facing, face) into a texture-array layer at load
-// time (textures), never per vertex.
+// Texture name for one face of a material, resolved once per (material,
+// face) into a texture-array layer at load time, never per vertex.
+// (`facing` is unused since M1.9: kept so the layer table's shape holds.)
 static inline const char* BlockFaceTextureName(BlockID id, BlockFace facing, BlockFace face) {
+    (void)facing;
     const BlockDef& d = g_blocks[id];
-    const char* name = nullptr;
-    if (face == FACE_POS_Y) name = d.texTop;
-    else if (face == FACE_NEG_Y) name = d.texBottom;
-    else {
-        if (d.orientable && face == facing) name = d.texFront;
-        if (!name) name = d.texSide;
-    }
-    if (!name) name = d.texAll;
-    if (!name) name = d.name;
-    return name;
+    const char* name = face == FACE_POS_Y ? d.texTop : face == FACE_NEG_Y ? d.texBottom : d.texSide;
+    return name ? name : d.name;
 }

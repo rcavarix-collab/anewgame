@@ -8,22 +8,7 @@
 FacetMaterial g_groundFacet[256];
 GroundMaterial g_groundLayers[256];
 
-float GroundBump(BlockID id) {
-    switch (id) { // the starting materials (D36); lumpiness in blocks
-    case BLOCK_MEADOW_GRASS: return 0.07f;
-    case BLOCK_DRY_TURF: case BLOCK_MOSS: return 0.06f;
-    case BLOCK_DIRT: case BLOCK_LOAM: return 0.05f;
-    case BLOCK_STONE: return 0.045f;
-    case BLOCK_SLATE: return 0.04f;
-    case BLOCK_GRAVEL: return 0.035f;
-    case BLOCK_CLAY: return 0.03f;
-    case BLOCK_SNOW: return 0.02f;
-    case BLOCK_SANDSTONE: return 0.015f;
-    case BLOCK_SAND: return 0.012f;
-    case BLOCK_FOUNDATION: return 0.0f;
-    default: return 0.03f; // the rest of the old roster, until M1.9
-    }
-}
+float GroundBump(BlockID id) { return g_blocks[id].bump; } // the registry's (blocks.h, M1.9)
 
 void InitGroundMaterials(const uint16_t faceLayer[BLOCK_COUNT][FACE_COUNT][FACE_COUNT]) {
     for (int i = 0; i < 256; i++) { g_groundFacet[i] = FacetMaterial(); g_groundLayers[i] = GroundMaterial(); }
@@ -35,11 +20,7 @@ void InitGroundMaterials(const uint16_t faceLayer[BLOCK_COUNT][FACE_COUNT][FACE_
         g_groundLayers[i].side = faceLayer[i][FACE_POS_Z][FACE_POS_X];
         g_groundLayers[i].bottom = faceLayer[i][FACE_POS_Z][FACE_NEG_Y];
     }
-    // Grassy ground shows its soil where it's steep (M1.2 pictures).
-    for (BlockID g : { BLOCK_MEADOW_GRASS, BLOCK_DRY_TURF, BLOCK_MOSS }) {
-        g_groundLayers[g].side = faceLayer[BLOCK_DIRT][FACE_POS_Z][FACE_POS_X];
-        g_groundLayers[g].bottom = faceLayer[BLOCK_DIRT][FACE_POS_Z][FACE_NEG_Y];
-    }
+    // (Grassy ground's soil sides come from the registry itself since M1.9.)
 }
 
 void CopyGroundCells(World& w, const ChunkCoord& cc, GroundCells& out) {

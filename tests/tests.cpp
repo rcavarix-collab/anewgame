@@ -13,8 +13,6 @@
 #include "../glowlight.h"
 #include "../musiclevel.h"
 #include "../library.h"
-#include "../mesher.h"
-#include "../shapes.h"
 #include "../icons.h"
 #include "../sky.h"
 #include "../music_synth.h"
@@ -25,7 +23,7 @@
 #include "../jobs.h"
 #include "../groundmesh.h"
 #include "../collide.h"
-static const uint64_t HILLS_V1_FINGERPRINT = 0x24bcdc60e3a97b69ull; // walkgrid-hills v1, seed 1, column (0, 0)
+static const uint64_t HILLS_V1_FINGERPRINT = 0xb337671eeedafb98ull; // walkgrid-hills v1, seed 1, column (0, 0): re-pinned in M1.9 when the registry was renumbered (same materials, same places; saves store names)
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -41,6 +39,8 @@ static int g_failures = 0, g_checks = 0;
 // How far faceted flat ground sits from its cells' tops: the corners'
 // seeded jitter (facetmesh.h FacetShape: 0.16) and a little.
 static const float FACET_Y = 0.2f;
+// Texture layers the registry names (M1.9): foundation plus the materials' tops and sides.
+static const int LAYERS_M19 = 14; // foundation + 13 named: 12 tops, the sandstone strata, soils shared
 #define CHECK(cond) do { g_checks++; if (!(cond)) { g_failures++; printf("  FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); } } while (0)
 
 static void ResetWorldState(World& w) {
@@ -100,11 +100,11 @@ static void TestVtex() {
     VtexSet al;
     ParseVtex("texture pane\nsize 8\npalette\n g 80c0ff40\n f #a0b0c0ff # opaque\npixels\n"
               " gggggggg\n gggggggg\n gggggggg\n gggggggg\n ffffffff\n ffffffff\n ffffffff\n ffffffff\nend\n"
-              "block glass\n all pane\nend\n", "alpha.vtex", al);
+              "block sand\n all pane\nend\n", "alpha.vtex", al);
     CHECK(al.errors.empty() && al.textures.size() == 1);
     if (!al.textures.empty()) CHECK(al.textures[0].rgb[0] == 0xBF80C0FFu && al.textures[0].rgb[63] == 0x00A0B0C0u);
     BlockTextureSet at; BuildBlockTextures(al, at);
-    const uint8_t* ap = at.mips[0].data() + (size_t)at.faceLayer[BLOCK_GLASS][0][0] * BLOCK_TEX_SIZE * BLOCK_TEX_SIZE * 4;
+    const uint8_t* ap = at.mips[0].data() + (size_t)at.faceLayer[BLOCK_SAND][0][0] * BLOCK_TEX_SIZE * BLOCK_TEX_SIZE * 4;
     CHECK(ap[0] == 0xFF && ap[1] == 0xC0 && ap[2] == 0x80 && ap[3] == 0x40);            // BGRA, alpha kept
     CHECK(ap[((size_t)(BLOCK_TEX_SIZE - 1) * BLOCK_TEX_SIZE) * 4 + 3] == 255);           // bottom rows opaque
     VtexSet al7; ParseVtex("texture q\nsize 8\npalette\n g 80c0ff4\npixels\nend\n", "seven.vtex", al7);
@@ -151,7 +151,8 @@ static void TestBlockTextures() {
     BlockTextureSet t;
     BuildBlockTextures(none, t);
     CHECK(t.warnings.empty());
-    CHECK(t.layerCount == 12 + 80); // 12 procedural (foundation .. crystal) + 80 more names only the generated art provides (magenta without it)
+    printf("    %d texture layers\n", t.layerCount);
+    CHECK(t.layerCount == LAYERS_M19);
 
     // The natural materials' art in the repo loads cleanly and covers
     // every natural block (no magenta fallback), with seamless wrap.
@@ -163,7 +164,7 @@ static void TestBlockTextures() {
             while ((got = fread(buf, 1, sizeof buf, fp)) > 0) text.append(buf, got);
             fclose(fp);
             VtexSet nat; ParseVtex(text, "natural.vtex", nat);
-            CHECK(nat.errors.empty() && nat.textures.size() == 47 && nat.blocks.size() == 44);
+            CHECK(nat.errors.empty() && nat.textures.size() == 9 && nat.blocks.empty()); // M1.9: the picks only; the registry names their faces
             for (auto& tx : nat.textures) CHECK(tx.size == 32 && !tx.height.empty()); // one density for everything (32), all with relief
             // The parked pulse set (not loaded by the game) still parses cleanly.
             FILE* fi = fopen("../assets/textures/parked/industry.vtex", "rb");
@@ -184,19 +185,17 @@ static void TestBlockTextures() {
                 fclose(fb);
                 size_t before = nat.textures.size();
                 ParseVtex(btext, "batch_sept.vtex", nat);
-                CHECK(nat.errors.empty() && nat.textures.size() == before + 36);
+                CHECK(nat.errors.empty() && nat.textures.size() == before + 4);
             }
             BlockTextureSet nt; BuildBlockTextures(nat, nt);
             CHECK(nt.warnings.empty());
             for (auto& w : nt.warnings) printf("    %s\n", w.c_str());
-            // Every natural block, and every prop or piece (4.15), wears
-            // authored art -- props may also borrow the industrial
-            // placeholders (tube, machine, foundation).
-            for (int id = BLOCK_SNOW; id < BLOCK_COUNT; id++)
+            // Every material wears authored art (M1.9: the loaded .vtex files
+            // hold exactly the materials' textures; the rest are parked).
+            for (int id = BLOCK_MEADOW_GRASS; id < BLOCK_COUNT; id++)
                 for (int f = 0; f < FACE_COUNT; f++) {
                     const std::string& name = nt.layerNames[nt.faceLayer[id][FACE_POS_Z][f]];
                     bool art = false; for (auto& tx : nat.textures) if (tx.name == name) art = true;
-                    if (id >= BLOCK_MOSS_CLUMP && (name == "tube" || name == "machine" || name == "foundation")) art = true;
                     CHECK(art);
                     if (!art) printf("    %s: %s\n", g_blocks[id].name, name.c_str());
                 }
@@ -204,8 +203,6 @@ static void TestBlockTextures() {
             // and column's wrap step is no bigger than the steps inside it.
             for (auto& tx : nat.textures) {
                 if (tx.name == "log_top") continue;
-                bool card = false; for (int id = 1; id < BLOCK_COUNT; id++) if (BlockIsCard((BlockID)id) && tx.name == g_blocks[id].name) card = true;
-                if (card) continue; // plant cards stand alone; they don't tile
                 auto d = [&](uint32_t a, uint32_t b) { return abs((int)(a >> 16 & 255) - (int)(b >> 16 & 255)) + abs((int)(a >> 8 & 255) - (int)(b >> 8 & 255)) + abs((int)(a & 255) - (int)(b & 255)); };
                 const int N = tx.size;
                 double maxC = 0, maxR = 0;
@@ -224,8 +221,8 @@ static void TestBlockTextures() {
         }
     }
     CHECK(t.mipCount == 7);
-    CHECK(t.faceLayer[BLOCK_CHEST][FACE_POS_Z][FACE_POS_Z] != t.faceLayer[BLOCK_CHEST][FACE_POS_Z][FACE_POS_X]); // front vs side
-    CHECK(t.faceLayer[BLOCK_CHEST][FACE_NEG_X][FACE_NEG_X] == t.faceLayer[BLOCK_CHEST][FACE_POS_Z][FACE_POS_Z]); // front follows facing
+    CHECK(t.faceLayer[BLOCK_MEADOW_GRASS][FACE_POS_Z][FACE_POS_Y] != t.faceLayer[BLOCK_MEADOW_GRASS][FACE_POS_Z][FACE_POS_X]); // grass on top, soil on the side
+    CHECK(t.faceLayer[BLOCK_MEADOW_GRASS][FACE_POS_Z][FACE_POS_X] == t.faceLayer[BLOCK_DIRT][FACE_POS_Z][FACE_POS_X]);
     CHECK(t.faceLayer[BLOCK_STONE][FACE_POS_Z][FACE_POS_Y] == t.faceLayer[BLOCK_STONE][FACE_NEG_X][FACE_NEG_Z]);
     CHECK(t.mips.back().size() == (size_t)t.layerCount * 4); // 1x1 per layer
 
@@ -252,7 +249,7 @@ static void TestBlockTextures() {
     // edge (last column to first, last row to first) is no bigger than the
     // biggest step already inside the tile between logical pixels. And
     // dirt is brown: never greener than it is red.
-    for (BlockID id : { BLOCK_STONE, BLOCK_DIRT, BLOCK_WOOD }) {
+    for (BlockID id : { BLOCK_STONE, BLOCK_DIRT }) {
         const uint8_t* L = t.mips[0].data() + (size_t)t.faceLayer[id][FACE_POS_Z][FACE_POS_Z] * BLOCK_TEX_SIZE * BLOCK_TEX_SIZE * 4;
         const int S = BLOCK_TEX_SIZE, k = S / 16;
         auto px = [&](int x, int y) { return L + ((size_t)y * S + x) * 4; };
@@ -328,11 +325,11 @@ static void TestSaveRoundTrip() {
 
     // Edits with state and data in two chunks.
     w.Set(3, 12, 3, BLOCK_AIR);
-    w.Set(5, 13, 5, BLOCK_CHEST, FACE_NEG_X);
+    w.Set(5, 13, 5, BLOCK_CLAY, 5); // the (reserved) state byte round-trips too
     Chunk* c = w.FindChunk({ 0, 0, 0 });
     c->data = std::make_unique<std::unordered_map<uint16_t, std::vector<uint8_t>>>();
     (*c->data)[(uint16_t)Chunk::LocalIndex(5, 13, 5)] = { 1, 2, 3, 250 };
-    w.Set(20, 40, 20, BLOCK_WOOD); // a chunk the generator never made (cy = 2)
+    w.Set(20, 40, 20, BLOCK_SANDSTONE); // a chunk the generator never made (cy = 2)
 
     Player p; p.x = 1.5f; p.y = 13; p.z = 2.5f; p.yaw = 0.7f; p.hotbarIndex = 3;
     std::vector<uint8_t> buf;
@@ -390,7 +387,7 @@ static void TestStreaming() {
 
     // Snapshot one unmodified and one modified chunk, then walk away.
     int h = TerrainHeight(40, 8);
-    w.Set(40, h, 8, BLOCK_MACHINE, FACE_POS_X);
+    w.Set(40, h, 8, BLOCK_CLAY, 3);
     ChunkCoord editedCC = World::ToChunk(40, h, 8);
     Chunk snapEdited = Chunk(); memcpy(snapEdited.blocks, w.FindChunk(editedCC)->blocks, CHUNK_CELLS); memcpy(snapEdited.state, w.FindChunk(editedCC)->state, CHUNK_CELLS);
     ChunkCoord plainCC = { 1, 1, 0 };
@@ -539,199 +536,20 @@ static void TestPlayer() {
     CHECK(p.onGround && fabsf(p.y - 13.0f) < FACET_Y);
 }
 
-static void TestMesher() {
-    printf("mesher\n");
-    VtexSet none; BlockTextureSet t; BuildBlockTextures(none, t);
-    memcpy(g_blockFaceLayer, t.faceLayer, sizeof(g_blockFaceLayer));
 
-    World w; ResetWorldState(w);
-    std::vector<Vertex> v; std::vector<uint16_t> idx;
-
-    // A lone block: 6 faces, nothing occluded.
-    w.Set(5, 5, 5, BLOCK_STONE);
-    BuildChunkMesh(w, { 0, 0, 0 }, *w.FindChunk({ 0, 0, 0 }), v, idx);
-    CHECK(v.size() == 24 && idx.size() == 36);
-    bool allOpen = true; for (auto& x : v) if (VertexAO(x) != 3) allOpen = false;
-    CHECK(allOpen);
-
-    // A neighbour hides the shared faces and darkens corners beside it.
-    w.Set(6, 5, 5, BLOCK_STONE);
-    w.Set(5, 4, 6, BLOCK_STONE); // diagonal (edge-adjacent) to (5,5,5): shares no face, only shading
-    BuildChunkMesh(w, { 0, 0, 0 }, *w.FindChunk({ 0, 0, 0 }), v, idx);
-    CHECK(v.size() == (6 + 6 + 6 - 2) * 4); // one touching pair hides 2 faces
-    // The (5,5,5) +Z face: its two bottom corners sit over the block at (5,4,6).
-    int darkened = 0;
-    for (auto& x : v) if (VertexFace(x) == FACE_POS_Z && x.z == 6 * 8 && x.y == 5 * 8 && x.x <= 6 * 8 && VertexAO(x) < 3) darkened++;
-    CHECK(darkened >= 2);
-
-    // Across a chunk boundary: a block at x=15 next to one at x=16 in the
-    // next chunk hides the shared face in both meshes.
-    w.Set(15, 5, 0, BLOCK_STONE); w.Set(16, 5, 0, BLOCK_STONE);
-    BuildChunkMesh(w, { 1, 0, 0 }, *w.FindChunk({ 1, 0, 0 }), v, idx);
-    CHECK(v.size() == 5 * 4);
-
-    // Front face follows facing.
-    World w2; w2.Set(1, 1, 1, BLOCK_CHEST, FACE_NEG_X);
-    BuildChunkMesh(w2, { 0, 0, 0 }, *w2.FindChunk({ 0, 0, 0 }), v, idx);
-    uint16_t front = t.faceLayer[BLOCK_CHEST][FACE_NEG_X][FACE_NEG_X];
-    for (auto& x : v) CHECK((x.layer == front) == (VertexFace(x) == FACE_NEG_X));
-
-    // Glow kinds ride in the vertex for the reactive blocks only.
-    World wg; wg.Set(1, 1, 1, BLOCK_MUSIC); wg.Set(3, 1, 1, BLOCK_MAGMA_ROCK); wg.Set(5, 1, 1, BLOCK_STONE);
-    BuildChunkMesh(wg, { 0, 0, 0 }, *wg.FindChunk({ 0, 0, 0 }), v, idx);
-    int glowMusic = 0, glowEmber = 0, glowNone = 0;
-    for (auto& x : v) { int g = VertexGlow(x); if (g == GLOW_DRIVEN) glowMusic++; else if (g == GLOW_STEADY) glowEmber++; else glowNone++; }
-    CHECK(glowMusic == 24 && glowEmber == 24 && glowNone == 24);
-
-    // Every cube face is wound clockwise seen from outside (the D3D front
-    // face): the see-through pass culls back faces on that basis (4.11).
-    {
-        World wc; wc.Set(2, 2, 2, BLOCK_STONE); wc.Set(2, 3, 2, BLOCK_STONE); wc.Set(3, 2, 3, BLOCK_STONE); // mixed AO: both diagonal splits
-        BuildChunkMesh(wc, { 0, 0, 0 }, *wc.FindChunk({ 0, 0, 0 }), v, idx);
-        static const int nrm[6][3] = { {1,0,0}, {-1,0,0}, {0,1,0}, {0,-1,0}, {0,0,1}, {0,0,-1} };
-        bool wound = true;
-        for (size_t i = 0; i + 2 < idx.size(); i += 3) {
-            const Vertex &a = v[idx[i]], &b = v[idx[i + 1]], &c = v[idx[i + 2]];
-            int e1[3] = { b.x - a.x, b.y - a.y, b.z - a.z }, e2[3] = { c.x - a.x, c.y - a.y, c.z - a.z };
-            int cr[3] = { e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0] };
-            const int* n = nrm[VertexFace(a)];
-            if (cr[0] * n[0] + cr[1] * n[1] + cr[2] * n[2] <= 0) wound = false;
-        }
-        CHECK(wound);
-    }
-
-    // See-through blocks (4.11): glass faces come after every opaque one;
-    // glass beside glass shares no face; stone beside glass keeps its face;
-    // glass beside stone loses its; glass never darkens AO.
-    {
-        World wt; ResetWorldState(wt);
-        wt.Set(4, 4, 4, BLOCK_GLASS); wt.Set(5, 4, 4, BLOCK_GLASS); // a 2-block pane
-        wt.Set(4, 3, 4, BLOCK_STONE);                               // stone under the first pane block
-        wt.Set(8, 4, 4, BLOCK_STONE); wt.Set(9, 4, 4, BLOCK_CRYSTAL); // stone beside crystal
-        size_t first = 0;
-        BuildChunkMesh(wt, { 0, 0, 0 }, *wt.FindChunk({ 0, 0, 0 }), v, idx, &first);
-        int stoneFaces = 0, glassFaces = 0;
-        for (size_t i = 0; i < idx.size(); i += 6) {
-            const Vertex& a = v[idx[i]];
-            bool see = a.layer == t.faceLayer[BLOCK_GLASS][0][0] || a.layer == t.faceLayer[BLOCK_CRYSTAL][0][0];
-            CHECK(see == (i >= first));
-            if (see) glassFaces++; else stoneFaces++;
-        }
-        // Stone: 6 + 6 (both keep every face: glass and crystal hide nothing).
-        // Glass pane: 2 blocks x 6 - 2 shared - 1 on the stone = 9; crystal: 6 - 1 on the stone = 5.
-        CHECK(stoneFaces == 12 && glassFaces == 9 + 5);
-        bool glassDarkens = false;
-        for (auto& x : v) if (x.y == 5 * 8 && VertexFace(x) == FACE_POS_Y && x.x >= 8 * 8 && x.x <= 9 * 8 && VertexAO(x) < 3 && x.layer == t.faceLayer[BLOCK_STONE][0][0]) glassDarkens = true;
-        CHECK(!glassDarkens); // the stone's top beside the crystal stays open
-        size_t firstNone = 12345;
-        World ws; ws.Set(1, 1, 1, BLOCK_STONE);
-        BuildChunkMesh(ws, { 0, 0, 0 }, *ws.FindChunk({ 0, 0, 0 }), v, idx, &firstNone);
-        CHECK(firstNone == idx.size()); // no glass: everything is opaque
-    }
-
-    // Plant cards (4.14): one quad, all corners at the base centre, the
-    // layer flagged, corners in u/v; neighbours keep their faces.
-    {
-        World wp; wp.Set(3, 3, 3, BLOCK_FERN_FROND); wp.Set(4, 3, 3, BLOCK_STONE);
-        BuildChunkMesh(wp, { 0, 0, 0 }, *wp.FindChunk({ 0, 0, 0 }), v, idx);
-        int cards = 0;
-        for (auto& x : v) if (x.layer & CARD_LAYER_BIT) { cards++; CHECK(x.x == 3 * 8 + 4 && x.y == 3 * 8 && x.z == 3 * 8 + 4); }
-        CHECK(cards == 4 && v.size() == 4 + 24); // the stone keeps all six faces
-        CHECK(!BlockSolid(BLOCK_FERN_FROND) && BlockIsCard(BLOCK_FERN_FROND));
-    }
-
-    // Worst case fits 16-bit indices.
-    World w3;
-    for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
-        if ((x + y + z) % 2 == 0) w3.Set(x, y, z, BLOCK_STONE);
-    BuildChunkMesh(w3, { 0, 0, 0 }, *w3.FindChunk({ 0, 0, 0 }), v, idx);
-    CHECK(v.size() == 2048u * 24u && v.size() <= 65536u);
-}
-
-static void TestShapes() {
-    printf("shapes\n");
-    ShapePoly polys[MAX_SHAPE_POLYS];
-    ShapeBox boxes[MAX_SHAPE_BOXES];
-
-    // Slab: lower half by default, upper with STATE_UPPER; its top face is
-    // interior (never culled), its bottom lies on the boundary.
-    CHECK(ShapeBoxes(SHAPE_SLAB, 0, boxes) == 1 && boxes[0].y0 == 0 && boxes[0].y1 == 4);
-    CHECK(ShapeBoxes(SHAPE_SLAB, STATE_UPPER, boxes) == 1 && boxes[0].y0 == 4 && boxes[0].y1 == 8);
-    int n = ShapePolys(SHAPE_SLAB, 0, polys);
-    CHECK(n == 6);
-    for (int i = 0; i < n; i++) {
-        if (polys[i].texFace == FACE_POS_Y) CHECK(polys[i].boundary == -1);
-        if (polys[i].texFace == FACE_NEG_Y) CHECK(polys[i].boundary == FACE_NEG_Y);
-        if (polys[i].texFace == FACE_POS_X) CHECK(polys[i].v[0].v >= 4); // side shows the texture's lower half
-    }
-
-    // Ramp: rises toward its facing -- the full-height wall sits on that side.
-    for (BlockFace f : { FACE_POS_X, FACE_NEG_X, FACE_POS_Z, FACE_NEG_Z }) {
-        n = ShapePolys(SHAPE_RAMP, f, polys);
-        CHECK(n == 5);
-        bool wall = false;
-        for (int i = 0; i < n; i++) if (polys[i].boundary == f && polys[i].count == 4 && polys[i].texFace == f) wall = true;
-        CHECK(wall);
-        int nb = ShapeBoxes(SHAPE_RAMP, f, boxes);
-        CHECK(nb == 2);
-        // The upper step is on the facing side.
-        const ShapeBox& up = boxes[1];
-        if (f == FACE_POS_X) CHECK(up.x0 == 4 && up.x1 == 8);
-        if (f == FACE_NEG_X) CHECK(up.x0 == 0 && up.x1 == 4);
-        if (f == FACE_POS_Z) CHECK(up.z0 == 4 && up.z1 == 8);
-        if (f == FACE_NEG_Z) CHECK(up.z0 == 0 && up.z1 == 4);
-    }
-
-    // Tube: runs along its facing's axis.
-    ShapeBoxes(SHAPE_TUBE, FACE_POS_Y, boxes); CHECK(boxes[0].y0 == 0 && boxes[0].y1 == 8 && boxes[0].x1 - boxes[0].x0 == 2);
-    ShapeBoxes(SHAPE_TUBE, FACE_NEG_X, boxes); CHECK(boxes[0].x0 == 0 && boxes[0].x1 == 8 && boxes[0].y1 - boxes[0].y0 == 2);
-
-    // Meshing: a slab on the ground hides the ground's top? No -- only full
-    // cubes hide faces. But the ground hides the slab's bottom.
-    VtexSet none; BlockTextureSet t; BuildBlockTextures(none, t);
-    memcpy(g_blockFaceLayer, t.faceLayer, sizeof(g_blockFaceLayer));
-    World w; ResetWorldState(w);
-    w.Set(4, 4, 4, BLOCK_STONE);
-    w.Set(4, 5, 4, BLOCK_STONE_SLAB);
-    std::vector<Vertex> v; std::vector<uint16_t> idx;
-    BuildChunkMesh(w, { 0, 0, 0 }, *w.FindChunk({ 0, 0, 0 }), v, idx);
-    CHECK(v.size() == (6 + 5) * 4); // cube keeps its top (slab isn't full); slab loses its bottom
-    int slabTop = 0;
-    for (auto& x : v) if (VertexFace(x) == FACE_POS_Y && x.y == 5 * 8 + 4) slabTop++;
-    CHECK(slabTop == 4); // at y = 5.5
-    // A pyramid is 1 quad + 4 triangles.
-    World w2; w2.Set(1, 1, 1, BLOCK_STONE_PYRAMID);
-    BuildChunkMesh(w2, { 0, 0, 0 }, *w2.FindChunk({ 0, 0, 0 }), v, idx);
-    CHECK(v.size() == 4 + 4 * 3 && idx.size() == 6 + 4 * 3);
-
-    // Collision on faceted ground (M1.7): a one-cell step is a slope you
-    // walk up; a two-cell wall stops you. (Shapes are whole cells to the
-    // facets until they leave in M1.9.)
-    World g; ResetWorldState(g);
-    g_loadRadius = 1; g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
-    Stream(g, 8, 8, 20);
-    for (int z = 6; z <= 10; z++) g.Set(10, 13, z, BLOCK_STONE);
-    for (int x = 6; x <= 10; x++) { g.Set(x, 13, 11, BLOCK_STONE); g.Set(x, 14, 11, BLOCK_STONE); }
-    Player p; p.x = 8.5f; p.z = 8.5f; p.y = 13.0f; p.yaw = 1.5707963f; // facing +X
-    for (int i = 0; i < 10; i++) UpdatePlayerPhysics(g, p, 1.0f / 60.0f, false, false, false, false, false);
-    CHECK(p.onGround && fabsf(p.y - 13.0f) < FACET_Y);
-    for (int i = 0; i < 30; i++) UpdatePlayerPhysics(g, p, 1.0f / 60.0f, true, false, false, false, false);
-    CHECK(p.x > 10.0f && p.y > 13.6f); // walked up onto the step
-    Player q; q.x = 8.5f; q.z = 8.5f; q.y = 13.0f; q.yaw = 0.0f; // facing +Z, toward the wall
-    for (int i = 0; i < 10; i++) UpdatePlayerPhysics(g, q, 1.0f / 60.0f, false, false, false, false, false);
-    for (int i = 0; i < 90; i++) UpdatePlayerPhysics(g, q, 1.0f / 60.0f, true, false, false, false, false);
-    CHECK(q.z < 11.0f && q.y < 13.0f + 1.0f); // stopped at the two-cell wall, not climbed it
-}
 
 static void TestScheduledUpdates() {
     printf("scheduled updates (gravity)\n");
     World w; ResetWorldState(w);
     g_loadRadius = 1; g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
     Stream(w, 8, 8, 20);
-    // A 5-high stone column on a wood block; remove the wood.
+    // Live edits schedule nothing in walkgrid (falling ground parked, D12)...
     for (int y = 14; y < 19; y++) w.Set(8, y, 8, BLOCK_STONE);
-    w.Set(8, 13, 8, BLOCK_WOOD);
+    w.Set(8, 13, 8, BLOCK_DIRT);
     LiveEdit(w, 8, 13, 8, BLOCK_AIR);
+    CHECK(ScheduledUpdateCount() == 0);
+    // ...but the engine still runs gravity when asked: a 5-high column falls.
+    MaybeQueueFall(w, 8, 14, 8);
     CHECK(ScheduledUpdateCount() == 1);
     int ticks = 0;
     while (ScheduledUpdateCount() > 0 && ticks < 200) { ProcessScheduledUpdates(w); ticks++; }
@@ -762,21 +580,14 @@ static void TestScheduledUpdates() {
 static void TestIcons() {
     printf("icons\n");
     VtexSet none; BlockTextureSet t; BuildBlockTextures(none, t);
-    memcpy(g_blockFaceLayer, t.faceLayer, sizeof(g_blockFaceLayer));
     RenderBlockIcons(t);
+    // Each material's icon is a lump: transparent corners, a solid body.
     for (int id = 1; id < BLOCK_COUNT; id++) {
         auto alpha = [&](int x, int y) { return t.icons[((size_t)y * t.iconsW + (size_t)id * BLOCK_TEX_SIZE + x) * 4 + 3]; };
-        if (BlockIsCard((BlockID)id)) { // a plant card's icon is its picture, exactly
-            const uint8_t* src = t.mips[0].data() + (size_t)t.faceLayer[id][FACE_POS_Z][FACE_POS_Z] * BLOCK_TEX_SIZE * BLOCK_TEX_SIZE * 4;
-            CHECK(memcmp(src, &t.icons[(size_t)id * BLOCK_TEX_SIZE * 4], BLOCK_TEX_SIZE * 4) == 0);
-            continue;
-        }
-        CHECK(alpha(0, 0) == 0 && alpha(BLOCK_TEX_SIZE - 1, 0) == 0); // transparent corners
-        int opaque = 0, drawn = 0;
-        for (int y = 0; y < BLOCK_TEX_SIZE; y++) for (int x = 0; x < BLOCK_TEX_SIZE; x++) { if (alpha(x, y) == 255) opaque++; if (alpha(x, y) >= 90) drawn++; }
-        if (g_blocks[id].translucent && g_blocks[id].shape == SHAPE_CUBE) CHECK(drawn > 1000 && opaque < drawn); // see-through, but visible
-        else if (g_blocks[id].translucent) CHECK(drawn > 20);             // a see-through prop: small, but there
-        else CHECK(opaque > 40); // something drawn (the thin tube is the smallest)
+        CHECK(alpha(0, 0) == 0 && alpha(BLOCK_TEX_SIZE - 1, 0) == 0);
+        int opaque = 0;
+        for (int y = 0; y < BLOCK_TEX_SIZE; y++) for (int x = 0; x < BLOCK_TEX_SIZE; x++) if (alpha(x, y) == 255) opaque++;
+        CHECK(opaque > 400);
     }
 }
 
@@ -886,34 +697,14 @@ static void TestMusicLevel() {
 
 static void TestGlowLight() {
     printf("glow light grid\n");
-    World w;
-    for (int z = 0; z < 32; z++) for (int x = 0; x < 32; x++) w.Set(x, 10, z, BLOCK_STONE); // floor
-    w.Set(10, 11, 10, BLOCK_MUSIC);
-    for (int z = 7; z <= 13; z++) for (int y = 11; y <= 13; y++) w.Set(13, y, z, BLOCK_STONE); // a wall east of it
-    int ox, oy, oz; GlowGridOrigin(10.5f, 12.6f, 10.5f, ox, oy, oz);
-    CHECK(ox == -32 && oy == -32 && oz == -32);
-    GlowGrid g; BuildGlowGrid(w, ox, oy, oz, g);
-    auto at = [&](int x, int y, int z, int ch) { return (int)g.texels[((size_t)(((z - oz) * GLOW_GRID + (y - oy)) * GLOW_GRID + (x - ox))) * 4 + ch]; };
-    CHECK(g.emitters.size() == 1 && g.texels.size() == (size_t)GLOW_GRID * GLOW_GRID * GLOW_GRID * 4);
-    CHECK(at(11, 11, 10, 0) > 150 && at(11, 11, 10, 1) == 0);     // beside it: bright, driven channel only
-    CHECK(at(7, 11, 10, 0) > 0 && at(7, 11, 10, 0) < at(9, 11, 10, 0)); // falls off with distance
-    CHECK(at(15, 11, 10, 0) == 0);                                  // behind the wall: in its shadow
-    CHECK(at(14, 16, 10, 0) > 0);                                   // over the top of the wall: lit again
-    CHECK(at(10, 11, 19, 0) == 0);                                  // beyond its reach
-    CHECK(at(10, 10, 11, 0) == 0);                                  // inside the (opaque) floor
-    CHECK(at(10, 9, 10, 0) == 0);                                   // under the floor: shadowed
-    // Change detection: its own chunk and a neighbour within reach count; far chunks don't.
-    CHECK(ChunkAffectsGlow(g, { 0, 0, 0 }, *w.FindChunk({ 0, 0, 0 })));
-    CHECK(ChunkAffectsGlow(g, { 1, 0, 0 }, *w.FindChunk({ 1, 0, 0 })));
-    Chunk empty;
-    CHECK(!ChunkAffectsGlow(g, { 6, 0, 6 }, empty));
-    w.Set(20, 11, 3, BLOCK_MAGMA_ROCK); // steady light: the second channel
-    BuildGlowGrid(w, ox, oy, oz, g);
-    CHECK(g.emitters.size() == 2 && at(21, 11, 3, 1) > 150 && at(21, 11, 3, 0) == 0 && at(21, 11, 3, 2) == 0);
-    // No emitters, no texels.
+    // No walkgrid material glows yet (M1.9): the grid stays empty and the
+    // shader skips its lookup. (Voxistics' emitter checks left with its
+    // roster; the engine code stays for when a glowing material comes.)
     World none; none.Set(0, 0, 0, BLOCK_STONE);
-    BuildGlowGrid(none, ox, oy, oz, g);
+    int ox, oy, oz; GlowGridOrigin(10.5f, 12.6f, 10.5f, ox, oy, oz);
+    GlowGrid g; BuildGlowGrid(none, ox, oy, oz, g);
     CHECK(g.emitters.empty() && g.texels.empty());
+    for (int i = 0; i < BLOCK_COUNT; i++) CHECK(g_blocks[i].glow == GLOW_NONE);
 }
 
 // Camera-relative rendering (render.cpp, D13): placing a point relative to
@@ -1016,36 +807,6 @@ static void TestSky() {
 }
 
 
-static void TestGrassCover() {
-    printf("covered grass dies back\n");
-    auto settle = [](World& w) { for (uint32_t i = 0; i < GRASS_COVER_TICKS * 3 / 2 + 2; i++) ProcessScheduledUpdates(w); };
-    {   // Built over: dirt, after minutes (not at once).
-        World w; ClearScheduledUpdates();
-        w.Set(0, 10, 0, BLOCK_MEADOW_GRASS); w.Set(0, 9, 0, BLOCK_DIRT);
-        LiveEdit(w, 0, 13, 0, BLOCK_STONE); // a roof three blocks up
-        for (int i = 0; i < 60 * 60; i++) ProcessScheduledUpdates(w); // an hour of night would be 10 min; one minute here
-        CHECK(w.Get(0, 10, 0) == BLOCK_MEADOW_GRASS);
-        settle(w);
-        CHECK(w.Get(0, 10, 0) == BLOCK_DIRT);
-    }
-    {   // Glass lets the light through; a pipe or a plant hardly shades.
-        World w; ClearScheduledUpdates();
-        w.Set(0, 10, 0, BLOCK_MEADOW_GRASS); w.Set(2, 10, 0, BLOCK_MEADOW_GRASS);
-        LiveEdit(w, 0, 12, 0, BLOCK_GLASS);
-        LiveEdit(w, 2, 12, 0, BLOCK_CONDUIT_PIPE, FACE_POS_X);
-        settle(w);
-        CHECK(w.Get(0, 10, 0) == BLOCK_MEADOW_GRASS && w.Get(2, 10, 0) == BLOCK_MEADOW_GRASS);
-    }
-    {   // Uncovered again before its time: it lives.
-        World w; ClearScheduledUpdates();
-        w.Set(0, 10, 0, BLOCK_MEADOW_GRASS);
-        LiveEdit(w, 0, 11, 0, BLOCK_WOOD);
-        LiveEdit(w, 0, 11, 0, BLOCK_AIR);
-        settle(w);
-        CHECK(w.Get(0, 10, 0) == BLOCK_MEADOW_GRASS);
-    }
-    ClearScheduledUpdates();
-}
 
 
 // Each colour-vision mode keeps the three pulse colours apart as that kind
@@ -1312,93 +1073,13 @@ static void TestSoundscape() {
     CHECK(wild.HaveCensus());
     CHECK(wild.Axes().mechanical < 0.2f);   // open land reads organic
     CHECK(wild.Axes().positive > 0.2f);
-    // A works yard: machines and tubes around the player.
-    for (int x = -6; x <= 6; x += 2)
-        for (int z = -6; z <= 6; z += 2) { w.Set(8 + x, ground + 1, 8 + z, BLOCK_MACHINE); w.Set(8 + x, ground + 2, 8 + z, BLOCK_TUBE); }
-    Soundscape yard;
-    settle(yard, 30);
-    CHECK(yard.Axes().mechanical > 0.7f);
-    CHECK(yard.Scene().machines > 0.9f);
-    // Dark ground: flesh blocks drag positive down, and the first sight is an omen.
-    for (int x = -8; x <= 8; x++)
-        for (int z = 10; z <= 14; z++) w.Set(8 + x, ground, 8 + z - 20, BLOCK_CORRUPTED_FLESH);
-    Soundscape dark;
-    settle(dark, 40);
-    CHECK(dark.Axes().positive < -0.3f);
-    SoundId found[8];
-    int n = dark.TakeDiscoveries(found, 8);
-    bool omen = false;
-    for (int i = 0; i < n; i++) omen = omen || found[i] == SND_OMEN;
-    CHECK(omen);
-    // Materials.
-    CHECK(BlockSoundMaterial(BLOCK_STONE) == MAT_STONE);
-    CHECK(BlockSoundMaterial(BLOCK_FERN_FROND) == MAT_PLANT);
-    CHECK(BlockSoundClass(BLOCK_MACHINE) == SC_MECHANICAL);
-    CHECK(BlockSoundClass(BLOCK_GENESIS_SOIL) == SC_GENESIS);
+    // Materials (M1.9): grassy ground soft, soils earthy, stones hard.
+    CHECK(BlockSoundMaterial(BLOCK_MEADOW_GRASS) == MAT_PLANT && BlockSoundMaterial(BLOCK_MOSS) == MAT_PLANT);
+    CHECK(BlockSoundMaterial(BLOCK_DIRT) == MAT_EARTH && BlockSoundMaterial(BLOCK_SAND) == MAT_EARTH);
+    CHECK(BlockSoundMaterial(BLOCK_STONE) == MAT_STONE && BlockSoundMaterial(BLOCK_GRAVEL) == MAT_STONE);
+    CHECK(BlockSoundClass(BLOCK_CLAY) == SC_NATURAL && BlockSoundClass(BLOCK_FOUNDATION) == SC_NEUTRAL);
 }
 
-static void TestProps() {
-    printf("faceted props\n");
-    ShapePoly polys[MAX_SHAPE_POLYS];
-    ShapeBox box;
-    int bad = 0;
-    for (int shape = SHAPE_SWELL_MOUND; shape < SHAPE_COUNT; shape++) if (ShapeIsProp(shape))
-        for (int f = 0; f < FACE_COUNT; f++)
-            for (int variant = 0; variant < 4; variant++) {
-                int n = ShapePolys((BlockShape)shape, (uint8_t)f, polys, variant);
-                bool ok = n > 0 && n <= MAX_SHAPE_POLYS;
-                // Closed and wound outward: the signed volume about the
-                // cell's centre is positive (and matches a real solid).
-                double vol = 0;
-                for (int i = 0; i < n; i++) {
-                    const ShapePoly& p = polys[i];
-                    for (int k = 0; k < p.count; k++) ok = ok && p.v[k].x <= 8 && p.v[k].y <= 8 && p.v[k].z <= 8;
-                    for (int k = 1; k + 1 < p.count; k++) {
-                        double a[3] = { p.v[0].x - 4.0, p.v[0].y - 4.0, p.v[0].z - 4.0 };
-                        double b[3] = { p.v[k].x - 4.0, p.v[k].y - 4.0, p.v[k].z - 4.0 };
-                        double c[3] = { p.v[k + 1].x - 4.0, p.v[k + 1].y - 4.0, p.v[k + 1].z - 4.0 };
-                        vol += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6.0;
-                    }
-                }
-                ok = ok && vol > 1.0 && vol <= 512.0;
-                if (!ok) { bad++; if (bad < 5) printf("    shape %d facing %d variant %d: %d polys, volume %.1f\n", shape, f, variant, n, vol); }
-            }
-    CHECK(bad == 0);
-    // Anchored flush: a mound on a floor lies on the cell's bottom (hidden
-    // by a full block beneath); hung from a ceiling it lies on the top; on
-    // a wall it lies on that wall and droops.
-    auto anchorFace = [&](BlockShape s, int f) {
-        int n = ShapePolys(s, (uint8_t)f, polys, 0), found = -1;
-        for (int i = 0; i < n; i++) if (polys[i].boundary >= 0) found = polys[i].boundary;
-        return found;
-    };
-    CHECK(anchorFace(SHAPE_SWELL_MOUND, FACE_POS_Y) == FACE_NEG_Y);
-    CHECK(anchorFace(SHAPE_SWELL_MOUND, FACE_NEG_Y) == FACE_POS_Y);
-    CHECK(anchorFace(SHAPE_SWELL_KNOB, FACE_POS_X) == FACE_NEG_X);
-    CHECK(anchorFace(SHAPE_SHARD, FACE_NEG_Z) == FACE_POS_Z);
-    // Collision: one box within the cell; a mound is low enough to step onto.
-    CHECK(ShapeBoxes(SHAPE_SWELL_MOUND, FACE_POS_Y, &box) == 1 && box.y0 == 0 && box.y1 <= 4);
-    CHECK(ShapeBoxes(SHAPE_SWELL_MOUND, FACE_NEG_Y, &box) == 1 && box.y1 == 8 && box.y0 >= 4);
-    CHECK(ShapeBoxes(SHAPE_PIPE, FACE_POS_X, &box) == 1 && box.x0 == 0 && box.x1 == 8 && box.y1 - box.y0 == 6);
-    // A rafter chains: its top corner meets the next cell's bottom corner.
-    int n = ShapePolys(SHAPE_BEAM, FACE_POS_Z, polys, 0);
-    bool low = false, high = false;
-    for (int i = 0; i < n; i++) for (int k = 0; k < polys[i].count; k++) {
-        if (polys[i].v[k].y == 0 && polys[i].v[k].z == 0) low = true;
-        if (polys[i].v[k].y == 8 && polys[i].v[k].z == 8) high = true;
-    }
-    CHECK(low && high);
-    // Every prop block meshes; a see-through prop lands in the blended pass.
-    World w;
-    for (int id = BLOCK_MOSS_CLUMP; id < BLOCK_COUNT; id++) {
-        w = World();
-        w.Set(3, 3, 3, (BlockID)id, FACE_POS_Y);
-        std::vector<Vertex> verts; std::vector<uint16_t> idx; size_t firstClear = 0;
-        BuildChunkMesh(w, { 0, 0, 0 }, *w.FindChunk({ 0, 0, 0 }), verts, idx, &firstClear);
-        CHECK(!idx.empty());
-        if (g_blocks[id].translucent) CHECK(firstClear == 0); else CHECK(firstClear == idx.size());
-    }
-}
 
 static void TestPatchwork() {
     printf("flat v2 ground patchwork\n");
@@ -1409,12 +1090,12 @@ static void TestPatchwork() {
     for (int x = 0; x < 256; x++)
         for (int z = 0; z < 256; z++) {
             BlockID b = SurfaceBlockAt(x * 2, z * 2);
-            counts[b == BLOCK_MEADOW_GRASS ? 0 : b == BLOCK_COASTAL_SAND ? 1 : 2]++;
+            counts[b == BLOCK_MEADOW_GRASS ? 0 : b == BLOCK_SAND ? 1 : 2]++;
             if (z > 0 && b != prev) changes++;
             prev = b;
         }
     const int total = 256 * 256;
-    printf("    grass %.0f%%, sand %.0f%%, pebbles %.0f%%\n", 100.0 * counts[0] / total, 100.0 * counts[1] / total, 100.0 * counts[2] / total);
+    printf("    grass %.0f%%, sand %.0f%%, gravel %.0f%%\n", 100.0 * counts[0] / total, 100.0 * counts[1] / total, 100.0 * counts[2] / total);
     CHECK(counts[0] > total * 0.4 && counts[1] > total * 0.05 && counts[2] > total * 0.05);
     CHECK(changes > 200 && changes < total / 4);   // patches, not noise and not one field
     CHECK(SurfaceBlockAt(1000, -777) == SurfaceBlockAt(1000, -777)); // a pure function
@@ -1570,14 +1251,12 @@ static void TestGroundMesh() {
     CHECK(seam > 0);
     CHECK(unmatched == 0);
     printf("  open edges along the seam: %d, unmatched: %d\n", seam, unmatched);
-    // Winding agrees with the old cube mesher, whose back-face culling is
-    // known to work: seen from above through the game's own matrices, an
-    // up-facing triangle from each turns the same way on screen.
+    // Winding: seen from above through the game's own matrices, every
+    // up-facing triangle turns the way D3D draws as a front face.
     {
         World f; ResetWorldState(f);
         g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
         for (int cz = -1; cz <= 1; cz++) for (int cx = -1; cx <= 1; cx++) GenerateColumn(f, cx, cz);
-        memcpy(g_blockFaceLayer, t.faceLayer, sizeof(g_blockFaceLayer));
         Mat4 vp = MatMul(MatLookToLH({ 8, 30, 8 }, { 0.05f, -1, 0.02f }, { 0, 0, 1 }), MatPerspectiveFovLH(1.0f, 1.5f, 0.1f, 500));
         auto screenSign = [&](Vec3 a, Vec3 b, Vec3 c) {
             float sx[3], sy[3]; Vec3 q[3] = { a, b, c };
@@ -1590,14 +1269,6 @@ static void TestGroundMesh() {
             float area = (sx[1] - sx[0]) * (sy[2] - sy[0]) - (sx[2] - sx[0]) * (sy[1] - sy[0]);
             return area > 0 ? 1 : -1;
         };
-        std::vector<Vertex> cv; std::vector<uint16_t> ci;
-        BuildChunkMesh(f, { 0, 0, 0 }, *f.FindChunk({ 0, 0, 0 }), cv, ci);
-        int cubeSign = 0;
-        for (size_t i = 0; i < ci.size() && !cubeSign; i += 3)
-            if (VertexFace(cv[ci[i]]) == FACE_POS_Y) {
-                auto P = [&](const Vertex& v) { return Vec3{ v.x / 8.0f, v.y / 8.0f, v.z / 8.0f }; };
-                cubeSign = screenSign(P(cv[ci[i]]), P(cv[ci[i + 1]]), P(cv[ci[i + 2]]));
-            }
         GroundCells fc; CopyGroundCells(f, { 0, 0, 0 }, fc);
         GroundMesh fm; BuildGroundMesh(fc, 0, fm);
         int facetSign = 0, agree = 0, total = 0;
@@ -1606,9 +1277,13 @@ static void TestGroundMesh() {
             Vec3 a = P(fm.verts[fm.idx[i]]), b = P(fm.verts[fm.idx[i + 1]]), c = P(fm.verts[fm.idx[i + 2]]);
             if (Cross(b - a, c - a).y <= 0) continue; // up-facing only
             int sgn = screenSign(a, b, c);
-            facetSign = sgn; total++; agree += sgn == cubeSign;
+            facetSign = sgn; total++; agree += sgn == 1;
         }
-        CHECK(cubeSign != 0 && facetSign != 0 && total > 0 && agree == total);
+        // D3D's default rasterizer takes clockwise-on-screen as the front:
+        // in y-down screen coordinates, a positive signed area. (Until M1.9
+        // this compared against the old cube mesher, whose culling worked
+        // in game; they agreed.)
+        CHECK(facetSign == 1 && total > 0 && agree == total);
     }
 }
 
@@ -1739,6 +1414,25 @@ static void TestFacetCollision() {
     CHECK(hx == 8 && hy == 12 && hz == 8 && px == 8 && py == 13 && pz == 8);
     // From inside the air, never a back face: looking up at open sky, nothing.
     CHECK(!FacetRaycast(f, { 8.5f, 16.0f, 8.5f }, { 0, 1, 0 }, 8.0f, hx, hy, hz, px, py, pz));
+    {
+        // Collision on faceted ground (M1.7): a one-cell step is a slope you
+        // walk up; a two-cell wall stops you. (Shapes are whole cells to the
+        // facets until they leave in M1.9.)
+        World g; ResetWorldState(g);
+        g_loadRadius = 1; g_worldGen = WorldGenParams(); g_worldGen.type = GEN_FLAT;
+        Stream(g, 8, 8, 20);
+        for (int z = 6; z <= 10; z++) g.Set(10, 13, z, BLOCK_STONE);
+        for (int x = 6; x <= 10; x++) { g.Set(x, 13, 11, BLOCK_STONE); g.Set(x, 14, 11, BLOCK_STONE); }
+        Player p; p.x = 8.5f; p.z = 8.5f; p.y = 13.0f; p.yaw = 1.5707963f; // facing +X
+        for (int i = 0; i < 10; i++) UpdatePlayerPhysics(g, p, 1.0f / 60.0f, false, false, false, false, false);
+        CHECK(p.onGround && fabsf(p.y - 13.0f) < FACET_Y);
+        for (int i = 0; i < 30; i++) UpdatePlayerPhysics(g, p, 1.0f / 60.0f, true, false, false, false, false);
+        CHECK(p.x > 10.0f && p.y > 13.6f); // walked up onto the step
+        Player q; q.x = 8.5f; q.z = 8.5f; q.y = 13.0f; q.yaw = 0.0f; // facing +Z, toward the wall
+        for (int i = 0; i < 10; i++) UpdatePlayerPhysics(g, q, 1.0f / 60.0f, false, false, false, false, false);
+        for (int i = 0; i < 90; i++) UpdatePlayerPhysics(g, q, 1.0f / 60.0f, true, false, false, false, false);
+        CHECK(q.z < 11.0f && q.y < 13.0f + 1.0f); // stopped at the two-cell wall, not climbed it
+    }
 }
 
 // ---- Detail bands (M1.8) ----
@@ -1940,9 +1634,6 @@ int main() {
     TestPatchwork();
     TestPlayer();
     TestMovement();
-    TestMesher();
-    TestShapes();
-    TestProps();
     TestIcons();
     TestScheduledUpdates();
     TestLibrary();
@@ -1950,7 +1641,6 @@ int main() {
     TestGlowLight();
     TestSky();
     TestCameraRelative();
-    TestGrassCover();
     TestMusicHarmony();
     TestSoundPalette();
     TestSoundscape();

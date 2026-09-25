@@ -9,7 +9,6 @@
 #define NOMINMAX // see render.cpp for why this precedes windows.h (pulled in transitively via d3d11.h here)
 #endif
 #include "world.h"
-#include "shapes.h"
 #include "terrain.h"
 #include "jobs.h"
 #include "collide.h"
@@ -156,22 +155,11 @@ bool OpenToSky(World& w, int x, int y, int z) {
 }
 
 void LiveEdit(World& w, int x, int y, int z, BlockID id, uint8_t state) {
+    // Falling ground and grass die-back are parked (D12, M1.9): nothing is
+    // scheduled. To bring them back, queue MaybeQueueFall(w, x, y + 1, z)
+    // here and the grass-cover check for the first grass below (git history
+    // before M1.9 has the code).
     w.Set(x, y, z, id, state);
-    MaybeQueueFall(w, x, y + 1, z);
-    // Placing something that keeps the sky off: the first grass below it
-    // (anything solid in between means it was shaded already) starts to
-    // die back -- checked minutes from now, each cell a little differently.
-    if (BlockShadesGrass(id)) {
-        for (int yy = y - 1; yy >= Y_MIN && yy >= y - 64; yy--) {
-            BlockID below = w.Get(x, yy, z);
-            if (below == BLOCK_AIR || !g_blocks[below].solid) continue; // air, plants
-            if (below == BLOCK_MEADOW_GRASS) {
-                uint32_t h = (uint32_t)x * 73856093u ^ (uint32_t)yy * 19349663u ^ (uint32_t)z * 83492791u;
-                ScheduleUpdate(x, yy, z, UPD_GRASS_COVER, GRASS_COVER_TICKS + (h % (GRASS_COVER_TICKS / 2)));
-            }
-            break;
-        }
-    }
 }
 
 // =======================================================================
@@ -342,7 +330,9 @@ static inline BlockID TerrainBlockAt(int wy, int surface) {
 // across), summed and thresholded, so sand and pebble patches sit apart in
 // a sea of grass, with ragged, blobby edges. A few hashes per column, once,
 // when the column generates.
-static const BlockID kPatchSoft = BLOCK_MEADOW_GRASS, kPatchCrunch = BLOCK_COASTAL_SAND, kPatchHard = BLOCK_RIVER_PEBBLE;
+// (Since M1.9 the patchwork is meadow grass, sand and gravel: the old roster's
+// coastal sand and river pebble are gone, D41.)
+static const BlockID kPatchSoft = BLOCK_MEADOW_GRASS, kPatchCrunch = BLOCK_SAND, kPatchHard = BLOCK_GRAVEL;
 static inline double LatticeValue(int64_t x, int64_t z, uint64_t seed) {
     uint64_t h = seed ^ ((uint64_t)x * 0x9E3779B97F4A7C15ull) ^ ((uint64_t)z * 0xC2B2AE3D27D4EB4Full);
     h ^= h >> 33; h *= 0xFF51AFD7ED558CCDull; h ^= h >> 33; h *= 0xC4CEB9FE1A85EC53ull; h ^= h >> 33;
@@ -577,22 +567,7 @@ static bool BoxIntersectsSolid(World& w, float cx, float cy, float cz, float hei
     for (int x = minX; x <= maxX; x++)
         for (int y = minY; y <= maxY; y++)
             for (int z = minZ; z <= maxZ; z++) {
-                BlockID id = w.Get(x, y, z);
-                if (!BlockSolid(id)) continue;
-                if (g_blocks[id].shape == SHAPE_CUBE) return true;
-                // Shaped block: only its own collision boxes count, so a
-                // slab is half height and a tube is only as thick as it
-                // looks. Touching (sharing a surface) isn't overlapping,
-                // which is what lets the player stand on top of one.
-                ShapeBox boxes[MAX_SHAPE_BOXES];
-                int n = ShapeBoxes(g_blocks[id].shape, w.GetState(x, y, z), boxes);
-                const float k = 1.0f / SHAPE_UNITS;
-                for (int i = 0; i < n; i++) {
-                    const ShapeBox& b = boxes[i];
-                    if (ax0 < x + b.x1 * k && ax1 > x + b.x0 * k &&
-                        ay0 < y + b.y1 * k && ay1 > y + b.y0 * k &&
-                        az0 < z + b.z1 * k && az1 > z + b.z0 * k) return true;
-                }
+                if (BlockSolid(w.Get(x, y, z))) return true; // every material is a whole cell (M1.9)
             }
     return false;
 }

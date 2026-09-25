@@ -85,8 +85,8 @@ Problems we expect before they happen: why we expect each one, the warning signs
 - **Likelihood:** Medium. **Cost if ignored:** Medium.
 - **Why.** Today it's topped up once per frame from the main thread, with only about 40 ms queued.
 - **Warning signs.** Clicks or gaps in effects during saves, loading or window drags.
-- **Act.** M1 step 7.
-- **Plan.** Its own thread, like the music.
+- **Act.** M1 step 1.1: built. Awaiting the owner's Ctrl+F3 report to close it.
+- **Plan.** Its own thread, like the music (done in M1.1: a mailbox from the main thread, woken by XAudio2 as each buffer ends).
 
 ### F12. The music wears thin
 - **Likelihood:** High. **Cost if ignored:** Low now, Medium later.

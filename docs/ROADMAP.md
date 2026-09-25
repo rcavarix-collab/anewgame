@@ -8,7 +8,7 @@ The order we get to the goals (`GOALS.md`) in. Each milestone ends with the owne
 
 ## Next
 
-**M1: the first functional test.** Scope: `PROTOTYPE_OUTLINE.md`. Plan: `M1_PLAN.md` (awaiting approval). Order: fix the sound stutter first, then pictures of the new look to approve, then the faceted world in the game, then clearing out the old, then text for any language.
+**M1: the first functional test.** Scope: `PROTOTYPE_OUTLINE.md`. Plan: `M1_PLAN.md` (approved 2026-09-25, D32; step 1.1 built). Order: fix the sound stutter first, then pictures of the new look to approve, then the faceted world in the game, then clearing out the old, then text for any language.
 
 ## Later (Won't for this horizon; parked, not rejected)
 

@@ -36,16 +36,18 @@ void RefillMusicQueueIfNeeded();
 float CurrentMusicLevel();
 
 // ---- World sound palette (docs/SOUND_PALETTE.md; DESIGN.md Part X.4) ----
-// A second voice beside the music, on small buffers (~35-45 ms), rendering
+// A second voice beside the music, on small buffers (~35 ms), rendering
 // sfx_synth.h's palette in time and in key with what the music is playing.
+// It renders on its own thread (M1.1): every call below only posts to a
+// small mailbox under a brief lock, so none of them costs the frame.
 void PlayWorldSound(const SoundCue& cue);
 void ReleaseWorldSound(SoundId id);
 // Footsteps on the beat (SoundPalette::SetGait).
 void SetWorldGait(int gait, SoundMaterial ground);
 // Pausing: every palette tail fades away over `seconds` (silence = time stopped).
 void FadeWorldSounds(float seconds);
-// Once per frame: the soundscape's axes and scene, whether play is live
-// (the ambient scheduler runs only then), and a queue top-up.
+// Once per frame: the soundscape's axes and scene, and whether play is live
+// (the ambient scheduler runs only then).
 // `listener`: x, y, z and view yaw, for stereo placement.
 void UpdateWorldSound(const SoundAxes& axes, const AmbientScene& scene, bool playing, const float listener[4]);
 // The music time now audible (the chunk playing, not the audio queued ahead).

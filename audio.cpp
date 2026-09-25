@@ -11,6 +11,12 @@
 // settings/sliders so adding an SFX channel later is just another source
 // voice under the same mastering voice, not a change to the mixing model.
 //
+// The world sound palette plays on a second voice and renders on its own
+// thread too (M1.1): the frame only posts to its mailbox. Costs: the
+// music thread and the world thread each render a few percent of a core
+// while sounding and sleep otherwise; the main thread pays a lock and a
+// copy per call. Layer 4 (presentation); DESIGN.md 10.1, 10.4.
+//
 // Silent at the title screen by construction: nothing ever calls
 // StartMusicPlayback() until a game actually begins (New Game/Load
 // Game), and nothing resumes it after Quit to Title. Silent during any
@@ -30,6 +36,7 @@
 #include <cstdint>
 #include <cmath>
 #include <cstring>
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -93,19 +100,51 @@ static double g_chunkStartTime[MUSIC_POOL_SIZE] = {};
 // The soundscape colour the track leans toward (docs/SOUND_PALETTE.md 6).
 static MusicColour g_musicColour;
 
-// ---- World sound palette: a second voice on small buffers -----------
+// ---- World sound palette: a second voice, on its own thread (M1.1) ---
+// The palette renders on the world worker, never on the frame: busy
+// moments used to cost the main thread up to 15 ms (forecast F11). The
+// main thread only posts to a small mailbox -- cues, releases and fades in
+// order, plus the latest state (axes, scene, listener, gait) -- and the
+// worker applies them before each render. g_palette and everything marked
+// "worker only" are touched by the worker alone once it has started.
 static IXAudio2SourceVoice* g_worldVoice = nullptr;
 static SoundPalette* g_palette = nullptr;
 static const int WORLD_BUFFER_SAMPLES = 512;   // 11.6 ms
-// Buffers kept queued: enough to cover about two frames (so a 30 fps cap
-// or a slow frame never starves the voice), 3 (~35 ms) at 60 fps and up.
+// Buffers kept queued: 3 (~35 ms). The worker is woken as each buffer
+// ends, so the queue no longer follows the frame time; if it ever runs dry
+// mid-sound (the thread was held up), it queues one deeper, up to 8.
 static const int WORLD_QUEUE_MIN = 3, WORLD_QUEUE_MAX = 8;
 static const int WORLD_POOL = WORLD_QUEUE_MAX + 2;
-static int g_worldQueue = WORLD_QUEUE_MIN;
-static double g_worldLastPump = 0;
+static int g_worldQueue = WORLD_QUEUE_MIN;      // worker only
 static int16_t (*g_worldPool)[WORLD_BUFFER_SAMPLES * 2] = nullptr; // stereo, interleaved
-static int g_worldPoolNext = 0;
-static bool g_worldIdle = true;                 // nothing sounding: no buffers rendered
+static int g_worldPoolNext = 0;                 // worker only
+static bool g_worldIdle = true;                 // worker only: nothing sounding, no buffers rendered
+static bool g_worldSounding = false;            // worker only: rendered continuously last pass
+
+// The mailbox. Commands keep their order; the state is latest-wins.
+enum WorldCmdType : uint8_t { WC_PLAY, WC_RELEASE, WC_FADE };
+struct WorldCmd { WorldCmdType type; SoundCue cue; float seconds; };
+// 64 between two worker passes (~12 ms apart while sounding) is far more
+// than play produces. Past the cap, new cues are dropped; the last 8
+// slots are kept for releases and fades, so a held slide or a pause is
+// never lost.
+static const int WORLD_MAILBOX = 64, WORLD_MAILBOX_CUES = WORLD_MAILBOX - 8;
+struct WorldState {
+    SoundAxes axes; AmbientScene scene;
+    float intensity = 1.0f, listener[4] = {};
+    bool mono = false, ambient = false;
+    int gait = SoundPalette::GAIT_NONE; SoundMaterial ground = MAT_NONE;
+};
+static std::mutex g_worldLock;                  // guards the mailbox and the flags below
+static std::condition_variable g_worldWake;
+static std::thread g_worldThread;
+static WorldCmd g_worldCmds[WORLD_MAILBOX];
+static int g_worldCmdCount = 0;
+static WorldState g_worldState;
+static bool g_worldStateNew = false;
+static bool g_worldUrgent = false;  // wake now: a cue, a gait or play starting/stopping
+static bool g_worldKick = false;    // a buffer ended: top the queue up
+static bool g_worldQuit = false;
 
 // Set after Stop+Flush: the flush only takes effect on the audio
 // thread's next processing pass, so no pool slot may be rewritten until
@@ -272,6 +311,23 @@ float CurrentMusicLevel() {
 // the null checks above -- a machine with no usable audio device still
 // gets a fully playable game, just a silent one, rather than a startup
 // failure.
+// XAudio2 calls this on its own thread as each world buffer finishes: wake
+// the worker to top the queue up. Only a flag and a notify, never work.
+struct WorldVoiceCallback : IXAudio2VoiceCallback {
+    void STDMETHODCALLTYPE OnBufferEnd(void*) override {
+        { std::lock_guard<std::mutex> lk(g_worldLock); g_worldKick = true; }
+        g_worldWake.notify_one();
+    }
+    void STDMETHODCALLTYPE OnVoiceProcessingPassStart(UINT32) override {}
+    void STDMETHODCALLTYPE OnVoiceProcessingPassEnd() override {}
+    void STDMETHODCALLTYPE OnStreamEnd() override {}
+    void STDMETHODCALLTYPE OnBufferStart(void*) override {}
+    void STDMETHODCALLTYPE OnLoopEnd(void*) override {}
+    void STDMETHODCALLTYPE OnVoiceError(void*, HRESULT) override {}
+};
+static WorldVoiceCallback g_worldCallback;
+static void WorldWorker();
+
 bool InitAudio() {
     if (FAILED(XAudio2Create(&g_xaudio2, 0, XAUDIO2_DEFAULT_PROCESSOR))) return false;
     if (FAILED(g_xaudio2->CreateMasteringVoice(&g_masteringVoice))) return false;
@@ -292,10 +348,12 @@ bool InitAudio() {
     wfx2.nChannels = 2;
     wfx2.nBlockAlign = (WORD)(2 * wfx.wBitsPerSample / 8);
     wfx2.nAvgBytesPerSec = wfx2.nSamplesPerSec * wfx2.nBlockAlign;
-    if (SUCCEEDED(g_xaudio2->CreateSourceVoice(&g_worldVoice, &wfx2))) {
+    if (SUCCEEDED(g_xaudio2->CreateSourceVoice(&g_worldVoice, &wfx2, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &g_worldCallback))) {
         g_worldPool = new int16_t[WORLD_POOL][WORLD_BUFFER_SAMPLES * 2];
         g_palette = new SoundPalette();
         g_worldVoice->Start();
+        g_worldQuit = false;
+        g_worldThread = std::thread(WorldWorker); // sleeps until something is posted
     } else {
         g_worldVoice = nullptr;
     }
@@ -312,6 +370,11 @@ void ShutdownAudio() {
         g_musicQuit = true;
         g_musicWake.notify_one();
         g_musicThread.join();
+    }
+    if (g_worldThread.joinable()) { // the world worker too: it owns the palette and submits to its voice
+        { std::lock_guard<std::mutex> lk(g_worldLock); g_worldQuit = true; }
+        g_worldWake.notify_one();
+        g_worldThread.join();
     }
     if (g_worldVoice) { g_worldVoice->Stop(); g_worldVoice->DestroyVoice(); g_worldVoice = nullptr; }
     delete[] g_worldPool; g_worldPool = nullptr;
@@ -334,20 +397,15 @@ static UINT32 QueuedWorldBuffers() {
     return vs.BuffersQueued;
 }
 
-// Tops the palette's queue up to WORLD_QUEUE buffers. Each buffer is
-// rendered for the music time it will be heard at: what's audible now plus
-// what's already queued ahead of it.
+// Worker only. Tops the palette's queue up to g_worldQueue buffers. Each
+// buffer is rendered for the music time it will be heard at: what's
+// audible now plus what's already queued ahead of it.
 static void PumpWorldSound() {
-    if (!g_worldVoice || !g_palette) return;
     UINT32 queued = QueuedWorldBuffers();
-    {   // Follow the frame time: ~two frames of audio queued, never fewer than 3 buffers.
-        double nowS = NowSeconds(), frame = g_worldLastPump > 0 ? nowS - g_worldLastPump : 1.0 / 60.0;
-        g_worldLastPump = nowS;
-        if (frame > 0.1) frame = 0.1;
-        int want = (int)ceil(2.0 * frame * MUSIC_SAMPLE_RATE / WORLD_BUFFER_SAMPLES) + 1;
-        g_worldQueue = want < WORLD_QUEUE_MIN ? WORLD_QUEUE_MIN : want > WORLD_QUEUE_MAX ? WORLD_QUEUE_MAX : want;
-    }
-    if (g_worldIdle && g_palette->Silent()) return; // nothing to say: render nothing
+    if (g_worldIdle && g_palette->Silent()) { g_worldSounding = false; return; } // nothing to say: render nothing
+    // Ran dry while sounding: the thread was held up longer than the queue
+    // lasts, so keep one more buffer ahead from now on (bounded).
+    if (queued == 0 && g_worldSounding && g_worldQueue < WORLD_QUEUE_MAX) g_worldQueue++;
     bool running;
     { std::lock_guard<std::mutex> lk(g_musicLock); running = g_nextChunkStartTime >= 0.0; }
     double t = AudibleMusicTime() + (double)queued * WORLD_BUFFER_SAMPLES / MUSIC_SAMPLE_RATE;
@@ -368,17 +426,80 @@ static void PumpWorldSound() {
         if (running) t += (double)WORLD_BUFFER_SAMPLES / MUSIC_SAMPLE_RATE;
     }
     g_worldIdle = g_palette->Silent();
+    g_worldSounding = !g_worldIdle;
 }
 
-void PlayWorldSound(const SoundCue& cue) {
-    if (!g_palette) return;
-    g_palette->Play(cue);
-    g_worldIdle = false;
-    PumpWorldSound(); // start it now, not next frame
+// The world worker: take the mailbox, apply it to the palette, render,
+// sleep until a buffer ends or something is posted. Silent and idle, it
+// sleeps outright (the 1 s timeout is only a safety net).
+static void WorldWorker() {
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL); // a 35 ms queue can't wait behind the frame
+    static WorldCmd cmds[WORLD_MAILBOX]; // this thread's own copy: no allocation per pass
+    WorldState st;
+    std::unique_lock<std::mutex> lk(g_worldLock);
+    while (!g_worldQuit) {
+        int n = g_worldCmdCount;
+        std::copy(g_worldCmds, g_worldCmds + n, cmds);
+        g_worldCmdCount = 0;
+        bool haveState = g_worldStateNew;
+        if (haveState) st = g_worldState;
+        g_worldStateNew = g_worldUrgent = g_worldKick = false;
+        lk.unlock();
+        if (haveState) {
+            g_palette->SetAxes(st.axes);
+            g_palette->SetScene(st.scene);
+            g_palette->SetIntensity(st.intensity);
+            g_palette->SetListener(st.listener[0], st.listener[1], st.listener[2], st.listener[3]);
+            g_palette->SetMono(st.mono);
+            g_palette->SetAmbientEnabled(st.ambient);
+            g_palette->SetGait(st.gait, st.ground);
+            if (st.ambient) g_worldIdle = false; // the scheduler may place something this bar
+        }
+        for (int i = 0; i < n; i++) {
+            const WorldCmd& c = cmds[i];
+            if (c.type == WC_PLAY) { g_palette->Play(c.cue); g_worldIdle = false; }
+            else if (c.type == WC_RELEASE) g_palette->Release(c.cue.id);
+            else { g_palette->FadeOut(c.seconds); g_palette->SetAmbientEnabled(false); }
+        }
+        PumpWorldSound();
+        lk.lock();
+        g_worldWake.wait_for(lk, std::chrono::seconds(1),
+                             [] { return g_worldQuit || g_worldCmdCount > 0 || g_worldUrgent || g_worldKick; });
+    }
 }
-void ReleaseWorldSound(SoundId id) { if (g_palette) g_palette->Release(id); }
-void SetWorldGait(int gait, SoundMaterial ground) { if (g_palette) g_palette->SetGait(gait, ground); }
-void FadeWorldSounds(float seconds) { if (g_palette) { g_palette->FadeOut(seconds); g_palette->SetAmbientEnabled(false); } }
+
+// Main thread: posting is a copy under the lock, never a render.
+static void PostWorld(WorldCmdType type, const SoundCue& cue, float seconds) {
+    if (!g_palette) return;
+    {
+        std::lock_guard<std::mutex> lk(g_worldLock);
+        int cap = type == WC_PLAY ? WORLD_MAILBOX_CUES : WORLD_MAILBOX;
+        if (g_worldCmdCount >= cap) return; // past the cap: dropped (see WORLD_MAILBOX)
+        g_worldCmds[g_worldCmdCount++] = { type, cue, seconds };
+    }
+    g_worldWake.notify_one();
+}
+
+void PlayWorldSound(const SoundCue& cue) { PostWorld(WC_PLAY, cue, 0.0f); }
+void ReleaseWorldSound(SoundId id) { SoundCue c; c.id = id; PostWorld(WC_RELEASE, c, 0.0f); }
+void FadeWorldSounds(float seconds) {
+    if (!g_palette) return;
+    // The state too: until the next frame posts, the worker must not
+    // re-enable the scheduler from the last playing frame's state.
+    { std::lock_guard<std::mutex> lk(g_worldLock); g_worldState.ambient = false; }
+    PostWorld(WC_FADE, SoundCue(), seconds);
+}
+void SetWorldGait(int gait, SoundMaterial ground) {
+    if (!g_palette) return;
+    bool changed;
+    {
+        std::lock_guard<std::mutex> lk(g_worldLock);
+        changed = gait != g_worldState.gait || ground != g_worldState.ground;
+        g_worldState.gait = gait; g_worldState.ground = ground;
+        if (changed) g_worldStateNew = g_worldUrgent = true; // a first step shouldn't wait for a buffer
+    }
+    if (changed) g_worldWake.notify_one();
+}
 
 void UpdateWorldSound(const SoundAxes& axes, const AmbientScene& scene, bool playing, const float listener[4]) {
     bool musicRunning;
@@ -390,13 +511,16 @@ void UpdateWorldSound(const SoundAxes& axes, const AmbientScene& scene, bool pla
         musicRunning = g_nextChunkStartTime >= 0.0;
     }
     if (!g_palette) return;
-    g_palette->SetAxes(axes);
-    g_palette->SetScene(scene);
-    g_palette->SetIntensity(g_musicIntensity);
-    g_palette->SetListener(listener[0], listener[1], listener[2], listener[3]);
-    g_palette->SetMono(g_monoAudio);
-    bool live = playing && musicRunning;
-    g_palette->SetAmbientEnabled(live);
-    if (live) g_worldIdle = false; // the scheduler may place something this bar
-    PumpWorldSound();
+    bool live = playing && musicRunning, urgent;
+    {
+        std::lock_guard<std::mutex> lk(g_worldLock);
+        WorldState& w = g_worldState;
+        urgent = live != w.ambient || g_monoAudio != w.mono; // play starting or stopping is heard at once
+        w.axes = axes; w.scene = scene; w.intensity = g_musicIntensity;
+        for (int i = 0; i < 4; i++) w.listener[i] = listener[i];
+        w.mono = g_monoAudio; w.ambient = live;
+        g_worldStateNew = true;
+        if (urgent) g_worldUrgent = true;
+    }
+    if (urgent) g_worldWake.notify_one();
 }

@@ -2,7 +2,7 @@
 
 **Goal.** Walk a faceted, textured, lit world that looks like walkgrid, not Voxistics. Hear your footsteps with the music. Place and remove ground. All at 60 fps or better on your machine. Scope and checklist: `PROTOTYPE_OUTLINE.md` sections 3–5 (T1–T13).
 
-**Status: waiting on your approval.** Nothing below is built. Every step follows the SOP: a feature card, measured after, docs updated, all checks run. Every hand-over says what you'll see.
+**Status: approved (D32).** Step 1.1 is built and awaiting your check; nothing after it is built. Every step follows the SOP: a feature card, measured after, docs updated, all checks run. Every hand-over says what you'll see.
 
 ---
 
@@ -29,11 +29,23 @@
 
 ### 1.1 Sound effects on their own thread
 - **Why first.** Your baseline report shows the world sound system on the main thread spiking to 14.9 ms. It's behind every one of your worst frames (forecast F11).
-- **Change.** The effects palette renders on its own thread, the way music already does, from copies of what the main thread sets (listener, gait, cues). There's a voice cap with priority tiers. Footstep levels are left as they are (D29) until step 1.12 (D31).
-- **Files.** Changed: `audio.cpp`, `audio.h`, `sfx_synth.cpp` (level only). New: none.
-- **Cost.** Main thread: the WORLD SOUND row falls to the census only (target ≤ 0.5 ms, with no spikes). One more thread, which waits when idle.
-- **Checks here.** Native tests; `sound_demo analyze`; a stress render at the voice cap.
-- **Your check.** A Ctrl+F3 report shows no WORLD SOUND spikes.
+- **Change.** The effects palette renders on its own thread, the way music already does. The main thread only posts what happened (sounds to play, the gait, a fade) and the latest state (axes, scene, listener) into a small fixed mailbox; the thread applies them and renders. Footstep levels are left as they are (D29) until step 1.12 (D31).
+- **Found while planning the card.** The voice cap with priority tiers already exists (48 voices; ambience yields, interaction steals the quietest low-priority voice). This step adds a test for it instead of building a new one.
+
+**Feature card (SOP 1)**
+
+| Question | Answer |
+|---|---|
+| What does the player get? | No stutter when sounds play: busy moments never cost a frame. |
+| Scope row | W024 (Should). |
+| Layer and files | Layer 4. Changed: `audio.cpp` (the worker, the mailbox), `audio.h` (comments only; same calls). Tests: `tests/tests.cpp` (voice cap under a flood). Docs: `DESIGN.md` 10.4, `COST_LEDGER.md`, scope sheet. No new files; `sfx_synth.cpp` unchanged. |
+| What it costs | Main thread: posting a cue is a copy under a brief lock (microseconds); the WORLD SOUND row is left with the census. The effects thread: measured here, 0.6 ms median, 1.1 ms p95 to render 11.6 ms of sound with all 48 voices busy (about 5% of one core); nothing when silent (it sleeps until something is posted). Memory: the mailbox, 64 cues (a few KB), fixed. Grows with sounds playing, capped at 48 voices. |
+| Which budget pays | Main thread: WORLD SOUND, 0.5 ms (target: census only, no spikes). The effects thread is off the frame, like MUSIC. |
+| How it's switched off | Not a setting: it replaces the main-thread path. One marked place (`WorldWorker` in `audio.cpp`); taking it out means calling the old pump from the frame again. |
+| How it's checked | Here: native tests (a flood holds at 48 voices and interaction still gets through); the stress render; `sound_demo analyze`; cross-compile. You: a Ctrl+F3 report with no WORLD SOUND spikes, and sounds still on time when placing and taking. |
+| How it leaves | Revert `audio.cpp`; no saves or settings affected. |
+
+- **Your check.** A Ctrl+F3 report shows no WORLD SOUND spikes; placing and taking still sound immediate.
 
 ### 1.2 The preview tool: pictures of faceted ground (proves T1, T2, T3)
 - **Change.** A native tool builds faceted ground from the grid and draws still images on the CPU: rolling ground, a cliff, a dug pit, and material borders. It uses the same lighting formulas as the game's shader: sun, sky light, height-based blending. It also counts triangles, blanket subdivision against "only where it shows".
@@ -117,4 +129,4 @@ The footsteps first (D31): the palette's −21 dB ceiling (DESIGN 10.4) holds th
 
 1. **The footstep level:** answered, clip 3 (D29). Whether they may pass the ceiling waits for step 1.12 (D31).
 2. **The hotbar:** answered. Materials come from the library menu, and the hotbar stays as a placeholder (D30).
-3. **The order:** is the sound fix first, then pictures, then the engine, what you want?
+3. **The order:** answered, yes (D32).

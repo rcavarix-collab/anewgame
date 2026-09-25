@@ -1257,6 +1257,31 @@ static void TestSoundPalette() {
         CHECK(tail == 0.0f);
         CHECK(p.ActiveVoices() == 0);
     }
+    // The voice cap (M1.1): a flood of every sound at once holds at 48
+    // voices, and an interaction still gets through when all are busy.
+    {
+        SoundPalette p;
+        AmbientScene sc; sc.plants = 1; sc.water = 1; sc.machines = 1; sc.ember = 1; sc.glow = 1;
+        SoundAxes ax; ax.activity = 1; p.SetAxes(ax); p.SetScene(sc); p.SetAmbientEnabled(true);
+        p.SetGait(SoundPalette::GAIT_SPRINT, MAT_STONE);
+        std::vector<float> lr(1024);
+        double t = chordT[0];
+        int most = 0;
+        for (int i = 0; i < 600; i++) {
+            if (i % 3 == 0)
+                for (int k = 0; k < 4; k++) { SoundCue c; c.id = (SoundId)((i / 3 + k) % SND_COUNT); c.material = MAT_STONE; p.Play(c); }
+            p.RenderStereo(lr.data(), 512, t, true);
+            t += 512 / 44100.0;
+            most = std::max(most, p.ActiveVoices());
+        }
+        CHECK(most == 48);
+        int before = p.PlayedCount(SND_SET);
+        SoundCue c; c.id = SND_SET; c.material = MAT_STONE; p.Play(c);
+        CHECK(p.PlayedCount(SND_SET) == before + 1);
+        SoundPalette::NoteLog log[64]; int n = p.RecentNotes(log, 64);
+        CHECK(n > 0 && log[n - 1].id == SND_SET); // it sounded: a voice was stolen for it
+        CHECK(p.ActiveVoices() <= 48);
+    }
 }
 
 static void TestSoundscape() {

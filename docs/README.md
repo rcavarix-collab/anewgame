@@ -17,7 +17,8 @@ Each document has one job. If you're looking for something, this says where it i
 | `COST_LEDGER.md` | Every system's budget and measured cost | Every step that adds or changes a system |
 | `SCOPE_MOSCOW.xlsx` | What's in and out of the current horizon | As work lands |
 | `PROTOTYPE_OUTLINE.md` | What the first prototype is, and its test checklist | Until M1 is done |
-| `M0_PLAN.md` | The step-by-step plan for M0 | Until M0 is done |
+| `M0_PLAN.md` | The step-by-step plan for M0 | Done: a record |
+| `M1_PLAN.md` | The step-by-step plan for M1, with what you'll see after each step | Until M1 is done |
 | `ENGINE_REVIEW.md` | What the Voxistics engine offered (September 2026) | Fixed: a snapshot |
 | `SOUND_PALETTE.md` | The sound palette's rules (carried over) | When the palette changes |
 | `../reference/` | Old code and docs kept only for reference (the four seed prototypes; Voxistics' design, review and scope), each removed once nothing more is wanted from it. See its README | When something is taken from it, or it's retired |

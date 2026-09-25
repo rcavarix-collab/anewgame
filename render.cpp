@@ -199,7 +199,11 @@ static const char* g_shaderSrc =
     // params: x shadows on, y shadow half-texel, z 1 while drawing see-through blocks (4.11).
     // glowDrive: x the music level now (music blocks follow it), yzw unused.
     // glowGrid: xyz the glow-light grid's world origin, w 1 when it holds any light (4.12).
-    "cbuffer ChunkCB : register(b1) { float4 chunkOrigin; };\n"
+    // chunkOrigin: the chunk's world position; chunkRel: the same minus the
+    // eye. Vertices are placed relative to the eye (camera-relative, D13):
+    // the view has no translation, so however far from the start the
+    // player is, no large numbers meet in the vertex transform.
+    "cbuffer ChunkCB : register(b1) { float4 chunkOrigin; float4 chunkRel; };\n"
     "struct VSIn { uint4 pos:POSITION; uint layer:TEXCOORD0; uint2 uv:TEXCOORD1; };\n"
     "struct PSIn { float4 pos:SV_POSITION; float3 uvl:TEXCOORD0; float2 aoBias:TEXCOORD1; float3 wpos:TEXCOORD2; float4 glowInfo:TEXCOORD3; nointerpolation float round:TEXCOORD4; };\n"
     // A light touch of the old fixed per-direction shading keeps two faces
@@ -210,13 +214,13 @@ static const char* g_shaderSrc =
     "static const float aoCurve[4] = { 0.42f, 0.62f, 0.82f, 1.00f };\n"
     "PSIn VSMain(VSIn i) {\n"
     "    PSIn o;\n"
-    "    float3 p = float3(i.pos.xyz) * 0.125f + chunkOrigin.xyz;\n"   // 1/8-block fixed point
+    "    float3 p = float3(i.pos.xyz) * 0.125f + chunkRel.xyz;\n"      // 1/8-block fixed point, relative to the eye
     "    uint face = (i.pos.w >> 2) & 7u;\n"
     "    bool card = (i.layer & 0x8000u) != 0u;\n"
     // Plant cards (4.14): all four corners arrive at the plant's base; spread
     // them into a one-block quad turned (about the vertical) to face the eye.
     "    if (card) {\n"
-    "        float2 toEye = fCamPos.xz - p.xz;\n"
+    "        float2 toEye = -p.xz;\n"
     "        float2 side = normalize(float2(-toEye.y, toEye.x) + float2(1e-5f, 0.0f));\n"
     "        float cu = float(i.uv.x) * 0.125f - 0.5f, cv = 1.0f - float(i.uv.y) * 0.125f;\n"
     "        p += float3(side.x * cu, cv, side.y * cu);\n"
@@ -226,7 +230,7 @@ static const char* g_shaderSrc =
     "    o.round = (i.layer & 0x4000u) != 0u ? 1.0f : 0.0f;\n"          // a pipe's tube face (PIPE_ROUND_BIT)
     "    o.aoBias = float2(aoCurve[i.pos.w & 3u], card ? -1.0f : faceBias[face]);\n"    // negative: a card (cut out in the pixel shader)
     "    float3 n = face >= 6u ? float3(0.0f, 0.0f, 0.0f) : faceNormal[face];\n" // slanted facets: found per pixel below
-    "    o.wpos = p + n * 0.08f;\n"                                   // normal offset (> 1 shadow texel): no acne
+    "    o.wpos = p + fCamPos.xyz + n * 0.08f;\n"                     // world position; normal offset (> 1 shadow texel): no acne
     "    o.glowInfo = float4((float)((i.pos.w >> 5) & 7u), n);\n"   // glow kind, face normal
     "    return o;\n"
     "}\n"
@@ -383,7 +387,7 @@ static const char* g_shaderSrc =
 // Same vertex layout as the world pass so the chunk buffers are shared.
 static const char* g_shadowShaderSrc =
     "cbuffer ShadowCB : register(b0) { row_major matrix lightViewProj; };\n"
-    "cbuffer ChunkCB : register(b1) { float4 chunkOrigin; };\n"
+    "cbuffer ChunkCB : register(b1) { float4 chunkOrigin; float4 chunkRel; };\n"
     "struct VSIn { uint4 pos:POSITION; uint layer:TEXCOORD0; uint2 uv:TEXCOORD1; };\n"
     "float4 VSMain(VSIn i) : SV_POSITION {\n"
     "    float3 p = float3(i.pos.xyz) * 0.125f + chunkOrigin.xyz;\n"
@@ -743,7 +747,7 @@ void UpdateCBuffer(const CBData& data) {
 // shadow); see-through parts are DrawTranslucent's.
 // `slice`/`slices`: draw only the chunks in one of `slices` interleaved
 // groups (the shadow map is redrawn a group per frame).
-static void DrawChunks(World& w, const Frustum& frustum, bool countStats, int slice = 0, int slices = 1) {
+static void DrawChunks(World& w, const Frustum& frustum, Vec3 eye, bool countStats, int slice = 0, int slices = 1) {
     UINT stride = sizeof(Vertex), offset = 0;
     for (auto& kv : w.chunks) {
         Chunk& c = *kv.second;
@@ -756,7 +760,8 @@ static void DrawChunks(World& w, const Frustum& frustum, bool countStats, int sl
         D3D11_MAPPED_SUBRESOURCE mapped;
         g_context->Map(g_chunkCBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         float* o = (float*)mapped.pData;
-        o[0] = minB.x; o[1] = minB.y; o[2] = minB.z; o[3] = 0.0f;
+        o[0] = minB.x; o[1] = minB.y; o[2] = minB.z; o[3] = 0.0f;                      // chunkOrigin
+        o[4] = minB.x - eye.x; o[5] = minB.y - eye.y; o[6] = minB.z - eye.z; o[7] = 0.0f; // chunkRel
         g_context->Unmap(g_chunkCBuffer, 0);
         g_context->IASetVertexBuffers(0, 1, &c.vb, &stride, &offset);
         g_context->IASetIndexBuffer(c.ib, DXGI_FORMAT_R16_UINT, 0);
@@ -775,7 +780,7 @@ static void DrawChunks(World& w, const Frustum& frustum, bool countStats, int sl
 // kind neighbours share no faces, so overlaps are rare and alike). Only
 // chunks that actually hold glass are visited twice.
 static void DrawTranslucent(World& w, const Frustum& frustum, Vec3 eye) {
-    struct Item { float dist2; Chunk* c; float origin[4]; };
+    struct Item { float dist2; Chunk* c; float origin[8]; }; // chunkOrigin, chunkRel
     static std::vector<Item> order; // reused: no per-frame allocation once warm
     order.clear();
     for (auto& kv : w.chunks) {
@@ -786,7 +791,7 @@ static void DrawTranslucent(World& w, const Frustum& frustum, Vec3 eye) {
         Vec3 maxB = { minB.x + CHUNK_SIZE, minB.y + CHUNK_SIZE, minB.z + CHUNK_SIZE };
         if (!FrustumIntersectsAABB(frustum, minB, maxB)) continue;
         float dx = minB.x + CHUNK_SIZE * 0.5f - eye.x, dy = minB.y + CHUNK_SIZE * 0.5f - eye.y, dz = minB.z + CHUNK_SIZE * 0.5f - eye.z;
-        order.push_back({ dx * dx + dy * dy + dz * dz, &c, { minB.x, minB.y, minB.z, 0.0f } });
+        order.push_back({ dx * dx + dy * dy + dz * dz, &c, { minB.x, minB.y, minB.z, 0.0f, minB.x - eye.x, minB.y - eye.y, minB.z - eye.z, 0.0f } });
     }
     if (order.empty()) return;
     std::sort(order.begin(), order.end(), [](const Item& a, const Item& b) { return a.dist2 > b.dist2; });
@@ -871,7 +876,7 @@ static void UpdateShadowMap(World& w, Vec3 eye, Vec3 sun) {
     g_context->VSSetConstantBuffers(0, 2, cbs);
     Frustum lf = ExtractFrustum(g_buildViewProj);
     for (int k = 0; k < slicesNow && g_buildSlice < SHADOW_SLICES; k++, g_buildSlice++)
-        DrawChunks(w, lf, false, g_buildSlice, SHADOW_SLICES);
+        DrawChunks(w, lf, eye, false, g_buildSlice, SHADOW_SLICES);
 
     D3D11_VIEWPORT svp = {}; svp.Width = (float)g_screenW; svp.Height = (float)g_screenH; svp.MaxDepth = 1.0f;
     g_context->RSSetViewports(1, &svp);
@@ -1134,9 +1139,11 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
 
     // World.
     {
-        Mat4 viewProj = MatMul(view, proj);
+        Mat4 viewProj = MatMul(view, proj); // world space: frustum culling
         CBData cb;
-        cb.mvp = viewProj;
+        // Camera-relative (D13): vertices arrive relative to the eye (ChunkCB
+        // chunkRel), so the view drops its translation, as the sky's does.
+        cb.mvp = MatMul(MatLookToLH({ 0, 0, 0 }, forward, up), proj);
         cb.lightViewProj = g_lightViewProj;
         cb.params[0] = shadows ? 1.0f : 0.0f;
         cb.params[1] = 0.5f / SHADOW_SIZE;
@@ -1158,7 +1165,7 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         ID3D11ShaderResourceView* srvs[4] = { g_blockTexSRV, shadows ? g_shadowSRV[g_shadowFront] : nullptr, g_glowSRV, g_surfaceSRV };
         g_context->PSSetShaderResources(0, 4, srvs);
         Frustum frustum = ExtractFrustum(viewProj);
-        DrawChunks(w, frustum, true);
+        DrawChunks(w, frustum, eye, true);
         // See-through blocks last: same shader, told by params.z to shade
         // as glass.
         cb.params[2] = 1.0f;
@@ -1576,7 +1583,7 @@ bool InitD3D(HWND hwnd) {
     cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
     cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     g_device->CreateBuffer(&cbd, nullptr, &g_cbuffer);
-    cbd.ByteWidth = 16; // float4 chunk origin
+    cbd.ByteWidth = 32; // float4 chunk origin, float4 origin minus the eye
     g_device->CreateBuffer(&cbd, nullptr, &g_chunkCBuffer);
     cbd.ByteWidth = sizeof(FrameCBData);
     g_device->CreateBuffer(&cbd, nullptr, &g_frameCB);

@@ -906,6 +906,33 @@ static void TestGlowLight() {
     CHECK(g.emitters.empty() && g.texels.empty());
 }
 
+// Camera-relative rendering (render.cpp, D13): placing a point relative to
+// the eye and viewing it with a translation-free view lands it where the
+// full world-space view would -- and far from the start it lands steadily,
+// where the world-space product loses precision.
+static void TestCameraRelative() {
+    printf("camera-relative view\n");
+    Vec3 f = Normalize({ 0.3f, -0.2f, 0.9f }), up = { 0, 1, 0 };
+    auto apply = [](const Mat4& m, Vec3 p) { // row vector * matrix, then divide
+        float x = p.x * m.m[0][0] + p.y * m.m[1][0] + p.z * m.m[2][0] + m.m[3][0];
+        float y = p.x * m.m[0][1] + p.y * m.m[1][1] + p.z * m.m[2][1] + m.m[3][1];
+        float z = p.x * m.m[0][2] + p.y * m.m[1][2] + p.z * m.m[2][2] + m.m[3][2];
+        float w = p.x * m.m[0][3] + p.y * m.m[1][3] + p.z * m.m[2][3] + m.m[3][3];
+        return Vec3{ x / w, y / w, z / w };
+    };
+    Mat4 proj = MatPerspectiveFovLH(0.8f, 16.0f / 9.0f, 0.1f, 500.0f);
+    Mat4 rel = MatMul(MatLookToLH({ 0, 0, 0 }, f, up), proj);
+    // Near the start the two agree.
+    Vec3 eye = { 12.5f, 20.6f, -7.25f }, pt = { 15.0f, 18.0f, 1.0f };
+    Vec3 a = apply(MatMul(MatLookToLH(eye, f, up), proj), pt), b = apply(rel, pt - eye);
+    CHECK(fabsf(a.x - b.x) < 1e-4f && fabsf(a.y - b.y) < 1e-4f && fabsf(a.z - b.z) < 1e-4f);
+    // A million blocks out, a point 1/8 block to the side of another must
+    // land beside it on screen; relative, it does, and steadily.
+    Vec3 far = { 1000000.0f, 40.0f, 1000000.0f }, p1 = far + Vec3{ 3.0f, -1.0f, 8.0f }, p2 = p1 + Vec3{ 0.125f, 0, 0 };
+    Vec3 r1 = apply(rel, p1 - far), r2 = apply(rel, p2 - far);
+    CHECK(r2.x - r1.x > 0.001f); // resolved, and to the right
+}
+
 static void TestSky() {
     printf("sky model and shadow projection\n");
     SkyState dawn = ComputeSky(0), noon = ComputeSky(1500), dusk = ComputeSky(3000), night = ComputeSky(3300);
@@ -1388,6 +1415,7 @@ int main() {
     TestMusicLevel();
     TestGlowLight();
     TestSky();
+    TestCameraRelative();
     TestGrassCover();
     TestMusicHarmony();
     TestSoundPalette();

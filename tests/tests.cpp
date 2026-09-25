@@ -17,9 +17,7 @@
 #include "../shapes.h"
 #include "../icons.h"
 #include "../sky.h"
-#include "../pulse.h"
 #include "../fliers.h"
-#include "../pulse_colours.h"
 #include "../essence.h"
 #include "../essencemap.h"
 #include "../music_synth.h"
@@ -148,7 +146,7 @@ static void TestBlockTextures() {
     BlockTextureSet t;
     BuildBlockTextures(none, t);
     CHECK(t.warnings.empty());
-    CHECK(t.layerCount == 13 + 90); // 13 procedural (foundation .. crystal) + 90 more names only the generated art provides (magenta without it)
+    CHECK(t.layerCount == 13 + 80); // 13 procedural (foundation .. crystal) + 80 more names only the generated art provides (magenta without it)
 
     // The natural materials' art in the repo loads cleanly and covers
     // every natural block (no magenta fallback), with seamless wrap.
@@ -162,16 +160,15 @@ static void TestBlockTextures() {
             VtexSet nat; ParseVtex(text, "natural.vtex", nat);
             CHECK(nat.errors.empty() && nat.textures.size() == 47 && nat.blocks.size() == 44);
             for (auto& tx : nat.textures) CHECK(tx.size == 32 && !tx.height.empty()); // one density for everything (32), all with relief
-            // ...with the pulse-logistics set beside it (industry.vtex, Part VI).
-            FILE* fi = fopen("../assets/textures/industry.vtex", "rb");
+            // The parked pulse set (not loaded by the game) still parses cleanly.
+            FILE* fi = fopen("../assets/textures/parked/industry.vtex", "rb");
             CHECK(fi != nullptr);
             if (fi) {
                 std::string itext;
                 while ((got = fread(buf, 1, sizeof buf, fi)) > 0) itext.append(buf, got);
                 fclose(fi);
-                size_t before = nat.textures.size();
-                ParseVtex(itext, "industry.vtex", nat);
-                CHECK(nat.errors.empty() && nat.textures.size() == before + 10);
+                VtexSet parked; ParseVtex(itext, "industry.vtex", parked);
+                CHECK(parked.errors.empty() && parked.textures.size() == 10);
             }
             // ...and the September trial batch (batch_sept.vtex): textures named after their blocks.
             FILE* fb = fopen("../assets/textures/batch_sept.vtex", "rb");
@@ -1003,269 +1000,6 @@ static void TestSky() {
     CHECK(worst < 0.05f); // per second of game time: every change is a fade (the steepest, exposure at dusk, ~3%/s)
 }
 
-static void TestPulse() {
-    printf("pulse logistics\n");
-    const float dt = 1.0f / 60.0f;
-    PulseTuning t;
-    // Runs `seconds` of play (a harvester gathers two a second).
-    auto run = [&](PulseSystem& p, World& w, float seconds, double& beats) {
-        for (int i = 0; i < (int)(seconds * 60); i++) { beats += dt; p.Tick(w, t, dt); }
-    };
-    auto place = [](World& w, PulseSystem& p, int x, int y, int z, BlockID id, uint8_t st = 0) { w.Set(x, y, z, id, st); p.OnPlaced(x, y, z, id); };
-
-    // Machines' softened block: 26 polygons, closed and wound outward (the
-    // signed volume is a whole block less the chamfers: 512 - 12 edge
-    // prisms of 6 x 1/2 - 8 corner cubes less the 1/6 tetrahedron each
-    // keeps, in 1/8-block units).
-    {
-        ShapePoly polys[MAX_SHAPE_POLYS];
-        int np = ShapePolys(SHAPE_BEVEL_CUBE, 0, polys);
-        double vol = 0;
-        for (int i = 0; i < np; i++)
-            for (int k = 1; k + 1 < polys[i].count; k++) {
-                const ShapeVertex &a = polys[i].v[0], &b = polys[i].v[k], &c = polys[i].v[k + 1];
-                vol += (a.x * (b.y * (double)c.z - b.z * (double)c.y) - a.y * (b.x * (double)c.z - b.z * (double)c.x) + a.z * (b.x * (double)c.y - b.y * (double)c.x)) / 6.0;
-            }
-        printf("    bevelled block: %d polygons, volume %.2f (of 512)\n", np, vol);
-        CHECK(np == 26 && fabs(vol - (512.0 - 12 * 3.0 - 8 * 5.0 / 6.0)) < 1e-6);
-    }
-
-    // The pipe's shape: a run is one bar, a bend a node with two arms, and
-    // an end joined on one side only has a mouth (with a collar) opposite.
-    {
-        ShapePoly polys[MAX_SHAPE_POLYS];
-        uint8_t run = (1u << FACE_POS_X) | (1u << FACE_NEG_X), bend = (1u << FACE_POS_X) | (1u << FACE_POS_Y);
-        CHECK(PipePolys(run, 0, polys) == 4);   // one seamless tube: no end faces where it joins on
-        { bool allRound = true; for (int k = 0; k < 4; k++) allRound = allRound && polys[k].round; CHECK(allRound); } // shaded round (PIPE_ROUND_BIT)
-        { int np = PipePolys(1u << FACE_NEG_Z, 0, polys), flat = 0; for (int k = 0; k < np; k++) flat += !polys[k].round; CHECK(flat == 17); } // the hollow mouth stays faceted
-        CHECK(PipePolys(bend, 0, polys) == 12); // a low-poly elbow: six walls, three pieces a side
-        CHECK(PipeMouths(run, 0) == 0 && PipeMouths(bend, 0) == 0);
-        CHECK(PipeMouths(1u << FACE_NEG_Z, 0) == (1u << FACE_POS_Z));
-        CHECK(PipeMouths(0, FACE_POS_Y) == ((1u << FACE_POS_Y) | (1u << FACE_NEG_Y)));
-        CHECK(PipePolys(1u << FACE_NEG_Z, 0, polys) == 21); // tube + a hollow mouth (collar ring, throat, dark back)
-        CHECK(PipePolys(0, FACE_POS_X, polys) == 38);          // a lone pipe: open at both ends
-        uint8_t all = 63;
-        CHECK(PipePolys(all, 0, polys) == 20);  // a tube through, four branches off its sides
-        // Every elbow orientation stays on the grid, inside the cell, and
-        // turns through a slanted length.
-        for (int fa = 0; fa < FACE_COUNT; fa++)
-            for (int fb = 0; fb < FACE_COUNT; fb++) {
-                if (fa / 2 == fb / 2) continue;
-                int np = PipePolys((uint8_t)((1u << fa) | (1u << fb)), 0, polys), slanted = 0;
-                bool inside = true;
-                for (int k = 0; k < np; k++) {
-                    if (polys[k].shade >= 6) slanted++;
-                    for (int j = 0; j < polys[k].count; j++) inside = inside && polys[k].v[j].x <= 8 && polys[k].v[j].y <= 8 && polys[k].v[j].z <= 8;
-                }
-                CHECK(np == 12 && slanted == 2 && inside);
-            }
-        // No doubled faces: no two polygons of any pipe overlap in the
-        // same plane (facing either way).
-        bool doubled = false;
-        for (int twist = -1; twist <= 1; twist++)
-        for (int mask = 0; mask < 64; mask++)
-            for (int st = 0; st < FACE_COUNT; st++) {
-                int np = PipePolys((uint8_t)mask, (uint8_t)st, polys, twist);
-                CHECK(np <= MAX_SHAPE_POLYS);
-                for (int a = 0; a < np; a++)
-                    for (int b = a + 1; b < np; b++) {
-                        const ShapePoly& A = polys[a]; const ShapePoly& B = polys[b];
-                        if (A.shade >= 6 || B.shade >= 6) continue; // slanted facets: not in an axis plane
-                        if (A.texFace / 2 != B.texFace / 2) continue; // same axis, either facing: back-to-back flickers too
-                        int ax = A.texFace / 2; // 0 x, 1 y, 2 z
-                        auto coord = [&](const ShapeVertex& v, int k) { return k == 0 ? v.x : k == 1 ? v.y : v.z; };
-                        if (coord(A.v[0], ax) != coord(B.v[0], ax)) continue;
-                        int u = (ax + 1) % 3, w = (ax + 2) % 3;
-                        // Sample the plane finely: a point strictly inside both is a doubled face.
-                        auto inside = [&](const ShapePoly& p, float pu, float pw) {
-                            int sign = 0;
-                            for (int i = 0; i < p.count; i++) {
-                                const ShapeVertex& e0 = p.v[i]; const ShapeVertex& e1 = p.v[(i + 1) % p.count];
-                                float c = (coord(e1, u) - coord(e0, u)) * (pw - coord(e0, w)) - (coord(e1, w) - coord(e0, w)) * (pu - coord(e0, u));
-                                if (fabsf(c) < 1e-6f) return false;
-                                int sg = c > 0 ? 1 : -1;
-                                if (sign && sg != sign) return false;
-                                sign = sg;
-                            }
-                            return true;
-                        };
-                        for (int iu = 0; iu < 32 && !doubled; iu++)
-                            for (int iw = 0; iw < 32 && !doubled; iw++) {
-                                float pu = (iu + 0.37f) / 4.0f, pw = (iw + 0.61f) / 4.0f;
-                                if (inside(A, pu, pw) && inside(B, pu, pw)) doubled = true;
-                            }
-                    }
-            }
-        CHECK(!doubled);
-    }
-
-    // Harvester -> three pipes -> store: one pulse a beat arrives.
-    {
-        World w; PulseSystem p; double beats = 0;
-        place(w, p, 0, 10, 0, BLOCK_PULSE_HARVESTER);
-        for (int x = 1; x <= 3; x++) place(w, p, x, 10, 0, BLOCK_PULSE_PIPE, FACE_POS_X);
-        place(w, p, 4, 10, 0, BLOCK_PULSE_STORE);
-        run(p, w, 10.0f, beats);
-        int got = PulseStored(w, 4, 10, 0);
-        printf("    10 s: gathered %lld, stored %d, in pipes %d, lost %lld\n", p.gathered, got, p.InFlight(), p.lost);
-        CHECK(p.gathered >= 19 && p.gathered <= 21);
-        CHECK(got >= 17 && got + p.InFlight() == (int)p.gathered && p.lost == 0);
-        CHECK(PulseStored(w, 0, 10, 0) == 0); // nothing held back
-        // Counts live in the block's data record, so they're saved with the world.
-        Chunk* c = w.FindChunk(World::ToChunk(4, 10, 0));
-        CHECK(c && c->data && c->modified);
-        // Break the middle pipe: the first pipe is now an open end, and the
-        // pipe beyond the gap has a mouth facing it -- the pulse jumps the gap.
-        w.Set(2, 10, 0, BLOCK_AIR);
-        long long before = p.delivered;
-        run(p, w, 5.0f, beats);
-        CHECK(p.caught >= 8 && p.delivered >= before + 8 && p.lost == 0);
-        // Break that one too: now it flies straight at the store's side,
-        // which is a surface, not a mouth -- gone.
-        w.Set(3, 10, 0, BLOCK_AIR);
-        before = p.delivered;
-        run(p, w, 5.0f, beats);
-        CHECK(p.delivered <= before + 2 && p.lost >= 8);
-    }
-
-    // An open end fires pulse straight out until a surface nulls it.
-    {
-        World w; PulseSystem p; double beats = 0;
-        place(w, p, 0, 10, 0, BLOCK_PULSE_HARVESTER);
-        for (int x = 1; x <= 2; x++) place(w, p, x, 10, 0, BLOCK_PULSE_PIPE, FACE_POS_X);
-        w.Set(12, 10, 0, BLOCK_STONE); // a wall ten blocks out
-        run(p, w, 5.0f, beats);
-        std::vector<PulseView> v; p.Views(v);
-        bool straight = true;
-        for (auto& pv : v) if (fabsf(pv.y - 10.5f) > 1e-3f || fabsf(pv.z - 0.5f) > 1e-3f || pv.x > 12.0f) straight = false;
-        printf("    open end: %lld gone into the wall, %d in the air\n", p.lost, p.InFlight());
-        CHECK(p.lost >= 6 && straight && !v.empty()); // no gravity: level all the way
-    }
-
-    // ...or a mouth facing it catches it midair, and it goes on from there.
-    // Two streams cross on the way; pulses aren't really there, so both get through.
-    {
-        World w; PulseSystem p; double beats = 0;
-        place(w, p, 0, 10, 0, BLOCK_PULSE_HARVESTER);
-        place(w, p, 1, 10, 0, BLOCK_PULSE_PIPE, FACE_POS_X);          // mouth faces +X
-        place(w, p, 10, 10, 0, BLOCK_PULSE_PIPE, FACE_POS_X);         // joined to the store on +X: mouth faces -X
-        place(w, p, 11, 10, 0, BLOCK_PULSE_STORE);
-        place(w, p, 5, 10, -6, BLOCK_PULSE_HARVESTER);                 // a second stream along +Z, through (5, 10, 0)
-        place(w, p, 5, 10, -5, BLOCK_PULSE_PIPE, FACE_POS_Z);
-        place(w, p, 5, 10, 6, BLOCK_PULSE_PIPE, FACE_POS_Z);
-        place(w, p, 5, 10, 7, BLOCK_PULSE_STORE);
-        run(p, w, 10.0f, beats);
-        int a = PulseStored(w, 11, 10, 0), b = PulseStored(w, 5, 10, 7);
-        printf("    caught midair: %lld; stores %d and %d; lost %lld\n", p.caught, a, b, p.lost);
-        CHECK(p.caught >= 30 && a >= 14 && b >= 14 && p.lost == 0);
-    }
-
-    // Outlets take turns: a store and a machine on one network share evenly;
-    // a full machine is skipped; storage holds without limit (for now).
-    {
-        World w; PulseSystem p; double beats = 0;
-        place(w, p, 0, 10, 0, BLOCK_PULSE_HARVESTER);
-        for (int x = 1; x <= 3; x++) place(w, p, x, 10, 0, BLOCK_PULSE_PIPE, FACE_POS_X);
-        place(w, p, 2, 11, 0, BLOCK_PULSE_STORE);
-        place(w, p, 4, 10, 0, BLOCK_MACHINE); // a machine takes pulse too (32 until it has a use)
-        run(p, w, 20.0f, beats);
-        int s = PulseStored(w, 2, 11, 0), m = PulseStored(w, 4, 10, 0);
-        printf("    shared: store %d, machine %d\n", s, m);
-        CHECK(abs(s - m) <= 2 && s > 15);
-        run(p, w, 150.0f, beats);
-        CHECK(PulseStored(w, 4, 10, 0) == PulseCapacity(BLOCK_MACHINE) && PulseStored(w, 2, 11, 0) > 250);
-        CHECK(p.lost == 0 && PulseStored(w, 0, 10, 0) <= 1);
-        // With only the (full) machine to go to, the harvester holds a few
-        // (what was already on its way to the store is lost with it).
-        w.Set(2, 11, 0, BLOCK_AIR);
-        run(p, w, 20.0f, beats);
-        long long lostThen = p.lost;
-        run(p, w, 10.0f, beats);
-        printf("    store gone: harvester holds %d, %d moving, %lld lost\n", PulseStored(w, 0, 10, 0), p.InFlight(), p.lost);
-        CHECK(PulseStored(w, 0, 10, 0) == PulseCapacity(BLOCK_PULSE_HARVESTER) && p.InFlight() == 0 && p.lost == lostThen && lostThen <= 2);
-    }
-
-    // Spin: a pulse takes it from the last pipe it went through, and the
-    // store counts each kind.
-    {
-        World w; PulseSystem p; double beats = 0;
-        place(w, p, 0, 10, 0, BLOCK_PULSE_HARVESTER);
-        place(w, p, 1, 10, 0, BLOCK_PULSE_PIPE, FACE_POS_X);
-        place(w, p, 2, 10, 0, BLOCK_PULSE_PIPE_CW, FACE_POS_X);
-        place(w, p, 3, 10, 0, BLOCK_PULSE_STORE);
-        place(w, p, 0, 10, 2, BLOCK_PULSE_HARVESTER);
-        place(w, p, 1, 10, 2, BLOCK_PULSE_PIPE_CCW, FACE_POS_X);
-        place(w, p, 2, 10, 2, BLOCK_PULSE_PIPE, FACE_POS_X);          // ...and then a plain one takes it away
-        place(w, p, 3, 10, 2, BLOCK_PULSE_STORE);
-        place(w, p, 0, 10, 4, BLOCK_PULSE_HARVESTER);
-        place(w, p, 1, 10, 4, BLOCK_PULSE_PIPE_CCW, FACE_POS_X);       // an anticlockwise one, left open...
-        place(w, p, 8, 10, 4, BLOCK_PULSE_PIPE, FACE_POS_X);          // ...caught by a plain pipe: the air keeps the spin, the pipe takes it
-        place(w, p, 9, 10, 4, BLOCK_PULSE_STORE);
-        place(w, p, 0, 10, 6, BLOCK_PULSE_HARVESTER);
-        place(w, p, 1, 10, 6, BLOCK_PULSE_PIPE_CCW, FACE_POS_X);
-        place(w, p, 8, 10, 6, BLOCK_PULSE_PIPE_CCW, FACE_POS_X);      // caught by a twisted one: anticlockwise
-        place(w, p, 9, 10, 6, BLOCK_PULSE_STORE);
-        run(p, w, 10.0f, beats);
-        PulseCounts a = PulseHeld(w, 3, 10, 0), b = PulseHeld(w, 3, 10, 2), c = PulseHeld(w, 9, 10, 4), d = PulseHeld(w, 9, 10, 6);
-        printf("    spin: cw store %d/%d/%d, plain-after-ccw %d/%d/%d, caught plain %d/%d/%d, caught ccw %d/%d/%d\n",
-               a.n[0], a.n[1], a.n[2], b.n[0], b.n[1], b.n[2], c.n[0], c.n[1], c.n[2], d.n[0], d.n[1], d.n[2]);
-        CHECK(a.n[1] > 15 && a.n[0] == 0 && a.n[2] == 0);
-        CHECK(b.n[0] > 15 && b.n[1] == 0 && b.n[2] == 0);
-        CHECK(c.n[0] > 10 && c.n[2] == 0);
-        CHECK(d.n[2] > 10 && d.n[0] == 0);
-        // Flying pulses show their spin (the corkscrew is drawn from it).
-        std::vector<PulseView> v; p.Views(v);
-        bool spun = false; for (auto& pv : v) if (pv.flying && pv.spin == -1) spun = true;
-        CHECK(spun);
-    }
-
-    // The Line bends time: a harvester where time runs 5x gathers 5x.
-    {
-        World w; PulseSystem p;
-        place(w, p, 0, 10, 0, BLOCK_PULSE_HARVESTER);
-        place(w, p, 1, 10, 0, BLOCK_PULSE_STORE);
-        for (int i = 0; i < 600; i++) p.Tick(w, t, dt, [](int, int, int) { return 5.0f; });
-        printf("    at 5x time: %lld gathered in 10 s\n", p.gathered);
-        CHECK(p.gathered >= 98 && p.gathered <= 101 && PulseStored(w, 1, 10, 0) >= 97);
-    }
-
-    // Twisted pipes: a raised thread winds round a run, one turn a block;
-    // the two hands are mirror images, not the same mesh.
-    {
-        ShapePoly cw[MAX_SHAPE_POLYS], ccw[MAX_SHAPE_POLYS];
-        uint8_t run2 = (1u << FACE_POS_X) | (1u << FACE_NEG_X);
-        int ncw = PipePolys(run2, 0, cw, 1), nccw = PipePolys(run2, 0, ccw, -1);
-        CHECK(ncw == 4 + 4 * 6 && nccw == ncw);
-        bool same = true;
-        for (int i = 0; i < ncw && same; i++) {
-            bool found = false;
-            for (int j = 0; j < nccw && !found; j++) {
-                bool all = true;
-                for (int k = 0; k < cw[i].count; k++) {
-                    bool hit = false;
-                    for (int m = 0; m < ccw[j].count; m++) hit = hit || (cw[i].v[k].x == ccw[j].v[m].x && cw[i].v[k].y == ccw[j].v[m].y && cw[i].v[k].z == ccw[j].v[m].z);
-                    all = all && hit;
-                }
-                found = all;
-            }
-            same = found;
-        }
-        CHECK(!same);
-    }
-
-    // Each block's row matches its place in the list (the table is indexed by ID).
-    CHECK(strcmp(g_blocks[BLOCK_PULSE_HARVESTER].name, "pulse_harvester") == 0 && strcmp(g_blocks[BLOCK_PULSE_PIPE].name, "pulse_pipe") == 0 &&
-          strcmp(g_blocks[BLOCK_PULSE_STORE].name, "pulse_store") == 0 && strcmp(g_blocks[BLOCK_PULSE_PIPE_CW].name, "pulse_pipe_cw") == 0 &&
-          strcmp(g_blocks[BLOCK_PULSE_PIPE_CCW].name, "pulse_pipe_ccw") == 0 && strcmp(g_blocks[BLOCK_PULSE_DIFFUSER].name, "pulse_diffuser") == 0);
-
-    // A harvester in a chunk that returns from storage is found again.
-    {
-        PulseSystem p; Chunk c;
-        c.blocks[Chunk::LocalIndex(3, 4, 5)] = BLOCK_PULSE_HARVESTER;
-        p.OnChunkArrived({ 1, 0, -1 }, c);
-        CHECK(p.Harvesters() == 1);
-    }
-}
 
 static void TestGrassCover() {
     printf("covered grass dies back\n");
@@ -1283,7 +1017,7 @@ static void TestGrassCover() {
         World w; ClearScheduledUpdates();
         w.Set(0, 10, 0, BLOCK_MEADOW_GRASS); w.Set(2, 10, 0, BLOCK_MEADOW_GRASS);
         LiveEdit(w, 0, 12, 0, BLOCK_GLASS);
-        LiveEdit(w, 2, 12, 0, BLOCK_PULSE_PIPE, FACE_POS_X);
+        LiveEdit(w, 2, 12, 0, BLOCK_CONDUIT_PIPE, FACE_POS_X);
         settle(w);
         CHECK(w.Get(0, 10, 0) == BLOCK_MEADOW_GRASS && w.Get(2, 10, 0) == BLOCK_MEADOW_GRASS);
     }
@@ -1348,33 +1082,6 @@ static void TestFliers() {
 // "no colour" by brightness alone). For comparison: the typical colours hold
 // up fairly for the dichromats (they differ in brightness too), but by
 // brightness alone blue and red nearly merge -- which the no-colour mode fixes.
-static void TestColourVision() {
-    printf("colour vision\n");
-    const float M[4][3][3] = {
-        { { 0.152286f, 1.052583f, -0.204868f }, { 0.114503f, 0.786281f, 0.099216f }, { -0.003882f, -0.048116f, 1.051998f } }, // protan
-        { { 0.367322f, 0.860646f, -0.227968f }, { 0.280085f, 0.672501f, 0.047413f }, { -0.011820f, 0.042940f, 0.968881f } }, // deutan
-        { { 1.255528f, -0.076749f, -0.178779f }, { -0.078411f, 0.930809f, 0.147602f }, { 0.004733f, 0.691367f, 0.303900f } },  // tritan
-        { { 0.2126f, 0.7152f, 0.0722f }, { 0.2126f, 0.7152f, 0.0722f }, { 0.2126f, 0.7152f, 0.0722f } },                    // no colour
-    };
-    auto minGap = [&](int mode, int sim) {
-        float c[3][3], v[3][3];
-        PulseColours(mode, c);
-        for (int k = 0; k < 3; k++) for (int r = 0; r < 3; r++) v[k][r] = M[sim][r][0] * c[k][0] + M[sim][r][1] * c[k][1] + M[sim][r][2] * c[k][2];
-        float g = 1e9f;
-        for (int a = 0; a < 3; a++) for (int b = a + 1; b < 3; b++) {
-            float d = sqrtf((v[a][0] - v[b][0]) * (v[a][0] - v[b][0]) + (v[a][1] - v[b][1]) * (v[a][1] - v[b][1]) + (v[a][2] - v[b][2]) * (v[a][2] - v[b][2]));
-            g = std::min(g, d);
-        }
-        return g;
-    };
-    float tP = minGap(CV_TYPICAL, 0), tD = minGap(CV_TYPICAL, 1), tT = minGap(CV_TYPICAL, 2), tM = minGap(CV_TYPICAL, 3);
-    float red = minGap(CV_RED_WEAK, 0), green = minGap(CV_GREEN_WEAK, 1), blue = minGap(CV_BLUE_WEAK, 2), mono = minGap(CV_NO_COLOUR, 3);
-    printf("    closest pair, typical colours: red-weak %.2f, green-weak %.2f, blue-weak %.2f, no colour %.2f\n", tP, tD, tT, tM);
-    printf("    closest pair, own mode:        red-weak %.2f, green-weak %.2f, blue-weak %.2f, no colour %.2f\n", red, green, blue, mono);
-    CHECK(red > 0.4f && green > 0.4f && blue > 0.4f && mono > 0.3f);
-    CHECK(tM < 0.1f && mono > 5.0f * tM); // blue and red by brightness alone: nearly one; the no-colour mode parts them
-    CHECK(strcmp(ColourVisionName(CV_BLUE_WEAK), "BLUE-WEAK") == 0 && strcmp(ColourVisionName(99), "TYPICAL") == 0);
-}
 
 static float TestTextWidth(const std::string& s, float scale) { return (float)s.size() * 8.0f * scale / 0.65f; }
 
@@ -1837,10 +1544,8 @@ int main() {
     TestMusicLevel();
     TestGlowLight();
     TestSky();
-    TestPulse();
     TestGrassCover();
     TestFliers();
-    TestColourVision();
     TestEssence();
     TestMusicHarmony();
     TestSoundPalette();

@@ -10,7 +10,6 @@
 #include <windows.h>
 #include <shlobj.h> // SHGetKnownFolderPath
 #include "persist.h"
-#include "pulse.h"
 #include "fliers.h"
 #include "worldfile.h"
 #include "essence.h"
@@ -53,7 +52,6 @@ float g_fov = 45.0f;
 bool g_toggleMovement = false;
 bool g_highContrastUI = false;
 bool g_monoAudio = false;
-int g_colourVision = 0;
 bool g_vsync = true;
 int g_frameLimit = 60;
 bool g_moveToggleLatch[ACT_COUNT] = {};
@@ -207,7 +205,6 @@ bool SaveSettings() {
     ss << "toggleMovement=" << (g_toggleMovement ? 1 : 0) << "\n";
     ss << "highContrastUI=" << (g_highContrastUI ? 1 : 0) << "\n";
     ss << "monoAudio=" << (g_monoAudio ? 1 : 0) << "\n";
-    ss << "colourVision=" << g_colourVision << "\n";
     ss << "vsync=" << (g_vsync ? 1 : 0) << "\n";
     ss << "frameLimit=" << g_frameLimit << "\n";
     ss << "musicIntensity=" << g_musicIntensity << "\n";
@@ -291,8 +288,6 @@ void LoadSettings() {
     g_toggleMovement = getB("toggleMovement", g_toggleMovement);
     g_highContrastUI = getB("highContrastUI", g_highContrastUI);
     g_monoAudio = getB("monoAudio", g_monoAudio);
-    g_colourVision = getI("colourVision", g_colourVision);
-    if (g_colourVision < 0 || g_colourVision >= 5) g_colourVision = 0;
     g_vsync = getB("vsync", g_vsync);
     g_frameLimit = (int)getF("frameLimit", (float)g_frameLimit);
     if (g_frameLimit < 30) g_frameLimit = 30;
@@ -417,7 +412,6 @@ bool LoadGame(World& w, Player& p, int slot) {
     ClearScheduledUpdates();
     RestoreScheduledUpdates(d.updates); // unknown kinds are dropped
     g_fliers.Reset(d.gen.seed ^ (uint64_t)(d.dayTime * 1000.0f)); // fliers aren't saved: a fresh population
-    g_pulse.Reset(); // pipes start empty; stores keep their counts (block data), harvesters are found as their chunks arrive
     g_essence.Restore(d.gen.seed, d.essence);  // nothing discovered for pre-v8 saves
     g_pendingColumns.clear();
     g_pendingColumnSet.clear();

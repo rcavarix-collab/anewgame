@@ -122,7 +122,6 @@
     </ClCompile>
     <ClCompile Include="shapes.cpp" />
     <ClCompile Include="icons.cpp" />
-    <ClCompile Include="pulse.cpp" />
     <ClCompile Include="fliers.cpp" />
     <ClCompile Include="essencemap.cpp" />
     <ClCompile Include="glowlight.cpp">
@@ -159,8 +158,6 @@
     <ClInclude Include="mesher.h" />
     <ClInclude Include="shapes.h" />
     <ClInclude Include="icons.h" />
-    <ClInclude Include="pulse.h" />
-    <ClInclude Include="pulse_colours.h" />
     <ClInclude Include="fliers.h" />
     <ClInclude Include="essencemap.h" />
     <ClInclude Include="glowlight.h" />

@@ -11,8 +11,6 @@
 #include "persist.h"
 #include "vtex.h"
 #include "glowlight.h"
-#include "pulse.h"
-#include "pulse_colours.h"
 #include "fliers.h"
 #include <filesystem>
 #include <fstream>
@@ -117,11 +115,10 @@ static ID3D11RasterizerState* g_cullBackRaster = nullptr;
 // Debug lines.
 struct DebugVertex { float x, y, z, r, g, b, a; };
 static const UINT DEBUG_VB_CAPACITY = 128;
-// Pulses in flight (Part VI): small glowing octahedra, drawn with the
-// debug pipeline's plain colour shader; only those near enough to see.
-static ID3D11Buffer* g_pulseVB = nullptr;
-static const UINT PULSE_DRAW_MAX = 512;
-static const UINT PULSE_VB_CAPACITY = PULSE_DRAW_MAX * 24;
+// Small moving things drawn as plain-coloured triangles through the debug
+// pipeline (fliers): one dynamic buffer, refilled per draw.
+static ID3D11Buffer* g_objectVB = nullptr;
+static const UINT OBJECT_VB_CAPACITY = 512 * 24; // vertices
 static ID3D11VertexShader* g_debugVS = nullptr;
 static ID3D11PixelShader* g_debugPS = nullptr;
 static ID3D11InputLayout* g_debugLayout = nullptr;
@@ -422,7 +419,7 @@ static const char* g_shadowShaderSrc =
 
 // Debug lines: a coloured line list, depth tested -- a testing aid for
 // marking things in the world (Voxistics drew The Line with it). The same
-// plain-colour pipeline draws pulses and fliers as triangles.
+// plain-colour pipeline draws fliers as triangles.
 static const char* g_debugShaderSrc =
     "cbuffer DebugCB : register(b0) { row_major matrix viewProj; };\n"
     "struct VSIn { float3 pos:POSITION; float4 col:COLOR0; };\n"
@@ -936,7 +933,6 @@ static void UpdateShadowMap(World& w, Vec3 eye, Vec3 sun) {
     ProfAddCounter(PCOUNT_SHADOW_RENDERS, 1);
 }
 
-static void DrawPulses(const Mat4& viewProj, Vec3 eye);
 static void DrawFliers(const Mat4& viewProj, Vec3 eye);
 
 // Bloom (Section 4.10): the scene's glow (rgb * alpha) down to quarter
@@ -1210,7 +1206,6 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         g_context->PSSetShaderResources(0, 4, srvs);
         Frustum frustum = ExtractFrustum(viewProj);
         DrawChunks(w, frustum, true);
-        DrawPulses(viewProj, eye);
         DrawFliers(viewProj, eye);
         // See-through blocks last: same shader, told by params.z to shade
         // as glass. Rebind the world pipeline (the debug lines change it).
@@ -1874,8 +1869,8 @@ bool InitD3D(HWND hwnd) {
             vb.Usage = D3D11_USAGE_DYNAMIC; vb.ByteWidth = DEBUG_VB_CAPACITY * sizeof(DebugVertex);
             vb.BindFlags = D3D11_BIND_VERTEX_BUFFER; vb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
             g_device->CreateBuffer(&vb, nullptr, &g_debugVB);
-            vb.ByteWidth = PULSE_VB_CAPACITY * sizeof(DebugVertex);
-            g_device->CreateBuffer(&vb, nullptr, &g_pulseVB);
+            vb.ByteWidth = OBJECT_VB_CAPACITY * sizeof(DebugVertex);
+            g_device->CreateBuffer(&vb, nullptr, &g_objectVB);
             D3D11_BUFFER_DESC cb = {};
             cb.Usage = D3D11_USAGE_DYNAMIC; cb.ByteWidth = sizeof(Mat4);
             cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER; cb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -1901,100 +1896,13 @@ bool InitD3D(HWND hwnd) {
     return true;
 }
 
-// Pulses on their way (Part VI): each a small octahedron in its spin's
-// colour (plain yellow-amber, clockwise blue, anticlockwise red), sized by how
-// visible it is (fading in at a harvester, out at the end of a flight).
-// A spun bead turns about the way it's going; through the air a spun pulse
-// is a corkscrew comet -- its bead circles close about the straight line
-// it really travels, trailing a fading tail -- and a plain one a straight
-// comet. The pipeline is opaque, and its alpha is the bloom's glow mask, so
-// they glow. Only those within 48 blocks: one small upload, one draw.
-static void DrawPulses(const Mat4& viewProj, Vec3 eye) {
-    if (!g_debugVS || !g_debugPS || !g_debugLayout || !g_pulseVB || !g_debugCB) return;
-    static std::vector<PulseView> views;
-    static std::vector<DebugVertex> v;
-    g_pulse.Views(views);
-    if (views.empty()) return;
-    v.clear();
-    float colour[3][3]; // plain, clockwise, anticlockwise, for the player's colour vision (pulse_colours.h)
-    PulseColours(g_colourVision, colour);
-    const float kSpinRate = 2.5f * 6.2831853f;  // turns a second, as rad/s
-    const float kHelix = 0.16f;                 // how far the corkscrew strays from the line: just enough to notice
-    auto octa = [&](float px, float py, float pz, float r, const float* dir, float angle, const float* c) {
-        if (v.size() + 24 > PULSE_VB_CAPACITY || r < 0.01f) return;
-        // A frame along the travel direction, turned by `angle` about it.
-        float ax = dir[0], ay = dir[1], az = dir[2];
-        float ux = fabsf(ay) < 0.9f ? 0.0f : 1.0f, uy = fabsf(ay) < 0.9f ? 1.0f : 0.0f, uz = 0.0f; // not parallel to dir
-        float bx = ay * uz - az * uy, by = az * ux - ax * uz, bz = ax * uy - ay * ux;   // b = dir x u
-        float bl = sqrtf(bx * bx + by * by + bz * bz); bx /= bl; by /= bl; bz /= bl;
-        float cx = by * az - bz * ay, cy = bz * ax - bx * az, cz = bx * ay - by * ax;   // c = b x dir
-        float ca = cosf(angle), sa = sinf(angle);
-        float p1[3] = { bx * ca + cx * sa, by * ca + cy * sa, bz * ca + cz * sa };
-        float p2[3] = { cx * ca - bx * sa, cy * ca - by * sa, cz * ca - bz * sa };
-        const float tip[6][3] = { { ax * r * 1.3f, ay * r * 1.3f, az * r * 1.3f }, { -ax * r * 1.3f, -ay * r * 1.3f, -az * r * 1.3f },
-                                  { p1[0] * r, p1[1] * r, p1[2] * r }, { -p1[0] * r, -p1[1] * r, -p1[2] * r },
-                                  { p2[0] * r, p2[1] * r, p2[2] * r }, { -p2[0] * r, -p2[1] * r, -p2[2] * r } };
-        const int faces[8][3] = { { 2, 0, 4 }, { 2, 4, 1 }, { 2, 1, 5 }, { 2, 5, 0 }, { 3, 4, 0 }, { 3, 1, 4 }, { 3, 5, 1 }, { 3, 0, 5 } };
-        for (int f = 0; f < 8; f++) {
-            float shade = f < 4 ? 1.0f : 0.72f; // two facets brighter than the rest: the turning shows
-            for (int k = 0; k < 3; k++) {
-                const float* t = tip[faces[f][k]];
-                v.push_back({ px + t[0], py + t[1], pz + t[2], c[0] * shade, c[1] * shade, c[2] * shade, 1.0f });
-            }
-        }
-    };
-    for (const PulseView& p : views) {
-        float dx = p.x - eye.x, dy = p.y - eye.y, dz = p.z - eye.z;
-        if (dx * dx + dy * dy + dz * dz > 48.0f * 48.0f || p.alpha <= 0.01f) continue;
-        const float* c = colour[p.spin > 0 ? 1 : p.spin < 0 ? 2 : 0];
-        float dir[3] = { p.dx, p.dy, p.dz };
-        float angle = p.spin * kSpinRate * p.age;
-        const float r0 = 0.17f; // a bead a little fatter than the pipe, so it shows sliding through
-        if (!p.flying) { octa(p.x, p.y, p.z, r0 * p.alpha, dir, angle, c); continue; }
-        // In the air: the bead and a tail of smaller ones behind it, back
-        // along the path it came (never behind the mouth it left).
-        float ux = fabsf(dir[1]) < 0.9f ? 0.0f : 1.0f, uy = fabsf(dir[1]) < 0.9f ? 1.0f : 0.0f;
-        float bx = dir[1] * 0.0f - dir[2] * uy, by = dir[2] * ux - dir[0] * 0.0f, bz = dir[0] * uy - dir[1] * ux;
-        float bl = sqrtf(bx * bx + by * by + bz * bz); bx /= bl; by /= bl; bz /= bl;
-        float cx = by * dir[2] - bz * dir[1], cy = bz * dir[0] - bx * dir[2], cz = bx * dir[1] - by * dir[0];
-        const float speed = g_pulseTuning.flySpeed, step = 0.035f;
-        for (int k = 0; k < 7; k++) {
-            float back = speed * step * k;
-            if (back > p.flown) break;
-            float th = p.spin * kSpinRate * (p.age - step * k);
-            float o = p.spin ? kHelix : 0.0f;
-            float px = p.x - dir[0] * back + (bx * cosf(th) + cx * sinf(th)) * o;
-            float py = p.y - dir[1] * back + (by * cosf(th) + cy * sinf(th)) * o;
-            float pz = p.z - dir[2] * back + (bz * cosf(th) + cz * sinf(th)) * o;
-            float fade = 1.0f - k / 7.0f;
-            octa(px, py, pz, r0 * p.alpha * (k == 0 ? 1.0f : 0.55f * fade), dir, angle, c);
-        }
-    }
-    if (v.empty()) return;
-    D3D11_MAPPED_SUBRESOURCE mapped;
-    g_context->Map(g_pulseVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-    memcpy(mapped.pData, v.data(), v.size() * sizeof(DebugVertex));
-    g_context->Unmap(g_pulseVB, 0);
-    g_context->Map(g_debugCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-    memcpy(mapped.pData, &viewProj, sizeof(Mat4));
-    g_context->Unmap(g_debugCB, 0);
-    g_context->VSSetShader(g_debugVS, nullptr, 0);
-    g_context->PSSetShader(g_debugPS, nullptr, 0);
-    g_context->IASetInputLayout(g_debugLayout);
-    g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    g_context->VSSetConstantBuffers(0, 1, &g_debugCB);
-    UINT stride = sizeof(DebugVertex), offset = 0;
-    g_context->IASetVertexBuffers(0, 1, &g_pulseVB, &stride, &offset);
-    g_context->Draw((UINT)v.size(), 0);
-}
 
 // Fliers (fliers.h): a slim dark body and two wings -- one pair of planes,
 // part butterfly, part dragonfly -- beating at 4 a second (movement, not a
 // flash: the colour doesn't change), in each flier's own hue. A handful of
-// triangles each, through the same small buffer and plain-colour pipeline
-// as the pulses (a fresh upload after theirs).
+// triangles each, through the small object buffer and plain-colour pipeline.
 static void DrawFliers(const Mat4& viewProj, Vec3 eye) {
-    if (!g_debugVS || !g_debugPS || !g_debugLayout || !g_pulseVB || !g_debugCB) return;
+    if (!g_debugVS || !g_debugPS || !g_debugLayout || !g_objectVB || !g_debugCB) return;
     const std::vector<Flier>& fl = g_fliers.Fliers();
     if (fl.empty()) return;
     static std::vector<DebugVertex> v;
@@ -2034,11 +1942,11 @@ static void DrawFliers(const Mat4& viewProj, Vec3 eye) {
             tri(root, hind, back, wingDark);
         }
     }
-    if (v.empty() || v.size() > PULSE_VB_CAPACITY) return;
+    if (v.empty() || v.size() > OBJECT_VB_CAPACITY) return;
     D3D11_MAPPED_SUBRESOURCE mapped;
-    g_context->Map(g_pulseVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+    g_context->Map(g_objectVB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     memcpy(mapped.pData, v.data(), v.size() * sizeof(DebugVertex));
-    g_context->Unmap(g_pulseVB, 0);
+    g_context->Unmap(g_objectVB, 0);
     g_context->Map(g_debugCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
     memcpy(mapped.pData, &viewProj, sizeof(Mat4));
     g_context->Unmap(g_debugCB, 0);
@@ -2048,7 +1956,7 @@ static void DrawFliers(const Mat4& viewProj, Vec3 eye) {
     g_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     g_context->VSSetConstantBuffers(0, 1, &g_debugCB);
     UINT stride = sizeof(DebugVertex), offset = 0;
-    g_context->IASetVertexBuffers(0, 1, &g_pulseVB, &stride, &offset);
+    g_context->IASetVertexBuffers(0, 1, &g_objectVB, &stride, &offset);
     g_context->Draw((UINT)v.size(), 0);
 }
 

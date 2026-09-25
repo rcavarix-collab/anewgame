@@ -14,8 +14,6 @@
 #include "worldsound.h"
 #include "persist.h"
 #include "profiler.h"
-#include "pulse.h"
-#include "pulse_colours.h"
 #include "fliers.h"
 #include "essence.h"
 #include "essencemap.h"
@@ -147,7 +145,6 @@ float g_toastTimer = 0.0f; // seconds remaining; drawn by RenderUIPass
 float g_fpsTimer = 0.0f;
 int g_fpsFrameCount = 0, g_fpsDisplay = 0; // updated once/sec, shown when Display Settings' FPS counter is on
 
-static void OpenStore(int x, int y, int z);
 static void PickAndAct(bool breakBlock) {
     Vec3 f, r, u;
     GetCameraVectors(g_player, f, r, u);
@@ -166,9 +163,6 @@ static void PickAndAct(bool breakBlock) {
         LiveEdit(g_world, hx, hy, hz, BLOCK_AIR);
         WorldSoundBreak(taken, hx, hy, hz);
     } else {
-        // Using a block that holds pulse opens it (crouch to place against it instead).
-        BlockID used = g_world.Get(hx, hy, hz);
-        if (PulseCapacity(used) > 0 && used != BLOCK_PULSE_DIFFUSER && !g_player.crouching) { OpenStore(hx, hy, hz); return; }
         // Refuse a placement that would overlap the player's own box --
         // it would only trap them (or, with physics' unstick rule, pop
         // them up on top of it).
@@ -206,7 +200,6 @@ static void PickAndAct(bool breakBlock) {
         }
         LiveEdit(g_world, px, py, pz, toPlace, state);
         if (toPlace == BLOCK_ATTRACTOR) g_essence.AddAttractor(px, py, pz);
-        g_pulse.OnPlaced(px, py, pz, toPlace);
         WorldSoundPlace(toPlace, px, py, pz);
     }
 }
@@ -320,8 +313,8 @@ enum AudioRow { AROW_MASTER_VOLUME = 0, AROW_MUSIC_VOLUME = 1, AROW_WORLD_VOLUME
 // alone yet (nothing to remap); and a UI scale slider, which (unlike
 // the above) is real future work, just architecturally bigger -- every
 // hit-rect, not only the visuals, would need to move in lockstep.
-static const SubmenuLayout ACCESSIBILITY_LAYOUT = { 400.0f, 56.0f, 12.0f, 70.0f, 20.0f, 8 };
-enum AccessibilityRow { ARROW_FOV = 0, ARROW_TOGGLE_MOVE = 1, ARROW_HIGH_CONTRAST = 2, ARROW_MUSIC_INTENSITY = 3, ARROW_MONO = 4, ARROW_COLOUR_VISION = 5, ARROW_RESET = 6, ARROW_BACK = 7 };
+static const SubmenuLayout ACCESSIBILITY_LAYOUT = { 400.0f, 56.0f, 12.0f, 70.0f, 20.0f, 7 };
+enum AccessibilityRow { ARROW_FOV = 0, ARROW_TOGGLE_MOVE = 1, ARROW_HIGH_CONTRAST = 2, ARROW_MUSIC_INTENSITY = 3, ARROW_MONO = 4, ARROW_RESET = 5, ARROW_BACK = 6 };
 
 // Keybindings: every action bindable to any keyboard key or the left/
 // right/middle mouse button (GameAction/g_actionNames/g_keyBindings/
@@ -430,7 +423,6 @@ static void ResetAccessibilitySettings() {
     g_toggleMovement = false;
     g_highContrastUI = false;
     g_monoAudio = false;
-    g_colourVision = CV_TYPICAL;
     g_musicIntensity = 1.0f;
     memset(g_moveToggleLatch, 0, sizeof(g_moveToggleLatch));
 }
@@ -685,12 +677,6 @@ void TakeScreenshotIfRequested() {
 
 void GameTick(float dt) {
     {
-        // Harvesters gather steadily (time runs at its normal rate everywhere).
-        ProfScope prof(PROF_PULSE);
-        g_pulse.Tick(g_world, g_pulseTuning, dt, [](int, int, int) { return 1.0f; });
-        g_pulse.TakeDiffused(); // diffusers once fed The Line; what they spend now simply goes
-    }
-    {
         ProfScope prof(PROF_UPDATES);
         g_fliers.Tick(g_world, g_flierTuning, g_player.x, g_player.y, g_player.z, dt, [](float, float, float) { return 1.0f; });
     }
@@ -711,21 +697,8 @@ void TickAutosave(float dt) {
     if (g_autosaveTimer >= AUTOSAVE_SECONDS) AutosaveNow(true);
 }
 
-// ---- The first-steps tutorial (a new world only): one short line at a
-// time, each moving on when the player has done it, skippable at once
-// (Enter). Minimal words -- most players would rather not read.
-//   0 move   1 place the harvester   2 pipe it to the chest
-//   3 feed a diffuser   4 where everything else is (fades), then off.
-static int g_tutorialStep = -1;
-static float g_tutorialX = 0, g_tutorialZ = 0, g_tutorialTimer = 0;
-static void StartTutorial() {
-    g_tutorialStep = 0;
-    g_tutorialX = g_player.x; g_tutorialZ = g_player.z;
-    g_tutorialTimer = 0;
-}
 
 static void DoLoad() {
-    g_tutorialStep = -1; // a loaded world has been played before
     bool ok = LoadGame(g_world, g_player, g_currentSlot);
     g_toastMessage = ok ? "GAME LOADED" : "LOAD FAILED (no save?)";
     g_toastTimer = 2.0f;
@@ -807,7 +780,6 @@ static void HandleAccessibilityClick(int mx, int my) {
     }
     if (PointInRect(mx, my, SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_HIGH_CONTRAST))) { g_highContrastUI = !g_highContrastUI; SaveSettings(); return; }
     if (PointInRect(mx, my, SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MONO))) { g_monoAudio = !g_monoAudio; SaveSettings(); return; }
-    if (PointInRect(mx, my, SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_COLOUR_VISION))) { g_colourVision = (g_colourVision + 1) % CV_COUNT; SaveSettings(); return; }
     if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MUSIC_INTENSITY)))) { BeginSliderDrag(SLIDER_MUSIC_INTENSITY, mx); return; }
     if (PointInRect(mx, my, SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_RESET))) { ResetAccessibilitySettings(); SaveSettings(); return; }
     if (PointInRect(mx, my, SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_BACK))) { g_menuScreen = MenuScreen::OptionsHub; return; }
@@ -830,7 +802,6 @@ static void ResetWorldForNewGame() {
     g_world = World();
     g_player = Player();
     g_worldGen = DefaultNewWorldGen(); // TerrainHeight below reads it
-    g_pulse.Reset();   // nothing in its pipes
     g_fliers.Reset(g_worldGen.seed); // a fresh population, of every age
     g_essence.Reset(g_worldGen.seed); // nothing discovered yet
     // Start standing on the surface (terrain height is a pure function
@@ -842,13 +813,7 @@ static void ResetWorldForNewGame() {
             top = std::max(top, TerrainHeight((int)floorf(g_player.x + ox), (int)floorf(g_player.z + oz)));
     g_player.y = (float)(top + 1);
     g_dayTimeSeconds = 0.0f; // dawn -- first light in a land they've never seen (Section 13)
-    // The first logistics chain to hand (Part VI): harvester, pipe, chest,
-    // diffuser on the first four slots; the rest of the hotbar is left as it was.
-    const BlockID starter[4] = { BLOCK_PULSE_HARVESTER, BLOCK_PULSE_PIPE, BLOCK_CHEST, BLOCK_PULSE_DIFFUSER };
-    for (int i = 0; i < 4; i++) g_hotbar[i] = starter[i];
     g_player.hotbarIndex = 0;
-    SaveSettings();
-    StartTutorial();
     g_residentColumns.clear();
     g_evictedChunks.clear();
     ClearScheduledUpdates();
@@ -897,7 +862,6 @@ static void HandleSlotPickerClick(int mx, int my) {
         if (g_slotPickerMode == SlotPickerMode::Load) {
             if (!SlotExists(slot)) { g_toastMessage = "EMPTY SLOT"; g_toastTimer = 1.5f; return; }
             g_currentSlot = slot;
-            g_tutorialStep = -1;
             if (!LoadGame(g_world, g_player, slot)) {
                 g_toastMessage = "LOAD FAILED (corrupt save?)";
                 g_toastTimer = 2.0f;
@@ -995,22 +959,6 @@ static void LibraryMouseUp(int mx, int my) {
     }
 }
 
-// ---- A store's contents (Part VI): the pulse it holds, one slot per
-// spin, each a heap of beads that grows with the amount -- a feel, not a
-// number. Place-button on a store opens it; Esc, E or the place button
-// again closes it.
-static int g_storeX, g_storeY, g_storeZ;
-static void OpenStore(int x, int y, int z) {
-    g_storeX = x; g_storeY = y; g_storeZ = z;
-    g_menuScreen = MenuScreen::Store;
-    ReleaseMouseForMenu();
-    WorldSoundCue(SND_LIBRARY_OPEN);
-}
-static void CloseStore() {
-    WorldSoundCue(SND_LIBRARY_CLOSE);
-    g_menuScreen = MenuScreen::None;
-    CaptureMouseForPlay();
-}
 
 static bool IsSettingsSubmenu(MenuScreen s) {
     return s == MenuScreen::LookSettings || s == MenuScreen::Graphics || s == MenuScreen::Display
@@ -1040,8 +988,6 @@ static void FireBoundAction(int code) {
             CloseMap();
         } else if (g_menuScreen == MenuScreen::Library) {
             CloseLibrary();
-        } else if (g_menuScreen == MenuScreen::Store) {
-            CloseStore();
         } else if (g_menuScreen == MenuScreen::OptionsHub) {
             g_menuScreen = g_optionsReturnScreen;
         } else if (IsSettingsSubmenu(g_menuScreen)) {
@@ -1057,7 +1003,6 @@ static void FireBoundAction(int code) {
         else if (g_menuScreen == MenuScreen::Map) CloseMap();
         return;
     }
-    if (g_menuScreen == MenuScreen::Store && (code == g_keyBindings[ACT_LIBRARY] || code == g_keyBindings[ACT_PLACE])) { CloseStore(); return; }
     if (code == g_keyBindings[ACT_LIBRARY]) {
         if (g_menuScreen == MenuScreen::None) OpenLibrary();
         else if (g_menuScreen == MenuScreen::Library) CloseLibrary();
@@ -1236,7 +1181,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         return 0;
     case WM_KEYDOWN:
         if (wParam < 256) g_keyDown[wParam] = true;
-        if (wParam == VK_RETURN && g_tutorialStep >= 0 && g_menuScreen == MenuScreen::None) { g_tutorialStep = -1; return 0; } // skip the tutorial
         if (g_rebindingAction != -1) {
             // Escape cancels a rebind -- except on the Pause Menu row,
             // where Escape is that action's own natural key: treating it
@@ -1559,66 +1503,6 @@ void RenderUIPass() {
         }
     }
 
-    // A store's contents (Part VI): one slot per spin -- none, clockwise,
-    // anticlockwise -- each a heap of beads in that pulse's colour that
-    // grows with the amount (one more bead each time it doubles), marked
-    // with a swirl turning its way. No numbers: the heap is the reading.
-    if (g_menuScreen == MenuScreen::Store) {
-        BlockID sb = g_world.Get(g_storeX, g_storeY, g_storeZ);
-        if (PulseCapacity(sb) <= 0) { g_menuScreen = MenuScreen::None; CaptureMouseForPlay(); } // it's gone
-        PulseCounts held = PulseHeld(g_world, g_storeX, g_storeY, g_storeZ);
-        const float slotW = 150.0f, gap = 24.0f, pw = 3 * slotW + 4 * gap, ph = 250.0f;
-        float px0 = (g_screenW - pw) / 2.0f, py0 = (g_screenH - ph) / 2.0f;
-        UIDrawRect(glyphVerts, px0, py0, px0 + pw, py0 + ph, 0.10f, 0.10f, 0.13f, 0.95f);
-        std::string title = g_blocks[sb].name;
-        for (char& ch : title) ch = ch == '_' ? ' ' : (char)toupper((unsigned char)ch);
-        UIDrawText(glyphVerts, title, px0 + (pw - UITextWidth(title, 1.0f)) / 2.0f, py0 + 14.0f, 1.0f, 0.95f, 0.92f, 0.85f, 1.0f);
-        float colours[3][3]; // plain, clockwise, anticlockwise, for the player's colour vision
-        PulseColours(g_colourVision, colours);
-        auto bead = [&](float cx, float cy, float r, const float* c, float a) {
-            // A faceted bead, like the ones in the pipes: a diamond, lit from above.
-            const int rows = 6;
-            for (int k = 0; k < rows; k++) {
-                float y0 = cy - r + k * (2 * r / rows), y1 = y0 + 2 * r / rows;
-                float mid = (y0 + y1) * 0.5f - cy;
-                float half = r - fabsf(mid);
-                float shade = k < rows / 2 ? 1.0f : 0.72f;
-                UIDrawRect(glyphVerts, cx - half, y0, cx + half, y1, c[0] * shade, c[1] * shade, c[2] * shade, a);
-            }
-            UIDrawRect(glyphVerts, cx - r * 0.35f, cy - r * 0.55f, cx - r * 0.05f, cy - r * 0.25f, 1, 1, 1, 0.7f * a); // a glint
-        };
-        for (int k = 0; k < 3; k++) {
-            float sx0 = px0 + gap + k * (slotW + gap), sy0 = py0 + 56.0f, sy1 = sy0 + slotW;
-            int n = held.n[k];
-            UIDrawRect(glyphVerts, sx0, sy0, sx0 + slotW, sy1, n ? 0.16f : 0.12f, n ? 0.16f : 0.12f, n ? 0.19f : 0.14f, 0.95f);
-            const float* c = colours[k];
-            // The swirl: a small spiral of dots turning the pulse's way, ending in a larger one.
-            if (k > 0) {
-                float cx = sx0 + slotW - 26.0f, cy = sy0 + 24.0f, dir = k == 1 ? 1.0f : -1.0f;
-                for (int i = 0; i <= 12; i++) {
-                    float th = i / 12.0f * 5.0f, rr = 3.0f + i * 1.1f, d = i == 12 ? 3.5f : 1.8f;
-                    float x = cx + dir * cosf(th - 1.57f) * rr, y = cy + sinf(th - 1.57f) * rr;
-                    UIDrawRect(glyphVerts, x - d, y - d, x + d, y + d, c[0], c[1], c[2], n ? 0.95f : 0.35f);
-                }
-            }
-            if (n <= 0) continue;
-            int beads = 1;
-            for (int v = n; v > 1 && beads < 12; v >>= 1) beads++;
-            // A heap: rows of 4, 3, 3, 2 from the bottom.
-            const int rowCap[4] = { 4, 3, 3, 2 };
-            const float r = 11.0f;
-            int placed = 0;
-            for (int row = 0; row < 4 && placed < beads; row++) {
-                int inRow = std::min(rowCap[row], beads - placed);
-                float y = sy1 - 18.0f - row * (1.55f * r);
-                float x0 = sx0 + slotW / 2.0f - (inRow - 1) * r;
-                for (int i = 0; i < inRow; i++) bead(x0 + i * 2.0f * r, y, r, c, 1.0f);
-                placed += inRow;
-            }
-        }
-        std::string hint = "ESC TO CLOSE";
-        UIDrawText(glyphVerts, hint, px0 + (pw - UITextWidth(hint, 0.6f)) / 2.0f, py0 + ph - 26.0f, 0.6f, 0.7f, 0.7f, 0.8f, 0.9f);
-    }
 
     // Essence network map (Part XIX): the draw list is plain coloured
     // triangles plus label requests, batched through the same white-texel
@@ -1757,7 +1641,6 @@ void RenderUIPass() {
         drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_HIGH_CONTRAST), g_highContrastUI ? "HIGH-CONTRAST UI: ON" : "HIGH-CONTRAST UI: OFF");
         drawSliderRow(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MUSIC_INTENSITY), SLIDER_MUSIC_INTENSITY);
         drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MONO), g_monoAudio ? "MONO AUDIO: ON" : "MONO AUDIO: OFF");
-        drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_COLOUR_VISION), std::string("COLOUR VISION: ") + ColourVisionName(g_colourVision));
         drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_RESET), "RESET TO DEFAULT");
         drawRowButton(SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_BACK), "BACK");
     } else if (g_menuScreen == MenuScreen::Keybindings) {
@@ -1813,24 +1696,9 @@ void RenderUIPass() {
         lines.push_back("");
         lines.push_back(ProfBootSummary(false)); // how long start-up took, and on what
         if (g_gameState == GameState::InGame) {
-            // Pulse logistics (Part VI): totals, and what's held by the block in view.
-            snprintf(buf, sizeof(buf), "PULSE %d HARVESTING %d MOVING %lld IN %lld LOST",
-                     g_pulse.Harvesters(), g_pulse.InFlight(), g_pulse.delivered, g_pulse.lost);
-            lines.push_back(buf);
             snprintf(buf, sizeof(buf), "FLIERS %d  DIED %d (%d BY THE LINE)  GLOWING %d  MOLD %d",
                      (int)g_fliers.Fliers().size(), g_fliers.deaths, g_fliers.deathsByLine, (int)g_fliers.Spots().size(), g_fliers.molds);
             lines.push_back(buf);
-            Vec3 f, r, u;
-            GetCameraVectors(g_player, f, r, u);
-            int hx, hy, hz, px, py, pz;
-            if (Raycast(g_world, g_player.x, g_player.y + g_player.eyeHeight, g_player.z, f.x, f.y, f.z, 6.0f, hx, hy, hz, px, py, pz)) {
-                BlockID b = g_world.Get(hx, hy, hz);
-                if (PulseCapacity(b) > 0) {
-                    PulseCounts h = PulseHeld(g_world, hx, hy, hz);
-                    snprintf(buf, sizeof(buf), "  HOLDS %d PLAIN %d CW %d CCW", h.n[0], h.n[1], h.n[2]);
-                    lines.push_back(buf);
-                }
-            }
         }
         // The world sound palette's three axes (docs/SOUND_PALETTE.md 3).
         if (g_gameState == GameState::InGame) {
@@ -1858,45 +1726,6 @@ void RenderUIPass() {
         }
     }
 
-    // The first-steps tutorial: one line, top centre, over play only.
-    if (g_tutorialStep >= 0 && g_gameState == GameState::InGame && g_menuScreen == MenuScreen::None) {
-        auto key = [](GameAction a) { return GetInputDisplayName(g_keyBindings[a]); };
-        switch (g_tutorialStep) { // move on once it's done
-        case 0: if (hypotf(g_player.x - g_tutorialX, g_player.z - g_tutorialZ) > 4.0f) g_tutorialStep = 1; break;
-        case 1: if (g_pulse.Harvesters() > 0) g_tutorialStep = 2; break;
-        case 2: if (g_pulse.delivered > g_pulse.Diffused()) g_tutorialStep = 3; break;
-        case 3: if (g_pulse.Diffused() > 0) g_tutorialStep = 4; break;
-        default: break;
-        }
-        std::string line;
-        switch (g_tutorialStep) {
-        case 0: line = key(ACT_FORWARD) + key(ACT_LEFT) + key(ACT_BACK) + key(ACT_RIGHT) + " TO MOVE - " + key(ACT_JUMP) + " JUMP - " + key(ACT_SPRINT) + " RUN"; break;
-        case 1: line = "1: HARVESTER - " + key(ACT_PLACE) + " TO PLACE IT"; break;
-        case 2: line = "2: PIPE IT TO A 3: CHEST - " + key(ACT_PLACE) + " ON THE CHEST TO LOOK INSIDE"; break;
-        case 3: line = "4: DIFFUSER - FEED IT PULSE TO WIDEN THE LINE"; break;
-        case 4: line = key(ACT_LIBRARY) + ": EVERY BLOCK - " + key(ACT_MAP) + ": MAP - " + key(ACT_MENU) + ": MENU"; break;
-        default: break;
-        }
-        float alpha = 1.0f;
-        static unsigned long long lastMs = 0;
-        unsigned long long nowMs = GetTickCount64();
-        float frameSeconds = lastMs ? std::min(0.25f, (nowMs - lastMs) / 1000.0f) : 0.0f;
-        lastMs = nowMs;
-        if (g_tutorialStep == 4) {
-            g_tutorialTimer += frameSeconds;
-            alpha = std::max(0.0f, std::min(1.0f, (8.0f - g_tutorialTimer) / 2.0f));
-            if (g_tutorialTimer > 8.0f) g_tutorialStep = -1;
-        }
-        if (!line.empty() && alpha > 0.0f) {
-            const float s = 0.85f;
-            float tw = UITextWidth(line, s), th = UITextHeight(s);
-            float x = (g_screenW - tw) / 2.0f, y = 70.0f;
-            UIDrawRect(glyphVerts, x - 14, y - 8, x + tw + 14, y + th + 22, 0.05f, 0.06f, 0.06f, 0.6f * alpha);
-            UIDrawText(glyphVerts, line, x, y, s, 1.0f, 0.97f, 0.9f, alpha);
-            std::string skip = "ENTER: SKIP";
-            UIDrawText(glyphVerts, skip, (g_screenW - UITextWidth(skip, 0.55f)) / 2.0f, y + th + 4, 0.55f, 0.7f, 0.72f, 0.7f, 0.8f * alpha);
-        }
-    }
 
     // Transient save/load confirmation -- fades over its last half
     // second so it doesn't just vanish abruptly.

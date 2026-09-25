@@ -18,7 +18,7 @@
 | 1.6 | **Materials blend naturally at borders.** Hollows and overhangs go dark. | — |
 | 1.7 | Walking and placing work properly on the facets. | — |
 | 1.8 | Fine detail up close, coarser far away, with no cracks. | Triangle counts |
-| 1.9 | The old blocks and cube props are gone. The hotbar shows the new materials. | — |
+| 1.9 | The old blocks and cube props are gone. The library shows the new materials. | — |
 | 1.10 | Menus look the same, but every word now comes from a text file | A test language, to show nothing is left in code |
 | 1.11 | No visible change; distant and hidden ground costs less | Chunks-drawn counts |
 | 1.12 | Everything together: the checklist T1–T13 | — |
@@ -29,7 +29,7 @@
 
 ### 1.1 Sound effects on their own thread; footsteps you can hear
 - **Why first.** Your baseline report shows the world sound system on the main thread spiking to 14.9 ms. It's behind every one of your worst frames (forecast F11).
-- **Change.** The effects palette renders on its own thread, the way music already does, from copies of what the main thread sets (listener, gait, cues). There's a voice cap with priority tiers, and footsteps get the level you pick from the clips.
+- **Change.** The effects palette renders on its own thread, the way music already does, from copies of what the main thread sets (listener, gait, cues). There's a voice cap with priority tiers. Footsteps already carry your pick (clip 3, D29), but the palette's −21 dB ceiling (DESIGN 10.4) holds them to about +5 dB of the raise. With the thread built, I'll make clips of footsteps allowed past the ceiling for you to choose from.
 - **Files.** Changed: `audio.cpp`, `audio.h`, `sfx_synth.cpp` (level only). New: none.
 - **Cost.** Main thread: the WORLD SOUND row falls to the census only (target ≤ 0.5 ms, with no spikes). One more thread, which waits when idle.
 - **Checks here.** Native tests; `sound_demo analyze`; a stress render at the voice cap; footstep peak level measured against the music.
@@ -92,9 +92,10 @@
   - falling ground and grass die-back are switched off (D12);
   - the soundscape is retuned for the new materials;
   - the old generators are gone;
-  - hotbar icons become faceted lumps of each material.
+  - materials are chosen from the library menu (D30); its icons become faceted lumps of each material;
+  - the hotbar stays as a placeholder, possibly for other GUI later (D30).
 - **Files.** Changed: `blocks.h` (becomes the materials registry), `blocktex.cpp`, `icons.cpp`, `soundscape.cpp`, `world.cpp`. Removed from the build: `shapes.*`.
-- **Your check.** Nothing from Voxistics' roster left in the library or hotbar.
+- **Your check.** Nothing from Voxistics' roster left in the library.
 
 ### 1.10 Text for any language (D26)
 - **Change.** Every player-facing word moves to a string table (`assets/text/en.txt`). The font atlas is built from the characters the table uses. Layouts measure text instead of assuming English widths. A check script flags any player-facing literal left in code.
@@ -114,6 +115,6 @@ The whole checklist, T1–T13, on your machine. Then the M1 reflection, the fore
 
 ## Questions for you
 
-1. **The footstep level:** clip 1 (today), 2 (+10 dB, a bit brighter) or 3 (+16 dB)?
-2. **The hotbar:** the outline kept a ten-slot hotbar for choosing which material to place. Keep it, or did you mean you'd rather not have one? If not, what should choosing a material look like?
+1. **The footstep level:** answered, clip 3 (D29). Whether they may pass the ceiling comes with step 1.1.
+2. **The hotbar:** answered. Materials come from the library menu, and the hotbar stays as a placeholder (D30).
 3. **The order:** is the sound fix first, then pictures, then the engine, what you want?

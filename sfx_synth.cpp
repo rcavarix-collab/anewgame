@@ -1011,9 +1011,13 @@ void SoundPalette::Impl::Footfall(const SoundCue& c) {
         if (toGrid <= 0.04) delay = toGrid;
     }
     const double hard = Hardness(c.material);
-    double lvl = -29 + 3 * hard - ((c.key & 1) ? 2 : 0) + 20 * std::log10(std::max(0.2f, c.strength)); // owner: they must be heard
+    // Owner: they must be heard. -29 sat about 20 dB under the music and
+    // was lost; -13 is the owner's pick from mixed clips (D29).
+    double lvl = -13 + 3 * hard - ((c.key & 1) ? 2 : 0) + 20 * std::log10(std::max(0.2f, c.strength));
     // The scuff: soft ground dull, low and long; hard ground crisp and short.
-    double lp = (700 + 1700 * hard) * (P < 0 ? 0.8 : 1.0) * (1 + 0.3 * M);
+    // Soft ground starts at 1100 Hz, not 700: below that the scuff sat
+    // inside the music's pads and vanished (D29).
+    double lp = (1100 + 1300 * hard) * (P < 0 ? 0.8 : 1.0) * (1 + 0.3 * M);
     double tau = 0.028 - 0.020 * hard;
     Voice* g = Grain(delay, lvl, lp, tau);
     if (g) { g->pan = (c.key & 1) ? 0.12f : -0.12f; g->panSet = true; }

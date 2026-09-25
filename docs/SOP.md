@@ -42,6 +42,7 @@ Every addition gets a short card in the plan for its step. No card, no code.
 - **Review the ledger.** Anything costing more than it gives, or that nobody uses, is proposed for parking or removal. That's the same move as taking The Line and pulse off in M0.
 - **Parked means out of the build**, not switched off in place. Its code stays in the repository history; its art goes to a `parked` folder (as `assets/textures/parked/` does now).
 - **Settle the performance baseline.** A Ctrl+F3 report on the reference machine is kept per milestone, and the next milestone is compared with it.
+- **Look back and look ahead.** Write the milestone's entry in `REFLECTIONS.md`, review every open item in `FORECASTS.md` (did any warning sign appear?), update theory statuses in `THEORIES.md`, and bring `ROADMAP.md` up to date.
 
 ## 5. Documentation is part of done
 
@@ -50,6 +51,7 @@ A step isn't finished until all of these are true:
 - `DESIGN.md` describes the system as built, not as planned;
 - `DECISIONS.md` has any decision the step made;
 - the scope sheet's Status is updated;
-- the ledger has the step's costs.
+- the ledger has the step's costs;
+- any new idea we're relying on but haven't proven is in `THEORIES.md`, and any problem we can see coming is in `FORECASTS.md`.
 
 Code and docs that disagree count as a bug.

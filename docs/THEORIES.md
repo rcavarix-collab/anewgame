@@ -1,0 +1,43 @@
+# walkgrid theories
+
+Ideas we believe but haven't proven. Each says why we believe it, how we'll test it, and what we'll do if it's wrong. A theory is settled only by a test, never by agreement. When it's settled, the result is recorded here and any decision it leads to goes in `DECISIONS.md`.
+
+**Status:** Open (untested), Testing, Holds, Fails, Partly.
+
+---
+
+### T1. Faceted ground over a cell grid reads as its own look, not cubes and not blobs
+- **Why we believe it.** Sharp, flat-shaded facets with a seeded jitter sit between Minecraft's cubes and Astroneer's smooth surfaces.
+- **Test.** Still images from the M1 preview tool of rolling ground, a cliff and a dug pit, judged by the owner before the engine changes.
+- **If wrong.** Tune the jitter and facet size; failing that, reopen the grid choice (B: hex columns; C: 12-sided cells).
+- **Status:** Open.
+
+### T2. Subdividing only where detail shows cuts near triangles 3 to 5 times against blanket subdivision, with no visible loss
+- **Why we believe it.** Most ground is flat and single-material, and only borders, bumps and silhouettes show fine detail.
+- **Test.** The preview tool counts triangles both ways on the same terrain (including dug-out ground) and renders both for comparison.
+- **If wrong.** Shrink the near band, or subdivide by screen size instead of distance.
+- **Status:** Open.
+
+### T3. Height-based blending looks natural where grass meets dirt, not muddy
+- **Why we believe it.** Each material's height map decides which one shows through, so borders come out ragged and crisp. This is common practice in terrain rendering.
+- **Test.** Preview images of every pairing of the starting materials, judged by the owner; then the same spot in the game.
+- **If wrong.** Add a transition mask texture, or hand-tune per pair.
+- **Status:** Open.
+
+### T4. Rendering between ticks removes stutter above 60 fps with no felt input delay
+- **Why we believe it.** Mouse look is applied every frame; only the body is blended, and it's at most one tick (16.7 ms) behind.
+- **Test.** The owner plays with vsync off, and on a high-refresh display if one is available (M0 check C6).
+- **If wrong.** Extrapolate instead of interpolating, or raise the tick rate.
+- **Status:** Testing (built in M0.12; awaiting the Windows check).
+
+### T5. Two fixed job threads are enough for terrain and meshing
+- **Why we believe it.** Voxistics meshed 6 chunks a frame on the main thread without hitching. Two threads more than double that, and take it off the main thread.
+- **Test.** Walk and sprint into new ground at render distance 8, and watch the "waiting" counters and the worst frame in F3.
+- **If wrong.** Lower the fine-detail distance first; then consider a third thread (still a fixed number).
+- **Status:** Open.
+
+### T6. The harmony-locked sound palette stays clear with many sounds at once
+- **Why we believe it.** Every pitch comes from the current chord and every onset lands on the beat, so more sounds add up to more music.
+- **Test.** Offline renders with the voice cap at its limit (`tools/sound_demo.sh`), and then busy moments in play.
+- **If wrong.** Lower the voice cap, add ducking, or give each sound tier its own frequency band.
+- **Status:** Open (matters most when action arrives).

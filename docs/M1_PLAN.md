@@ -10,7 +10,7 @@
 
 | After step | In the game | Here, for you to judge |
 |---|---|---|
-| 1.1 | No stutter from sound. Footsteps you can hear. | — |
+| 1.1 | No stutter from sound. | — |
 | 1.2 | Nothing new | **Pictures of faceted, blended ground**, to judge the look before the engine changes |
 | 1.3 | Nothing new | Pictures of the starting materials you picked, meeting each other |
 | 1.4 | Different ground shape: rolling hills with regions. **Still cubes.** | — |
@@ -27,13 +27,13 @@
 
 ## Steps
 
-### 1.1 Sound effects on their own thread; footsteps you can hear
+### 1.1 Sound effects on their own thread
 - **Why first.** Your baseline report shows the world sound system on the main thread spiking to 14.9 ms. It's behind every one of your worst frames (forecast F11).
-- **Change.** The effects palette renders on its own thread, the way music already does, from copies of what the main thread sets (listener, gait, cues). There's a voice cap with priority tiers. Footsteps already carry your pick (clip 3, D29), but the palette's −21 dB ceiling (DESIGN 10.4) holds them to about +5 dB of the raise. With the thread built, I'll make clips of footsteps allowed past the ceiling for you to choose from.
+- **Change.** The effects palette renders on its own thread, the way music already does, from copies of what the main thread sets (listener, gait, cues). There's a voice cap with priority tiers. Footstep levels are left as they are (D29) until step 1.12 (D31).
 - **Files.** Changed: `audio.cpp`, `audio.h`, `sfx_synth.cpp` (level only). New: none.
 - **Cost.** Main thread: the WORLD SOUND row falls to the census only (target ≤ 0.5 ms, with no spikes). One more thread, which waits when idle.
-- **Checks here.** Native tests; `sound_demo analyze`; a stress render at the voice cap; footstep peak level measured against the music.
-- **Your check.** Footsteps are audible on grass, sand and stone. A Ctrl+F3 report shows no WORLD SOUND spikes.
+- **Checks here.** Native tests; `sound_demo analyze`; a stress render at the voice cap.
+- **Your check.** A Ctrl+F3 report shows no WORLD SOUND spikes.
 
 ### 1.2 The preview tool: pictures of faceted ground (proves T1, T2, T3)
 - **Change.** A native tool builds faceted ground from the grid and draws still images on the CPU: rolling ground, a cliff, a dug pit, and material borders. It uses the same lighting formulas as the game's shader: sun, sky light, height-based blending. It also counts triangles, blanket subdivision against "only where it shows".
@@ -109,12 +109,12 @@
 - **Your check.** A Ctrl+F3 report with chunks drawn well under chunks resident.
 
 ### 1.12 The first functional test
-The whole checklist, T1–T13, on your machine. Then the M1 reflection, the forecast review and the ledger.
+The footsteps first (D31): the palette's −21 dB ceiling (DESIGN 10.4) holds them to about +5 dB of the raise you picked, so I'll make clips of footsteps allowed past it, on the new ground, for you to choose from. Then the whole checklist, T1–T13, on your machine. Then the M1 reflection, the forecast review and the ledger.
 
 ---
 
 ## Questions for you
 
-1. **The footstep level:** answered, clip 3 (D29). Whether they may pass the ceiling comes with step 1.1.
+1. **The footstep level:** answered, clip 3 (D29). Whether they may pass the ceiling waits for step 1.12 (D31).
 2. **The hotbar:** answered. Materials come from the library menu, and the hotbar stays as a placeholder (D30).
 3. **The order:** is the sound fix first, then pictures, then the engine, what you want?

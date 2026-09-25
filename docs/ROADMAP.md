@@ -4,7 +4,7 @@ The order we get to the goals (`GOALS.md`) in. Each milestone ends with the owne
 
 ## Now
 
-**M0: separate the engine from Voxistics.** *Done (2026-09-25).* Plan: `M0_PLAN.md`. Built and run on the owner's machine: 60 fps, start-up 0.99 s. It looks exactly like Voxistics, which was its scope. Found on the first run: the title, the OneDrive folder, quiet footsteps, and world sound spiking to 15 ms (fixed, fixed, clips sent, M1 step 1.1). Baseline in `COST_LEDGER.md`; reflection in `REFLECTIONS.md`.
+**M0: separate the engine from Voxistics.** *Done (2026-09-25).* Plan: `M0_PLAN.md`. Built and run on the owner's machine: 60 fps, start-up 0.99 s. It looks exactly like Voxistics, which was its scope. Found on the first run: the title, the OneDrive folder, quiet footsteps, and world sound spiking to 15 ms (fixed, fixed, raised a little with the full check in M1 step 1.12, M1 step 1.1). Baseline in `COST_LEDGER.md`; reflection in `REFLECTIONS.md`.
 
 ## Next
 

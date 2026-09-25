@@ -24,13 +24,13 @@ Each step is one commit. After every step the game builds and runs, and the chec
 |---|---|---|
 | **0.1 Screenshot key** | F2 saves the frame as a PNG in the save folder (only when pressed; local file). Done first, so the after-M0 comparison can use it | `render.cpp/.h` (backbuffer read), `game.cpp` (key), `persist.cpp/.h` (folder) |
 | **0.2 Checks here** | `tools/check_mingw.sh` (the cross-compile, scripted) and `tools/check_layers.sh` (reports layer violations; it only starts failing once 0.4–0.8 have removed the known ones) | `tools/` (new files), `tests/run.sh` |
-| **0.3 Docs** | Archive the Voxistics docs, write the new `CLAUDE.md` (**shown to you before commit**), start walkgrid's `DESIGN.md` from the engine sections that carry over | `CLAUDE.md`, `DESIGN.md` → `docs/voxistics/DESIGN.md`, new `DESIGN.md`, `docs/REVIEW_2026-09.md` and `docs/SOUND_PALETTE.md` → `docs/voxistics/` (SOUND_PALETTE stays referenced: the palette carries over) |
+| **0.3 Docs** | Archive the Voxistics docs, write the new `CLAUDE.md` (**shown to you before commit**), start walkgrid's `DESIGN.md` from the engine sections that carry over | `CLAUDE.md`, `DESIGN.md` → `docs/voxistics/DESIGN.md`, new `DESIGN.md`, `docs/REVIEW_2026-09.md` → `docs/voxistics/` (`docs/SOUND_PALETTE.md` stays: the palette carries over) |
 | **0.4 The game tick** | `main.cpp` calls one `GameTick(dt)`; the Line, pulse, flier and essence calls move behind it | `main.cpp`, `game.cpp/.h` |
 | **0.5 Take The Line off** | Sky lead, ghost moon, star wobble, Line glow in the world shader, F7 marker, Line sounds, Line save data | `render.cpp`, `game.cpp`, `worldsound.cpp`, `worldfile.*`, `persist.cpp`, remove `theline.*` from the build and tests |
 | **0.6 Take pulse off** | Pulse blocks, pipes, harvesters, stores, diffusers, store screen, pulse drawing, pulse colours, colour-vision setting, the tutorial (it taught pulse) | `blocks.h`, `render.cpp`, `game.cpp`, `world.cpp` (chunk-arrived hook becomes a generic callback), `soundscape.cpp`, `library.h`, `persist.cpp`, remove `pulse.*`, `pulse_colours.h` |
 | **0.7 Take fliers and essence off** | Fliers and their glowing patches (the 8-spot loop leaves the world shader), mold, the attractor block, the essence map (M) | `render.cpp`, `blocks.h`, `game.cpp`, `persist.cpp`, `worldfile.*`, remove `fliers.*`, `essence.*`, `essencemap.*` |
-| **0.8 Generic glow** | Glow kinds become engine-generic: steady, breathing, music-driven. The music-reactive block stays, since the music stays | `blocks.h`, `render.cpp`, `glowlight.*` |
-| **0.9 Fresh save format** | walkgrid save v1: the same chunk records, plus a generic "game section"; Voxistics' v2–v9 loaders removed | `worldfile.*`, `persist.*`, tests |
+| **0.8 Generic glow** | Glow kinds become engine-generic: steady, breathing, music-driven. The music-reactive block stays, since the music stays. Also: `common.h` stops including the block list (the base layer can't name the world layer) | `blocks.h`, `render.cpp`, `glowlight.*`, `common.h`, `world.h` |
+| **0.9 Fresh save format; split persist** | walkgrid save v1: the same chunk records, plus a generic "game section"; Voxistics' v2–v9 loaders removed. `persist.*` splits into `settings.*` (platform layer: folders, settings, keybindings) and `savegame.*` (game layer: saving and loading a game), because today one file spans both | `worldfile.*`, `persist.*` → `settings.*` + `savegame.*`, tests, project file |
 | **0.10 Rename** | walkgrid: project and solution files, window title, `Documents\My Games\walkgrid\`, report headers | `Voxistics.sln/.vcxproj/.filters` → `walkgrid.*`, `main.cpp`, `persist.*`, `render.cpp`, `audio.cpp`, `profiler.cpp`, `textures.cpp`, `world.cpp`, `worldfile.cpp`, tools that name the project file |
 | **0.11 Split game.cpp** | `input.cpp`, `menus.cpp`, `hud.cpp`, with `game.cpp` keeping the state machine and tick. Moves only, no behaviour change | `game.cpp/.h`, new files, project file |
 | **0.12 Smooth motion** | Render between the last two ticks; the frame cap no longer applies while vsync is on | `main.cpp`, `world.h` (previous position) |
@@ -38,7 +38,7 @@ Each step is one commit. After every step the game builds and runs, and the chec
 | **0.14 Raw mouse input** | `WM_INPUT` replaces cursor recentring for mouse look | `input.cpp`, `main.cpp` |
 | **0.15 Back-face culling** | Opaque cube faces culled, *if* a native test shows every shape is wound consistently; otherwise left as is and noted | `render.cpp`, `tests/` |
 
-The layer check starts passing, and joins `tests/run.sh` as a hard failure, once 0.4–0.8 are done.
+The layer check starts passing, and joins `tests/run.sh` as a hard failure, once 0.4–0.9 are done. At 0.2 it reported 16 violations, all of them things M0's steps remove.
 
 **Removed from the tests:** The Line, pulse, fliers, colour vision, essence and legacy-load tests. They go with their systems. Everything else stays and must pass.
 
@@ -46,7 +46,7 @@ The layer check starts passing, and joins `tests/run.sh` as a hard failure, once
 
 ## How M0 is checked
 
-**Here, after every step:** native tests, shader check, MSVC check, the MinGW cross-compile and (from 0.8) the layer check.
+**Here, after every step:** native tests, shader check, MSVC check, the MinGW cross-compile (`tools/check_mingw.sh`) and (from 0.9) the layer check (`tools/check_layers.py`).
 
 **You, at the end:**
 

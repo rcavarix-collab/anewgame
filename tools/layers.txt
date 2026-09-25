@@ -1,0 +1,72 @@
+# Which layer each source file belongs to (docs/FOUNDATIONS.md 2).
+# A file may include only files from its own layer or a lower one.
+# tools/check_layers.py enforces this; every compiled file must be listed.
+#
+#   1 base          maths, constants, profiler, jobs
+#   2 platform      window, input, timing, file locations, settings
+#   3 world         cells, materials registry, streaming, terrain, edits, collision, save format
+#   4 presentation  meshing, textures, rendering, sky, light, audio engine, sound palette
+#   5 game          what walkgrid is: menus, HUD, the tick's game logic, sound choices, saving the game
+#   6 app           main.cpp only: wires every layer together
+#
+# The materials registry (blocks.h) sits in the world layer: its structure is
+# engine, its rows are data the engine reads, like textures.
+
+common.h        1
+profiler.h      1
+profiler.cpp    1
+
+persist.h       2
+persist.cpp     2
+
+blocks.h        3
+world.h         3
+world.cpp       3
+worldfile.h     3
+worldfile.cpp   3
+shapes.h        3
+shapes.cpp      3
+
+mesher.h        4
+mesher.cpp      4
+vtex.h          4
+vtex.cpp        4
+blocktex.h      4
+blocktex.cpp    4
+icons.h         4
+icons.cpp       4
+textures.cpp    4
+render.h        4
+render.cpp      4
+sky.h           4
+glowlight.h     4
+glowlight.cpp   4
+audio.h         4
+audio.cpp       4
+music_synth.h   4
+music_synth.cpp 4
+sfx_synth.h     4
+sfx_synth.cpp   4
+synth_kit.h     4
+musiclevel.h    4
+soundscape.h    4
+soundscape.cpp  4
+
+library.h       5
+game.h          5
+game.cpp        5
+worldsound.h    5
+worldsound.cpp  5
+theline.h       5
+theline.cpp     5
+pulse.h         5
+pulse.cpp       5
+pulse_colours.h 5
+fliers.h        5
+fliers.cpp      5
+essence.h       5
+essence.cpp     5
+essencemap.h    5
+essencemap.cpp  5
+
+main.cpp        6

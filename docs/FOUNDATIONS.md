@@ -54,18 +54,25 @@ D3D11's drawing context isn't safe to share, and races are the worst kind of bug
 
 ## 4. Performance budgets
 
-**These are proposed numbers, to be tuned to your machine.** Each has a row in F3, so a system over budget is visible the moment it happens.
+**Two machines to design for.**
+- **Reference machine (yours):** a GTX 1060 3GB, 16 GB of RAM, a good gaming PC of about six years ago. Budgets are measured on it.
+- **Floor:** less than that, since not everyone has what you have. Design for 8 GB of RAM and a 2 GB graphics card. Every heavy effect gets a setting, and a preset can bring it down.
 
-| Budget (per frame at 60 fps, 16.7 ms) | Proposed |
+The game itself still never reads the machine it's on; these numbers are for us.
+
+Each budget has a row in F3, so a system over budget is visible the moment it happens.
+
+| Budget (per frame, 1080p, reference machine) | Target |
 |---|---|
-| Main-thread CPU work (everything but waiting for vsync) | ≤ 5 ms |
-| GPU: world pass / shadow pass / post / UI | ≤ 9 / 1.5 / 1.5 / 0.5 ms |
+| Frame rate | 60 fps never missed; aim for 120+ with vsync off or on a high-refresh display |
+| Main-thread CPU work (everything but waiting for vsync) | ≤ 5 ms (the processor is the unknown; this leaves room) |
+| GPU total / world pass | ≤ 8 ms / ≤ 5 ms (room for 120 fps, and for action later) |
 | Mesh uploads per frame | ≤ 6, as now |
-| Worst single frame while walking into new ground or editing | ≤ 33 ms |
-| Visible ground triangles | ≤ 600,000 (see 4.1) |
-| Memory: game process / GPU | ≤ 1 GB / ≤ 512 MB |
+| Worst single frame while walking into new ground or editing | ≤ 16.7 ms (no dropped frame at 60) |
+| Visible ground triangles | ≤ 1.5 million at the default settings |
+| Memory: game process / GPU | ≤ 1.5 GB / ≤ 1 GB (fits the floor machine) |
 
-### 4.1 Triangle budget: the risk we need to settle first
+### 4.1 Triangle budget
 
 Rough estimate for the "small triangles near you" plan, using gently rolling ground (about 1.5 surface cells per column, 2 triangles per cell):
 
@@ -76,12 +83,17 @@ Rough estimate for the "small triangles near you" plan, using gently rolling gro
 | Far, 1-block, out to 8 chunks | ~410 | ~750 | ~310,000 |
 | **All** | | | **~1.2 million** |
 
-That's double the budget. It would also cost more again if the shadow pass drew the fine mesh, and a dug-out area or cliff can multiply one chunk's count several times over. **Blanket subdivision near the player is the wrong design.** Proposed instead:
+A GTX 1060 can draw that comfortably. It still isn't the design, for three reasons:
+- the floor machine can't;
+- dug-out ground and cliffs multiply a chunk's count several times;
+- every triangle spent on flat ground is budget taken from the action later.
 
-1. **Subdivide only where it shows.** A base facet is split only if it's near *and* it's bumpy, on a material border, or on an edge the player can see in silhouette. Flat, uniform facets stay whole at any distance. Estimated at 3–5 times fewer near triangles for the same look. This is to be confirmed with the preview tool.
-2. **Shadows use the base mesh** at every distance. A shadow can't show quarter-block bumps anyway.
-3. **Limits per chunk.** A chunk's fine mesh has a hard vertex cap. Past it, that chunk drops to the next coarser level instead of overflowing, so there's never a surprise spike.
-4. **Measure before committing.** The CPU preview tool (M1's first deliverable) counts triangles for real terrain, including dug-out ground. The band sizes are set from those counts, not from this estimate.
+So:
+1. **Subdivide only where it shows.** A base facet is split only if it's near *and* it's bumpy, on a material border, or on an edge the player can see in silhouette. Flat, uniform facets stay whole at any distance.
+2. **Shadows use the base mesh** at every distance.
+3. **Limits per chunk.** A chunk's fine mesh has a hard vertex cap. Past it, the chunk drops to the next coarser level instead of spiking.
+4. **A setting for fine-detail distance.** Graphics presets scale it down for lesser machines.
+5. **Measure before committing.** The CPU preview tool (M1's first deliverable) counts real triangles, including on dug-out ground. The band sizes are set from those counts, not from this estimate.
 
 ### 4.2 Other performance risks noted now
 
@@ -152,8 +164,6 @@ A milestone is done only when both halves are.
 
 ---
 
-## 9. What I'd like from you
+## 9. Status
 
-1. **Your machine, roughly.** Its graphics card and processor, or its age. The game never reads this, but it would let me set the section 4 budgets properly instead of guessing.
-2. **Scope tracking.** Voxistics used a MoSCoW spreadsheet (`docs/SCOPE_MOSCOW.xlsx`). Keep that way of working for walkgrid with a fresh sheet, or use the outline and decision log instead?
-3. **Approval of this document**, especially the layer rule (section 2), the thread model (3), the budgets (4), the data decisions (5) and the fresh save format.
+Approved by the owner (2026-09-25). Scope is tracked in `docs/SCOPE_MOSCOW.xlsx` (fresh for walkgrid; the Voxistics sheet is in `docs/voxistics/`). Decisions are logged in `docs/DECISIONS.md`.

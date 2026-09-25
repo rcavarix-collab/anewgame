@@ -5,7 +5,7 @@
 // gamefiles.h, and applying a decoded save to the live world. Moved from
 // Voxistics' persist.cpp (M0.9). Game layer (5).
 
-#ifndef NOMINMAX // also set project-wide (Voxistics.vcxproj)
+#ifndef NOMINMAX // also set project-wide (walkgrid.vcxproj)
 #define NOMINMAX
 #endif
 #include <windows.h> // OutputDebugStringA

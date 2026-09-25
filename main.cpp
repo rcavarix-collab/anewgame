@@ -1,6 +1,6 @@
 // main.cpp
 //
-// Voxistics - Milestone 1 prototype. Entry point only: window creation,
+// walkgrid - prototype. Entry point only: window creation,
 // startup sequencing, and the fixed-timestep game loop. Everything the
 // loop drives lives in its own module now (world.h/world.cpp,
 // render.h/render.cpp, audio.h/audio.cpp, persist.h/persist.cpp,
@@ -11,7 +11,7 @@
 // set first -- without it, any bare std::min/std::max call anywhere in
 // this project would silently break at the token that happens to be
 // followed by '('.
-#ifndef NOMINMAX // also set project-wide (Voxistics.vcxproj)
+#ifndef NOMINMAX // also set project-wide (walkgrid.vcxproj)
 #define NOMINMAX
 #endif
 #include <windows.h>
@@ -39,7 +39,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = L"VoxisticsWindowClass";
+    wc.lpszClassName = L"walkgridWindowClass";
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     RegisterClassW(&wc);
 
@@ -56,7 +56,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
     RECT wr = { 0, 0, DEFAULT_WINDOW_W, DEFAULT_WINDOW_H };
     DWORD style = WS_OVERLAPPEDWINDOW; // resizable and maximisable; the backbuffer follows (WM_SIZE)
     AdjustWindowRect(&wr, style, FALSE);
-    g_hwnd = CreateWindowW(L"VoxisticsWindowClass", L"Voxistics",
+    g_hwnd = CreateWindowW(L"walkgridWindowClass", L"walkgrid",
                             style, CW_USEDEFAULT, CW_USEDEFAULT,
                             wr.right - wr.left, wr.bottom - wr.top,
                             nullptr, nullptr, hInstance, nullptr);

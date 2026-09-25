@@ -4,7 +4,7 @@
 // its subfolders, and the crash-safe file writes everything else uses.
 // Moved from Voxistics' persist.cpp (M0.9) unchanged in behaviour.
 
-#ifndef NOMINMAX // also set project-wide (Voxistics.vcxproj)
+#ifndef NOMINMAX // also set project-wide (walkgrid.vcxproj)
 #define NOMINMAX
 #endif
 #include <windows.h>
@@ -44,7 +44,7 @@ static std::filesystem::path EnsureDirectoryBulletproof(std::filesystem::path di
     return dir;
 }
 
-// Resolves (creating if needed) Documents\My Games\Voxistics -- the
+// Resolves (creating if needed) Documents\My Games\walkgrid -- the
 // conventional PC-game save location: visible and easy for players to
 // find, back up, or copy between machines, unlike a hidden AppData
 // folder. Falls back to the current working directory (this prototype's
@@ -59,7 +59,7 @@ std::filesystem::path GameDataDirectory() {
     HRESULT hr = SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docsPath);
     fs::path dir;
     if (SUCCEEDED(hr) && docsPath) {
-        dir = fs::path(docsPath) / L"My Games" / L"Voxistics";
+        dir = fs::path(docsPath) / L"My Games" / L"walkgrid";
     }
     if (docsPath) CoTaskMemFree(docsPath);
 

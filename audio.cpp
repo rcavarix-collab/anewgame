@@ -17,7 +17,7 @@
 // paused menu too, per an explicit request -- losing the music when you
 // pause reads as "time itself stopped," which is the point.
 
-#ifndef NOMINMAX // also set project-wide (Voxistics.vcxproj)
+#ifndef NOMINMAX // also set project-wide (walkgrid.vcxproj)
 #define NOMINMAX
 #endif
 #include <windows.h>

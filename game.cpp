@@ -3,7 +3,7 @@
 // Menu/UI state machine, input dispatch, WndProc, and the UI render
 // pass -- see game.h for what crosses into main.cpp's own loop.
 
-#ifndef NOMINMAX // also set project-wide (Voxistics.vcxproj)
+#ifndef NOMINMAX // also set project-wide (walkgrid.vcxproj)
 #define NOMINMAX
 #endif
 #include <windows.h>
@@ -642,7 +642,7 @@ static std::string PerfReportHeader() {
     const char* build = "Release";
 #endif
     snprintf(b, sizeof b,
-             "Voxistics performance report\n"
+             "walkgrid performance report\n"
              "build: %s\nwindow: %d x %d%s\n"
              "render distance: %d  shadows: %s  bloom: %s  SSAO: %s  edges: %s  music intensity: %.0f%%\n"
              "day time: %s  position: %.0f, %.0f, %.0f\n\n",

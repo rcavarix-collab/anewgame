@@ -3,6 +3,6 @@
 # Usage: tools/sound_demo.sh analyze | demo OUTDIR
 set -e
 cd "$(dirname "$0")"
-OUT="${TMPDIR:-/tmp}/voxistics_sound_demo"
+OUT="${TMPDIR:-/tmp}/walkgrid_sound_demo"
 g++ -std=c++17 -O2 -Wall -Wextra -I.. sound_demo.cpp ../sfx_synth.cpp ../music_synth.cpp -o "$OUT"
 "$OUT" "$@"

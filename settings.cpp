@@ -5,7 +5,7 @@
 // and every key are unchanged, and the game's keys now go through the
 // hooks. Platform layer (2).
 
-#ifndef NOMINMAX // also set project-wide (Voxistics.vcxproj)
+#ifndef NOMINMAX // also set project-wide (walkgrid.vcxproj)
 #define NOMINMAX
 #endif
 #include <windows.h> // VK_* codes for the default bindings

@@ -1256,7 +1256,7 @@ static std::string g_shaderErrors;
 // ---- Compiled-shader cache (Part XVI: start-up) ----
 // Compiling HLSL is the biggest start-up cost on a modest machine, and its
 // result only changes when the shader does. So each compile's bytecode is
-// kept in Documents\My Games\Voxistics\ShaderCache, named by a hash of
+// kept in Documents\My Games\walkgrid\ShaderCache, named by a hash of
 // everything that went into it (source, entry point, profile, define,
 // compiler version): a changed shader simply gets a new name, and files
 // no longer asked for are removed once start-up is done. Whatever isn't
@@ -1815,7 +1815,7 @@ bool InitD3D(HWND hwnd) {
     if (g_shaderErrors.empty()) std::filesystem::remove("shader_errors.txt", ec);
     else {
         std::ofstream f("shader_errors.txt", std::ios::trunc);
-        f << "Voxistics: these shaders failed to compile on this machine. The effects that need them are switched off.\n\n"
+        f << "walkgrid: these shaders failed to compile on this machine. The effects that need them are switched off.\n\n"
           << g_shaderErrors;
     }
     return true;

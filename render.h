@@ -8,7 +8,7 @@
 
 #pragma once
 
-#ifndef NOMINMAX // also set project-wide (Voxistics.vcxproj)
+#ifndef NOMINMAX // also set project-wide (walkgrid.vcxproj)
 #define NOMINMAX // MSVC's windows.h (pulled in via d3d11.h) defines min/max macros unless this precedes it
 #endif
 #include "common.h"

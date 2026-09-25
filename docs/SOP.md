@@ -65,3 +65,5 @@ A step isn't finished until all of these are true:
 - any new idea we're relying on but haven't proven is in `THEORIES.md`, and any problem we can see coming is in `FORECASTS.md`.
 
 Code and docs that disagree count as a bug.
+
+**Every hand-over to the owner opens with "what you'll see":** what looks, sounds or feels different in the running game, and what doesn't change yet. Never only what changed in the code.

@@ -195,7 +195,9 @@ void TakeScreenshotIfRequested() {
     int w = 0, h = 0;
     std::filesystem::path path = NextScreenshotPath();
     bool ok = !path.empty() && ReadBackbuffer(pixels, w, h) && SavePngBGRA(path.c_str(), pixels.data(), w, h);
-    ShowToast(ok ? "SCREENSHOT SAVED" : "SCREENSHOT FAILED", 1.5f);
+    // Where it went, in full, so it can be found (the folder's path shown,
+    // as the performance report does).
+    ShowToast(ok ? "SCREENSHOT SAVED: " + path.string() : "SCREENSHOT FAILED", ok ? 5.0f : 2.0f);
 }
 
 // ---- The game's settings.cfg keys (settings.h hooks) ----
@@ -239,8 +241,7 @@ void PollPerfCapture() {
     std::string text;
     if (!ProfTakeCaptureReport(text)) return;
     std::string path = WriteTextToSaveFolder("perf_report.txt", text);
-    // The full path: Documents is often moved (into OneDrive, say), so
-    // "next to your saves" alone can send the player to the wrong folder.
+    // The full path, so the player knows exactly where to look.
     ShowToast(path.empty() ? "PERF REPORT COULD NOT BE SAVED" : "PERF REPORT SAVED: " + path, 12.0f);
 }
 void TickAutosave(float dt) {

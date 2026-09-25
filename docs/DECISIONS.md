@@ -31,3 +31,4 @@ One line per decision: what was decided, when, by whom, and why. A decision is o
 | D25 | 2026-09-25 | Sound is synthesized only: no recorded or sampled audio, ever. A hard rule. | Owner | CLAUDE.md |
 | D26 | 2026-09-25 | The game must be adaptable to other languages; "English only" is dropped. All player-facing text goes through a string table, and the font covers more than ASCII. | Owner | ROADMAP (M1 step 0) |
 | D27 | 2026-09-25 | SOP approved and binding, with two tiers (small change / feature). Engine-to-game hooks are capped: each is listed in FOUNDATIONS.md 2.1, and adding one is a logged decision. | Owner | SOP.md, FOUNDATIONS.md |
+| D28 | 2026-09-25 | The game's folder is the player's local `Documents\My Games\walkgrid` (from the profile folder), never a cloud-synced one; nobody is pushed into OneDrive. Earlier builds' folder is moved across once. Screenshots and the report show where they were saved. | Owner | DESIGN.md 7.2.1 |

@@ -361,7 +361,7 @@ void RenderUIPass() {
     } else if (g_menuScreen == MenuScreen::TitleMain) {
         UIRect panel = SubmenuPanelRect(TITLE_LAYOUT);
         drawPanelBg(panel);
-        std::string gameTitle = "VOXISTICS";
+        std::string gameTitle = "WALKGRID";
         float titleScale = 1.6f;
         UIDrawText(glyphVerts, gameTitle, panel.x0 + (TITLE_LAYOUT.panelW - UITextWidth(gameTitle, titleScale)) / 2.0f, panel.y0 - 60.0f, titleScale, 1, 1, 1, 1);
 

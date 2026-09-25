@@ -1,7 +1,8 @@
 // gamefiles.h
 //
 // Where the game keeps its files, and how it writes them safely
-// (DESIGN.md 7.2.1, 7.3): Documents\My Games\walkgrid\ and its
+// (DESIGN.md 7.2.1, 7.3): the player's local Documents folder, My Games\walkgrid
+// (never a cloud-synced folder, D28) and its
 // subfolders (Saves, ShaderCache, Screenshots), each created on demand and
 // resolved fresh every time. Platform layer (2): nothing here knows what a
 // world, a setting or a game is. Only ever local files (CLAUDE.md, Privacy).

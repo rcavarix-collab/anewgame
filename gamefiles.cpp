@@ -53,20 +53,54 @@ static std::filesystem::path EnsureDirectoryBulletproof(std::filesystem::path di
 // path -- e.g. a plain file sitting where a folder needs to be. A save
 // attempt should always have somewhere safe to go rather than failing
 // forever because the "nice" location didn't pan out.
-std::filesystem::path GameDataDirectory() {
+// The game's folder is in the player's own local Documents folder
+// (%USERPROFILE%\Documents\My Games\walkgrid), never a cloud-synced one
+// (D28). Windows' "Documents" known folder can be redirected into OneDrive
+// by its backup feature, even for people who never use OneDrive, so the
+// profile folder is asked for instead and "Documents" is taken from there.
+static std::filesystem::path ResolveGameDataDirectory() {
     namespace fs = std::filesystem;
-    PWSTR docsPath = nullptr;
-    HRESULT hr = SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docsPath);
+    PWSTR profilePath = nullptr;
     fs::path dir;
-    if (SUCCEEDED(hr) && docsPath) {
-        dir = fs::path(docsPath) / L"My Games" / L"walkgrid";
-    }
-    if (docsPath) CoTaskMemFree(docsPath);
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &profilePath)) && profilePath)
+        dir = fs::path(profilePath) / L"Documents" / L"My Games" / L"walkgrid";
+    if (profilePath) CoTaskMemFree(profilePath);
+    return dir;
+}
 
+// Builds before this change kept the folder in the known-folder Documents
+// (possibly inside OneDrive). Once, if the local folder doesn't exist yet
+// and that older one does, its contents move across -- a rename when they
+// share a drive, else a copy and then removal -- so settings, saves and
+// screenshots aren't left behind.
+static void MoveOldGameFolderOnce(const std::filesystem::path& dir) {
+    namespace fs = std::filesystem;
+    static bool done = false;
+    if (done) return;
+    done = true;
+    std::error_code ec;
+    if (fs::exists(dir, ec)) return;
+    PWSTR docsPath = nullptr;
+    fs::path old;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docsPath)) && docsPath)
+        old = fs::path(docsPath) / L"My Games" / L"walkgrid";
+    if (docsPath) CoTaskMemFree(docsPath);
+    if (old.empty() || !fs::is_directory(old, ec) || fs::equivalent(old, dir, ec)) return;
+    fs::create_directories(dir.parent_path(), ec);
+    fs::rename(old, dir, ec);
+    if (!ec) return;
+    ec.clear();
+    fs::copy(old, dir, fs::copy_options::recursive, ec);
+    if (!ec) fs::remove_all(old, ec);
+}
+
+std::filesystem::path GameDataDirectory() {
+    std::filesystem::path dir = ResolveGameDataDirectory();
     if (dir.empty()) {
-        OutputDebugStringA("GameDataDirectory: could not resolve Documents, falling back to working directory\n");
-        return fs::path();
+        OutputDebugStringA("GameDataDirectory: could not resolve the profile folder, falling back to working directory\n");
+        return std::filesystem::path();
     }
+    MoveOldGameFolderOnce(dir);
     return EnsureDirectoryBulletproof(dir, "GameDataDirectory");
 }
 

@@ -81,7 +81,7 @@ Problems we expect before they happen: why we expect each one, the warning signs
 
 ## Sound
 
-### F11. The effects voice starves during a hitch
+### F11. The effects voice starves during a hitch *(came true in the M0 baseline: WORLD SOUND worst 14.9 ms on the main thread; see REFLECTIONS)*
 - **Likelihood:** Medium. **Cost if ignored:** Medium.
 - **Why.** Today it's topped up once per frame from the main thread, with only about 40 ms queued.
 - **Warning signs.** Clicks or gaps in effects during saves, loading or window drags.

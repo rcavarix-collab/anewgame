@@ -4,6 +4,20 @@ Looking back, honestly: what went well, what didn't, and what we'll do different
 
 ---
 
+## M0 on the owner's machine, 2026-09-25
+
+**What the first Windows run showed**
+- It runs: 60 fps, start-up in 0.99 s, graphics work under 1 ms a frame.
+- **One system is over budget.** World sound runs at 0.54 ms typically but up to 14.9 ms, and every one of the worst frames traces to it. It renders sound effects on the main thread (forecast F11 came true).
+- **Footsteps can't be heard.** They are made, but mixed about 20 dB under the music. This was carried from Voxistics, not broken by M0.
+- **Two things were missed.** The title screen still said VOXISTICS: my rename search was case-sensitive. Files went into OneDrive's Documents: Windows redirects "Documents" there by default.
+- **The owner expected new ground, and saw Voxistics.** Taking the old game out was M0's whole scope, and the plan said so ("What M0 can't show: anything about the faceted world"). But I never said it plainly when handing the build over: "this will look exactly like Voxistics". A hand-over has to say what the person will see, not only what changed.
+
+**We'll do differently**
+- Every hand-over opens with "what you'll see", including what hasn't changed. *(New rule in SOP section 5.)*
+- Name searches are case-insensitive, and a check now fails the tests if the old name appears in any string.
+- Don't hold a visible milestone behind an invisible one: the owner wanted to go straight to M1, and next time a milestone with nothing to see should be proposed as part of the next one.
+
 ## M0 so far (steps 0.1–0.13), 2026-09-25
 
 **Went well**

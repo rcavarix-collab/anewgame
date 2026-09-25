@@ -503,7 +503,7 @@ Generation cost (now off the main thread): median ~1.3 ms per 0.25 s chunk (abou
 **Graphics minimum (walkgrid, D20):** Direct3D 11 at feature level 11.0; every shader compiles as shader model 5.0 (`vs_5_0` / `ps_5_0`). A machine without it gets a message box at start-up instead of a silent exit.
 
 
-Eighteen source files (`main.cpp world.cpp render.cpp audio.cpp persist.cpp game.cpp textures.cpp music_synth.cpp profiler.cpp worldfile.cpp vtex.cpp blocktex.cpp mesher.cpp shapes.cpp icons.cpp theline.cpp essence.cpp essencemap.cpp`), one compiler invocation, no project file strictly needed (the checked-in `.vcxproj`/`.vcxproj.filters` list them all for Visual Studio):
+Twenty-four source files, listed (with their layers) in `walkgrid.vcxproj` and `tools/layers.txt`, which are the list of record: `main.cpp`; layer 1 `profiler.cpp`; layer 2 `gamefiles.cpp settings.cpp`; layer 3 `world.cpp worldfile.cpp shapes.cpp`; layer 4 `render.cpp textures.cpp vtex.cpp blocktex.cpp mesher.cpp icons.cpp glowlight.cpp audio.cpp music_synth.cpp sfx_synth.cpp soundscape.cpp`; layer 5 `game.cpp input.cpp menus.cpp hud.cpp savegame.cpp worldsound.cpp`. One compiler invocation would do; the checked-in `.vcxproj`/`.vcxproj.filters` list them all for Visual Studio:
 
 ```
 cl main.cpp world.cpp render.cpp audio.cpp persist.cpp game.cpp textures.cpp music_synth.cpp profiler.cpp worldfile.cpp vtex.cpp blocktex.cpp mesher.cpp shapes.cpp icons.cpp theline.cpp essence.cpp essencemap.cpp /link d3d11.lib dxgi.lib d3dcompiler.lib gdiplus.lib gdi32.lib user32.lib shell32.lib ole32.lib uuid.lib xaudio2.lib /SUBSYSTEM:WINDOWS

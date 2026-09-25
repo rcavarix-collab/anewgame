@@ -138,8 +138,8 @@ Each item says who can check it. **"Me"** means native tests, still images or of
 | Faceted ground instead of cubes, finer near you | New |
 | Seeded rolling landscape with meadow, dirt, stone and sand regions | New (replaces the flat test plain) |
 | Placing and removing ground, one cell at a time, where the crosshair points | Adapted |
-| Unsupported ground falls, a cell per tick (Voxistics gravity) | Adapted, **your call (Q1)** |
-| Grass left under cover dies back to dirt after a few minutes | Kept, **your call (Q1)** |
+| Unsupported ground falls, a cell per tick (Voxistics gravity) | Parked (revisit later) |
+| Grass left under cover dies back to dirt after a few minutes | Parked (revisit later) |
 | Glowing materials (magma-type) that light their surroundings, with shadows | Kept |
 | Day and night: a one-hour day with sun, moon, stars and drifting cloud | Kept |
 | Saves: 5 slots, autosave every 5 minutes and on quit, crash-safe, only your changes stored | Kept (new format version) |
@@ -155,7 +155,7 @@ Each item says who can check it. **"Me"** means native tests, still images or of
 | Darkness inside pits, overhangs and hollows (sky light) | New |
 | Screen-space ambient occlusion, outlines, bloom (each can be switched off) | Kept |
 | Smooth motion above 60 fps | New |
-| Plants that turn to face you (grass tufts, flowers, reeds) | Parked, **your call (Q2)** |
+| Plants that turn to face you (grass tufts, flowers, reeds) | Parked (revisit later) |
 | See-through materials (glass, ice, water) | Parked |
 
 ### Sound
@@ -208,7 +208,6 @@ The Line, pulse logistics (harvesters, pipes, stores, diffusers), fliers and the
 
 **From you**
 - Approval of this outline.
-- Answers to Q1 and Q2 below.
 - For each milestone: a Visual Studio build on your machine, a few screenshots (the new key), and an F3 or Ctrl+F3 report. These are the only way anything visible or audible gets checked.
 - Your picks from the texture library for the starting materials (I'll propose a dozen).
 
@@ -227,7 +226,6 @@ The Line, pulse logistics (harvesters, pipes, stores, diffusers), fliers and the
 
 ## 9. Open questions
 
-- **Q1.** Ground behaviour from Voxistics: should unsupported ground fall, and should covered grass die back to dirt? Both are cheap and already built.
-- **Q2.** Plants that face you (grass tufts, flowers, reeds) dressing the ground: in the first test, or later?
+None. Falling ground, grass die-back and facing plants are parked, to revisit after the first test.
 
-Otherwise, **waiting on your approval of this outline to start M0.**
+**Waiting on your approval of this outline to start M0.**

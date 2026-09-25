@@ -2,13 +2,22 @@
 
 **Why this exists.** Games slow down and break when features pile up without rules: each one adds a little cost that runs all the time, touches systems it shouldn't, and never leaves. This procedure is the gate everything passes through, however small. It builds on `CLAUDE.md` (how we work) and `docs/FOUNDATIONS.md` (layers, threads, budgets).
 
-**Status: draft for the owner's approval.** Once approved, `CLAUDE.md` points here and it's binding.
+**Status: approved and binding (D27).** `CLAUDE.md` points here.
+
+## 0. Two tiers
+
+| Tier | What counts | What it needs |
+|---|---|---|
+| **Small change** | A bug fix or tweak inside one file that adds no cost (no new work per frame or tick, no memory, no new file, no new setting) | A line in the step's report saying what changed and why; the usual checks. |
+| **Feature** | Anything new; anything with a cost; anything touching more than one system; any new hook, setting, file or save data | Everything below: the card, the rules, the measurement, the docs. |
+
+When unsure, it's a feature.
 
 ---
 
-## 1. Before anything is built: the feature card
+## 1. Before a feature is built: the feature card
 
-Every addition gets a short card in the plan for its step. No card, no code.
+Every feature gets a short card in the plan for its step. No card, no code.
 
 | Question | The answer must say |
 |---|---|
@@ -29,7 +38,8 @@ Every addition gets a short card in the plan for its step. No card, no code.
 4. **No per-frame allocation** in hot paths. Buffers are reused.
 5. **Saves are versioned on purpose.** A feature that stores something uses the game section, and a change to what's stored is a format decision logged in `DECISIONS.md`.
 6. **Start-up stays fast.** Anything new at launch shows in the boot timeline, and is cached, deferred or done once.
-7. **Photosensitivity, privacy and "nothing anyone owns"** apply to every feature (CLAUDE.md).
+7. **Privacy, "nothing anyone owns", synthesized-only sound and translatable text** apply to every feature (CLAUDE.md).
+8. **Hooks are capped.** The engine reaches the game only through the hooks listed in FOUNDATIONS.md 2.1; a new one is a logged decision.
 
 ## 3. After it's built: the measurement
 

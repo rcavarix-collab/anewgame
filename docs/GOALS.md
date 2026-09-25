@@ -11,6 +11,8 @@ What we're aiming for, written so each goal can be checked. "Set by" says who se
 | G3 | Music and reactive sound that fit together and never fight | Effects stay in key and in time; nothing muddies the music (T7, T9) | Owner |
 | G4 | Lots of action without lag, when action arrives | The action budgets hold on the reference machine | Owner |
 | G5 | You can shape the world: place and remove ground | T8 | Owner |
+| G6 | Playable in other languages | Every player-facing word comes from the string table; a test language shows no English left and no missing characters (D26) | Owner |
+| G7 | All sound is synthesized | No audio files anywhere in the game (D25) | Owner |
 
 ## The engine
 
@@ -21,7 +23,7 @@ What we're aiming for, written so each goal can be checked. "Set by" says who se
 | E3 | Cost grows with what's on screen or changing, never with world size or play time | The same scene costs the same after an hour of play, and after walking far | Owner |
 | E4 | Runs on less than the reference machine | The floor (8 GB RAM, 2 GB graphics card) holds at lower settings | Owner |
 | E5 | Fast to start | The boot timeline stays under the M0 baseline (to be measured) | Carried from Voxistics |
-| E6 | Private: nothing leaves the machine | No network code, ever | Carried from Voxistics |
+| E6 | Private: nothing leaves the machine, and nothing about it can be taken from the game | No network code, ever; no online play (D23); only harmless reads of limits, never kept or shown (D21) | Owner |
 
 ## How we work
 

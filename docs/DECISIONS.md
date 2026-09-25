@@ -23,3 +23,11 @@ One line per decision: what was decided, when, by whom, and why. A decision is o
 | D17 | 2026-09-25 | M0 plan approved; work starts. Screenshot key is F2 (F12 breaks into the Visual Studio debugger). | Owner (F2: proposed) | M0_PLAN.md |
 | D18 | 2026-09-25 | New CLAUDE.md approved (working rules, layers, targets, seed rule limited to the four seed files). | Owner | CLAUDE.md |
 | D19 | 2026-09-25 | Old material lives apart in `reference/` (the four seed prototypes; Voxistics' docs): ideas only, never compiled; each item is deleted once nothing more is wanted from it, logged here. Voxistics pieces still in the build are listed in `reference/README.md` for deliberate removal. | Owner | reference/README.md |
+| D20 | 2026-09-25 | Graphics minimum raised to Direct3D feature level 11.0 and shader model 5.0 (was 10.0 / 4.0), for tessellation and compute shaders. | Owner | M0 step 0.16 |
+| D21 | 2026-09-25 | Harmless reads allowed: the game may ask the operating system for limits it must respect (processor count to size the job threads, the video-memory budget). Nothing invasive: no hardware details beyond those limits, never recorded, stored, sent or shown, so nothing about the player's machine can be taken from the game. Replaces D15's "never reads the machine". | Owner | CLAUDE.md |
+| D22 | 2026-09-25 | Editing stays at one-block cells; no finer sculpting for now. | Owner | |
+| D23 | 2026-09-25 | No online play, ever. No network code of any kind. | Owner | |
+| D24 | 2026-09-25 | The photosensitivity flash limit and accessibility requirements are no longer standing rules: a different audience. Can be dialled back in later. Existing accessibility options stay as they are unless the owner removes them. | Owner | |
+| D25 | 2026-09-25 | Sound is synthesized only: no recorded or sampled audio, ever. A hard rule. | Owner | CLAUDE.md |
+| D26 | 2026-09-25 | The game must be adaptable to other languages; "English only" is dropped. All player-facing text goes through a string table, and the font covers more than ASCII. | Owner | ROADMAP (M1 step 0) |
+| D27 | 2026-09-25 | SOP approved and binding, with two tiers (small change / feature). Engine-to-game hooks are capped: each is listed in FOUNDATIONS.md 2.1, and adding one is a logged decision. | Owner | SOP.md, FOUNDATIONS.md |

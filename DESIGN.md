@@ -558,7 +558,7 @@ Fliers: a Voxistics feature. See `reference/voxistics/DESIGN.md`.
 ## Part XXII — Structure: layers, threads and budgets
 Summarised here; the full reasoning is in `docs/FOUNDATIONS.md`.
 - **Layers** (FOUNDATIONS.md 2): 1 base, 2 platform, 3 world, 4 presentation, 5 game, 6 app (`main.cpp`). Each file's layer is listed in `tools/layers.txt`.
-- **Threads** (FOUNDATIONS.md 3): the main thread owns the world, every D3D11 call and the UI. A fixed 2 job threads build terrain and meshes from copies. Music and effects each have their own thread. Results are version-stamped; stale ones are dropped.
+- **Threads** (FOUNDATIONS.md 3): the main thread owns the world, every D3D11 call and the UI. Job threads (2 today; they may be sized from the processor count, D21) build terrain and meshes from copies. Music and effects each have their own thread. Results are version-stamped; stale ones are dropped.
 - **Budgets** (FOUNDATIONS.md 4): measured on the reference machine (GTX 1060 3GB, 16 GB), with a floor of 8 GB and a 2 GB graphics card.
 
 ## Part XXIII — The faceted world

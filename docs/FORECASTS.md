@@ -95,6 +95,15 @@ Problems we expect before they happen: why we expect each one, the warning signs
 - **Act.** After M1, or when the new score is decided.
 - **Plan.** Seeded per-day variation, or the new score.
 
+## Text
+
+### F16. Translation gets harder the more text is written without it
+- **Likelihood:** High. **Cost if ignored:** Medium, and growing.
+- **Why.** Every menu or HUD string written into code has to be found and moved later. Some languages need characters the ASCII font atlas doesn't have, and some break layouts sized for English.
+- **Warning signs.** Any new string literal shown to the player outside the string table.
+- **Act.** M1 step 0, while the menus are small.
+- **Plan.** A string table; a font atlas built from the characters the table uses; layouts that measure text instead of assuming its width; a check script that flags player-facing string literals in code.
+
 ## Process
 
 ### F15. Carried-over behaviour we didn't choose stays switched on

@@ -38,6 +38,7 @@ Each step is one commit. After every step the game builds and runs, and the chec
 | **0.13 Camera-relative rendering** | The eye position is subtracted before the view transform. The picture is identical; it just holds its precision far from the start | `render.cpp`, world and sky shaders |
 | **0.14 Raw mouse input** | `WM_INPUT` replaces cursor recentring for mouse look | `input.cpp`, `main.cpp` |
 | **0.15 Back-face culling** | Opaque cube faces culled, *if* a native test shows every shape is wound consistently; otherwise left as is and noted | `render.cpp`, `tests/` |
+| **0.16 Graphics minimum: feature level 11.0, shader model 5.0 (D20)** | Device creation asks for 11.0 only; every shader compiles as `vs_5_0` / `ps_5_0`. No visual change; it opens tessellation and compute shaders for M1 and later | `render.cpp`, `tools/check_shaders.py` if needed |
 
 The layer check starts passing, and joins `tests/run.sh` as a hard failure, once 0.4–0.9 are done. At 0.2 it reported 16 violations, all of them things M0's steps remove.
 

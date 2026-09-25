@@ -6,12 +6,13 @@ The order we get to the goals (`GOALS.md`) in. Each milestone ends with the owne
 
 **M0: separate the engine from Voxistics.** *In progress (2026-09-25).* Plan: `M0_PLAN.md`.
 - Done: screenshot key, check scripts, docs, The Line / pulse / fliers / essence off, generic glow, fresh save format, persist split, rename, game.cpp split, smooth motion, camera-relative rendering.
-- Left: raw mouse input, back-face culling (only if a test proves it's safe).
+- Left: raw mouse input, back-face culling (only if a test proves it's safe), and the graphics minimum raised to feature level 11.0 / shader model 5.0 (D20).
 - Then: the owner's Windows build, baseline screenshots compared, and a Ctrl+F3 report as the performance baseline.
 
 ## Next
 
 **M1: the first functional test.** Scope: `PROTOTYPE_OUTLINE.md`. Suggested order, so the riskiest ideas are proven first (see `THEORIES.md`):
+0. Text ready for any language (D26): a string table for every player-facing word, and a font atlas that covers what the table uses. Done first, while the menus are small and cheap to convert.
 1. The CPU preview tool: still images and triangle counts of faceted ground. This settles T1–T3 before the engine changes.
 2. The test landscape generator (versioned).
 3. The facet mesher with detail bands, on the job threads.

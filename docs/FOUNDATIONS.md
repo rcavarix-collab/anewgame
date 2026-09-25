@@ -34,6 +34,18 @@ Voxistics' main problem for reuse was game content wired into engine files. walk
 
 ---
 
+### 2.1 Hooks: every place the engine reaches the game (D27)
+
+The engine may only reach game behaviour through these. Each new one is a logged decision, and this list is kept exact.
+
+| Hook | Declared in | Called by | What the game supplies |
+|---|---|---|---|
+| `GameTick(dt)` | `game.h` | `main.cpp`, once per 60 Hz tick | The game's own per-tick systems (none yet) |
+| `SetGameSettingsHooks(write, read)` | `settings.h` | `game.cpp` (`RegisterGameSettings`, before `LoadSettings`) | The game's settings.cfg keys (hotbar, render distance) |
+| The save's game section | `worldfile.h` (`EncodeSave`'s `game` bytes) | `savegame.cpp` | The game's own saved state (empty today) |
+
+Not hooks: the game layer calling down into the engine (that's the normal direction), and `main.cpp` (the app layer) wiring everything together.
+
 ## 3. Threads
 
 D3D11's drawing context isn't safe to share, and races are the worst kind of bug to find later. So the model is deliberately simple:
@@ -41,14 +53,14 @@ D3D11's drawing context isn't safe to share, and races are the worst kind of bug
 | Thread | Owns | Never does |
 |---|---|---|
 | **Main** | The window, input, the simulation tick, every write to the world, every D3D11 call, the UI | Mesh building, terrain generation, audio synthesis |
-| **Jobs** (a fixed 2, not sized to the machine) | Terrain generation and facet meshing, each from its own **copy** of the input | Touch live world data or D3D11 |
+| **Jobs** (2 today; may be sized from the processor count, D21) | Terrain generation and facet meshing, each from its own **copy** of the input | Touch live world data or D3D11 |
 | **Music** (exists) | Music synthesis | |
 | **Effects** (new) | Sound-effect synthesis | |
 
 - **The rule: jobs read copies and return results; only the main thread applies them.** The Voxistics mesher already builds from a padded copy of the chunk and its neighbours, so this fits with no redesign.
 - **Uploads stay budgeted.** The main thread uploads finished meshes to the GPU a few per frame, as it does now.
 - **Edits are version-stamped.** An edit bumps a chunk's version. A mesh or terrain result built from an older version is thrown away, never applied, so a finished job can never overwrite a newer edit.
-- **The job count is fixed.** It's 2 threads, a constant, per the standing rule never to ask the machine what it has.
+- **The job count.** 2 threads today. Sizing it from the processor count is allowed (D21), capped, and never recorded or shown.
 
 ---
 
@@ -58,7 +70,7 @@ D3D11's drawing context isn't safe to share, and races are the worst kind of bug
 - **Reference machine (yours):** a GTX 1060 3GB, 16 GB of RAM, a good gaming PC of about six years ago. Budgets are measured on it.
 - **Floor:** less than that, since not everyone has what you have. Design for 8 GB of RAM and a 2 GB graphics card. Every heavy effect gets a setting, and a preset can bring it down.
 
-The game itself still never reads the machine it's on; these numbers are for us.
+The game may ask the operating system for limits it must respect (processor count, video-memory budget), and nothing more (D21). The numbers above are for our planning.
 
 Each budget has a row in F3, so a system over budget is visible the moment it happens.
 

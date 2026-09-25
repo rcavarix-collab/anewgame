@@ -61,5 +61,9 @@ game.h          5
 game.cpp        5
 worldsound.h    5
 worldsound.cpp  5
+input.cpp       5
+menus.cpp       5
+hud.cpp         5
+game_internal.h 5
 
 main.cpp        6

@@ -19,7 +19,7 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 
 | # | Step | Owner checks |
 |---|---|---|
-| 5 | Low clouds that live (A + C): the pattern evolves as it drifts, soft edges, lit rims, no hard outlines | a few minutes of sky |
+| 5 | Low clouds that live (A + C): the pattern evolves as it drifts (advected along the wind in two crossfaded phases, the flow-map idea, plus slow noise evolution; docs/research/OVERVIEW.md), soft edges, lit rims, no hard outlines | a few minutes of sky |
 | 6 | High streaks (B): shorter wisps, with gaps and heads moving along them, about half the low clouds' angular speed, turned from the low wind, no rays near the sun | facing the sun at dusk |
 
 ## Batch 3: the ground's look (one test build)
@@ -27,7 +27,7 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 | # | Step | Owner checks |
 |---|---|---|
 | 7 | Clean material edges (D): near the player the blend is decided per texel, a crisp mosaic; no thin streaks of one material inside another (the orange lines) | the sand–stone edge |
-| 8 | Less repetition (E): each cell's texture shifted and turned at random, plus large-scale colour patches per material | a big flat area from a height |
+| 8 | Less repetition (E): stochastic tiling after Heitz & Neyret 2018 (three randomly offset copies blended so contrast is kept, offsets snapped to whole texels near the player), plus large-scale colour patches per material | a big flat area from a height |
 | 9 | 64-pixel art (F + H): the generators redraw the 12 materials at 64, each in its own style of marks (Grok's A-series briefs), slate lighter | every material, close up |
 
 ## Batch 4, if time allows
@@ -35,6 +35,8 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 Decided by what the debug views show: a longer baked sky view (16–24 blocks), and a pass on the day's colours (R1).
 
 ## Ideas on the table (thrown at the wall, not scheduled)
+
+- **From the research overview (docs/research/OVERVIEW.md):** far terrain as a coarse clipmap-style ring drawn from the height function (the biggest unplanned look upgrade); constrained surface-net relaxation as the principled answer to terracing (W055), edited cells pinned; bent-normal ambient from the sky-view bake; Hosek–Wilkie as a colour reference for the sky and light.
 
 - **East Asian text (W068):** the UI font atlas and text layout assume every character is one cell wide; Chinese, Japanese and Korean characters are two. A step gives wide characters double-width cells, in the atlas (`GenerateUIAtlas`) and in layout (`UIDrawText`, `UITextWidth`). Grok's T18–T21 translations wait on it. Scripts that need shaping (Devanagari, Thai, Arabic's right-to-left joining) need a shaping step beyond a glyph atlas: parked (W069). African languages (T26–T33): the Latin-script ones work now (the atlas takes any code point the font has); Yoruba's stacked tone marks need precomposed characters or combining-mark support; Amharic's Ethiopic script needs its font and may need wide cells like W068.
 

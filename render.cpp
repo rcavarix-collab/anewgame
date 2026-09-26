@@ -262,7 +262,7 @@ static const char* g_shaderSrc =
     // (relief as a world-space nudge to the normal, shine, glow).
     "struct Mat { float3 col; float3 bump; float shine; float glow; float h; };\n"
     // Crisp near the player (D47): where a texel covers more than a screen
-    // pixel, the colour is point-sampled (samp0) so each texel shows sharp;
+    // pixel, the colour is point-sampled (samp0) so each texel shows sharp:
     // further out the smooth anisotropic read stops shimmer. gCrisp (set per
     // pixel in PSMain from the pixel's footprint) blends the two over a
     // short band, so there's no line where one becomes the other. Relief,

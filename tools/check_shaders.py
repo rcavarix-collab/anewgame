@@ -8,7 +8,9 @@ import os, re, subprocess, sys, tempfile
 
 def extract(path):
     src = open(path, encoding='utf-8').read()
-    for m in re.finditer(r'static const char\*\s+(g_\w*(?:[Ss]hader|atmosphere)\w*)\s*=(.*?);\s*\n', src, re.S):
+    # The source ends at a closing quote then ';' (a ';' ending a comment
+    # line between the pieces once cut the world shader short, silently).
+    for m in re.finditer(r'static const char\*\s+(g_\w*(?:[Ss]hader|atmosphere)\w*)\s*=(.*?")\s*;\s*\n', src, re.S):
         name, body = m.group(1), m.group(2)
         # Walk literals and C++ comments together, so a // inside an HLSL
         # string isn't mistaken for a C++ comment (and vice versa).

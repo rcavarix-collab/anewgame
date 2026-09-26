@@ -153,6 +153,7 @@ So:
 
 - **Every file opens with a header**: what it is, what it costs per frame or per call, which layer it's in, and which `DESIGN.md` section describes it. This is the Voxistics convention, which worked.
 - **Non-obvious lines say what they guard against**, not what they do.
+- **The full standard for names and notes is `docs/CONVENTIONS.md`** (2026-09-26), written from what the code already does; the first audit against it is `docs/AUDIT_2026-09-26.md`.
 - **A new `DESIGN.md` for walkgrid.** The Voxistics one moves to `reference/voxistics/DESIGN.md` as reference. walkgrid's starts with the engine sections that carry over (rewritten where they changed) plus the new ones: facets, blending, threads, layers. Code references to design sections (36 today) are updated as each file is touched. A check script flags any reference to a section that doesn't exist.
 - **A decision log.** The decision table in `PROTOTYPE_OUTLINE.md` becomes `docs/DECISIONS.md`: one line per decision, with its date and reason, so a later session can't quietly reverse one. Last time's "never copy the whole thing" rule is the example of what this prevents.
 - **A new `CLAUDE.md`** holds the working rules (section 1), the layer rule, the verification rule and the standing priorities that still apply. Those are: the modest target machine, privacy, lagless efficiency, fast boot, photosensitivity, nothing anyone owns, minimal text, and no numbers in player-facing displays. The Voxistics game description goes.

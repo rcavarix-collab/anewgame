@@ -28,7 +28,7 @@ The owner keeps scope with MoSCoW (Must / Should / Could / Won't) against the ho
 - **Draw only what can be seen; load ahead what may be seen soon.** Cost scales with what's on screen or what changed, never with world size. Budget per-tick work, rebuild only on change, measure with the F3 profiler.
 - **Privacy.** No telemetry, analytics, crash reporting, update checks, online play or any network use, ever (D23). Debug aids (F2 screenshot, F3, Ctrl+F3) act only when pressed, and only write local files.
 - **Fast boot.** Nothing slow happens at launch that could be cached, deferred or done once. Check the boot timeline (F3 / Ctrl+F3) after any start-up change.
-- **Organisation and careful annotation.** One system per file; the project file is the source list. Every file opens with a header saying what it is, what it costs, its layer and its DESIGN.md section. Non-obvious lines say what they guard against.
+- **Organisation and careful annotation.** One system per file; the project file is the source list. Every file opens with a header saying what it is, what it costs, its layer and its DESIGN.md section. Non-obvious lines say what they guard against. Names and notes follow `docs/CONVENTIONS.md`.
 - **Fake it convincingly, cheaply.** Visual effects are per-pixel tricks driven by small per-frame constants, not extra passes.
 - **Nothing anyone owns.** Everything is original or genuinely free to use:
   - no brands, logos, trademarks, product or company names, real currencies or insignia;

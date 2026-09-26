@@ -14,6 +14,16 @@ The next building session. Every step is one system and one commit (FOUNDATIONS 
 | 3b | Durable saves (W070): flush the new save to disk before swapping it in, and load the `.bak` when the main save is missing or damaged; a test for each interruption point | nothing in game, unless a save is ever damaged |
 | 4 | Debug views (PLAN_LOOK G): one developer key cycles baked darkening only, shadows only, materials only; costs nothing unless pressed; stays in the game. Likely finding: triangle wedges from per-corner darkening split along the bright diagonal (docs/research/VERTEX_DARKENING.md) | what the noon patches are |
 
+## Also for approval: a notes pass (comments only)
+
+From `docs/AUDIT_2026-09-26.md`:
+- add the missing header fields in 24 headers;
+- rewrite four stale headers;
+- fix the comments naming removed files and features;
+- add three one-line notes.
+
+No behaviour changes, so it could ride in Batch 1 as its own step. After it, `tools/check_notes.py` joins the checks (`docs/CONVENTIONS.md` §3). The stale passages in DESIGN.md and CLAUDE.md are the owner's call.
+
 ## Batch 2: the sky (one test build)
 
 Decide first: clouds in real time, or partly sped up with the fast day (`docs/research/CLOUDS.md`).

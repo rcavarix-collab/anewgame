@@ -51,7 +51,7 @@ double Rock(uint64_t seed, int wx, int wz) { return Noise(wx / 15.0, wz / 15.0, 
 // The top material and what lies under it, for a column of height h
 // whose steepest drop to a neighbour is `slope` cells.
 struct Layers { uint8_t top, under, body; bool plateau; };
-Layers LayersAt(uint64_t seed, int wx, int wz, int h, int slope) {
+Layers LayersAt(uint64_t seed, int wx, int wz, int h, int slope, int version) {
     Layers L;
     double p = Plateau(seed, wx, wz), rock = Rock(seed, wx, wz);
     double region = Noise(wx / 120.0, wz / 120.0, Salt(seed, S_REGION));
@@ -62,6 +62,9 @@ Layers LayersAt(uint64_t seed, int wx, int wz, int h, int slope) {
     uint8_t grass = (uint8_t)(region < 0.40 ? BLOCK_MEADOW_GRASS : region < 0.66 ? BLOCK_DRY_TURF : BLOCK_MOSS);
     uint8_t soil = (uint8_t)(grass == BLOCK_MOSS ? BLOCK_LOAM : BLOCK_DIRT);
     if (h >= 45) { L.top = BLOCK_SNOW; L.under = L.plateau ? BLOCK_SANDSTONE : BLOCK_STONE; }
+    // v2: the foot of a mesa's cliff (raised by it, steep, not yet plateau)
+    // is sandstone like the cliff above, where v1 bared stone in a rhythm.
+    else if (version >= 2 && !L.plateau && p > 0.08 && slope >= 3) { L.top = BLOCK_SANDSTONE; L.under = BLOCK_SANDSTONE; L.body = BLOCK_SANDSTONE; }
     else if (L.plateau) {
         if (slope >= 3) { L.top = BLOCK_SANDSTONE; L.under = BLOCK_SANDSTONE; }  // the cliff's rim
         else { L.top = patch > 0.74 ? soil : grass; L.under = soil; }
@@ -90,7 +93,7 @@ int HillsHeight(uint64_t seed, int wx, int wz) {
     return std::max(4, std::min(Y_MAX - 8, ih));
 }
 
-void HillsColumn(uint64_t seed, int cx, int cz, TerrainColumn& out) {
+void HillsColumn(uint64_t seed, int cx, int cz, TerrainColumn& out, int version) {
     const int N = CHUNK_SIZE;
     int bx = cx * N, bz = cz * N;
     // Heights one cell beyond the column, for the slope.
@@ -111,16 +114,31 @@ void HillsColumn(uint64_t seed, int cx, int cz, TerrainColumn& out) {
             slope = std::max(slope, h - hg[lz][lx + 1]);
             slope = std::max(slope, h - hg[lz + 2][lx + 1]);
             int wx = bx + lx, wz = bz + lz;
-            Layers L = LayersAt(seed, wx, wz, h, slope);
+            Layers L = LayersAt(seed, wx, wz, h, slope, version);
+            // v2: grass wraps down over the side of a step, as turf does,
+            // instead of baring the soil under it on every 2-cell rise.
+            bool grassy = L.top == BLOCK_MEADOW_GRASS || L.top == BLOCK_DRY_TURF || L.top == BLOCK_MOSS;
+            // Counting diagonal neighbours too, and one cell deeper than the
+            // bared side: the lower ground's surface corners touch the cell
+            // under the step's edge, and the mesher blends in every cell
+            // around a corner -- a soil cell there put a dirt triangle at
+            // every step corner, evenly spaced across the slope.
+            int wrap = 1; // cells from the top that show the top material (flat ground: just the top)
+            if (version >= 2 && grassy) {
+                int drop = slope;
+                for (int dz = -1; dz <= 1; dz += 2)
+                    for (int dx = -1; dx <= 1; dx += 2) drop = std::max(drop, h - hg[lz + 1 + dz][lx + 1 + dx]);
+                wrap = drop > 0 ? drop + 1 : 1;
+            }
             // Slate lies in the deep rock, in broad pockets.
             bool slateDeep = Noise(wx / 23.0, wz / 23.0, Salt(seed, S_SLATE)) > 0.55;
             for (int y = 0; y <= h; y++) {
                 uint8_t m;
                 int depth = h - y;
                 if (y == 0) m = BLOCK_FOUNDATION;
-                else if (depth == 0) m = L.top;
+                else if (depth < wrap) m = L.top;
                 else if (depth <= 3) m = L.under;
-                else if (L.plateau && y > h - 12) m = BLOCK_SANDSTONE;
+                else if ((L.plateau || L.body == BLOCK_SANDSTONE) && y > h - 12) m = BLOCK_SANDSTONE; // v1: body is sandstone only on the plateau
                 else m = (uint8_t)((slateDeep && y < 14) ? (int)BLOCK_SLATE : L.body == BLOCK_SANDSTONE ? (int)BLOCK_STONE : (int)L.body);
                 int cy = y / N;
                 out.present[cy] = true;

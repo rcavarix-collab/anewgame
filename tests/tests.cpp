@@ -25,6 +25,7 @@
 #include "../collide.h"
 #include "../strtable.h"
 #include "../gamefiles.h"
+static const uint64_t HILLS_V2_FINGERPRINT = 0x1d7f84f13a66ea95ull; // walkgrid-hills v2 (D50), seed 7, columns (-4..-1, -4..-1)
 static const uint64_t HILLS_V1_FINGERPRINT = 0xb337671eeedafb98ull; // walkgrid-hills v1, seed 1, column (0, 0): re-pinned in M1.9 when the registry was renumbered (same materials, same places; saves store names)
 #include <cstdio>
 #include <cstring>
@@ -1162,6 +1163,59 @@ static void TestHills() {
     CHECK(seen[BLOCK_MEADOW_GRASS] > 0 && seen[BLOCK_DRY_TURF] > 0 && seen[BLOCK_SAND] > 0 && seen[BLOCK_STONE] > 0);
     CHECK(kinds >= 7);
     printf("  surface kinds in a 24x24-chunk sample: %d\n", kinds);
+
+    // v2 (D50): same heights; the soil under grass no longer shows on the
+    // sides of steps, and far less bare stone shows on steep ground (the
+    // "teeth" at mesa feet become sandstone cliff). v1 is untouched (the
+    // fingerprint above).
+    // v2's fingerprint: seed 7, the 4 x 4 columns from (-4, -4) -- a patch
+    // with a mesa foot and grassy steps, where v2 differs from v1.
+    uint64_t h2 = 1469598103934665603ull, h1 = h2;
+    for (int cz = -4; cz < 0; cz++)
+        for (int cx = -4; cx < 0; cx++) {
+            TerrainColumn f1, f2; HillsColumn(7, cx, cz, f1, 1); HillsColumn(7, cx, cz, f2, 2);
+            for (uint8_t x : f2.cells) { h2 ^= x; h2 *= 1099511628211ull; }
+            for (uint8_t x : f1.cells) { h1 ^= x; h1 *= 1099511628211ull; }
+        }
+    printf("  v2 fingerprint %016llx\n", (unsigned long long)h2);
+    CHECK(h2 == HILLS_V2_FINGERPRINT && h1 != h2);
+    int soilShown[3] = {}, stoneShown[3] = {};
+    bool sameHeights = true;
+    int topsChanged = 0;
+    TerrainColumn v1col;
+    for (int v = 1; v <= 2; v++)
+        for (int cz = -8; cz < 8; cz += 2)
+            for (int cx = -8; cx < 8; cx += 2) {
+                TerrainColumn t; HillsColumn(7, cx, cz, t, v);
+                auto cell = [&](int lx, int y, int lz) { return y / 16 < t.chunks ? t.cells[(size_t)(y / 16) * CHUNK_CELLS + Chunk::LocalIndex(lx, y % 16, lz)] : (uint8_t)0; };
+                for (int lz = 0; lz < 16; lz++)
+                    for (int lx = 0; lx < 16; lx++) {
+                        int wx = cx * 16 + lx, wz = cz * 16 + lz, top = HillsHeight(7, wx, wz);
+                        if (v == 2) sameHeights &= cell(lx, top, lz) != 0 && cell(lx, top + 1, lz) == 0;
+                        if (v == 2) { // the surface itself only changes at a mesa's foot: bare rock to sandstone
+                            if (lx == 0 && lz == 0) HillsColumn(7, cx, cz, v1col, 1);
+                            uint8_t a1 = v1col.cells[(size_t)(top / 16) * CHUNK_CELLS + Chunk::LocalIndex(lx, top % 16, lz)], a2 = cell(lx, top, lz);
+                            if (a1 != a2 && !(a2 == BLOCK_SANDSTONE && (a1 == BLOCK_STONE || a1 == BLOCK_SLATE))) topsChanged++;
+                        }
+                        uint8_t topM = cell(lx, top, lz);
+                        bool grassy = topM == BLOCK_MEADOW_GRASS || topM == BLOCK_DRY_TURF || topM == BLOCK_MOSS;
+                        // Cells bared on the side of a step down to a neighbour.
+                        const int nb[4][2] = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+                        int drop = 0;
+                        for (auto& d : nb) drop = std::max(drop, top - HillsHeight(7, wx + d[0], wz + d[1]));
+                        for (int y = top - 1; y > top - drop && y > 0; y--) {
+                            uint8_t m = cell(lx, y, lz);
+                            if (grassy && (m == BLOCK_DIRT || m == BLOCK_LOAM)) soilShown[v]++;
+                            if (m == BLOCK_STONE) stoneShown[v]++;
+                        }
+                        if (topM == BLOCK_STONE && drop >= 2) stoneShown[v]++;
+                    }
+            }
+    printf("  bared on step sides, v1 -> v2: soil under grass %d -> %d, stone %d -> %d\n", soilShown[1], soilShown[2], stoneShown[1], stoneShown[2]);
+    CHECK(sameHeights);
+    CHECK(topsChanged == 0);
+    CHECK(soilShown[1] > 0 && soilShown[2] == 0);
+    CHECK(stoneShown[2] < stoneShown[1]);
 }
 
 // ---- Job threads (jobs.h, M1.4) ----

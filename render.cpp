@@ -328,7 +328,7 @@ static const char* g_shaderSrc =
     "    float3 ns = normalize(i.nrm);\n"
     // Projection weights, sharpened so a slope takes mostly one projection.
     "    float3 pw = ns * ns; pw *= pw; pw /= max(pw.x + pw.y + pw.z, 1e-5f);\n"
-    "    float topness = smoothstep(0.45f, 0.70f, ns.y);\n"
+    "    float topness = smoothstep(0.25f, 0.42f, ns.y);\n"
     "    bool up = ns.y >= 0.0f;\n"
     // Texels per screen pixel along the surface (64 texels a block).
     "    float foot = max(length(ddx(i.wpos)), length(ddy(i.wpos))) * 64.0f;\n"

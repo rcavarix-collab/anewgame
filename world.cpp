@@ -187,7 +187,7 @@ bool WorldGenFromName(const char* name, WorldGenType& out) {
 }
 uint32_t WorldGenLatestVersion(WorldGenType t) {
     switch (t) {
-    case GEN_WALKGRID: return 1;
+    case GEN_WALKGRID: return HILLS_LATEST; // v2 (D50); v1 kept for worlds made with it
     case GEN_FLAT: return 2; // v2: the surface is a patchwork of three grounds (SurfaceBlockAt)
     default: return 0;
     }
@@ -361,7 +361,7 @@ BlockID SurfaceBlockAt(uint64_t seed, int wx, int wz) {
 // A column's terrain, from the generator's settings alone (a copy, never
 // g_worldGen: this runs on a job thread). Pure: same settings, same cells.
 static void ComputeColumn(const WorldGenParams& gen, int cx, int cz, TerrainColumn& out) {
-    if (gen.type == GEN_WALKGRID) { HillsColumn(gen.seed, cx, cz, out); return; }
+    if (gen.type == GEN_WALKGRID) { HillsColumn(gen.seed, cx, cz, out, (int)gen.version); return; }
     // Flat (the test ground): FLAT_V1_HEIGHT everywhere, dirt over stone
     // on a foundation floor; v2's top layer is the patchwork.
     const bool patchwork = gen.version >= 2;

@@ -414,7 +414,7 @@ static Surface Material(Vec3 p, Vec3 nSmooth, Vec3 nGeo, const uint8_t mat[3], c
     // Which face of the material a slope shows: its top up to ~50 degrees,
     // its side only on steep ground -- so a one-cell rise in a meadow stays
     // grass, and a cliff shows its strata.
-    float topness = Sat((nSmooth.y - 0.45f) / 0.25f);
+    float topness = Sat((nSmooth.y - 0.25f) / 0.17f); // the world shader's smoothstep(0.25, 0.42) (D50)
     topness = topness * topness * (3 - 2 * topness);
     Vec3 col[3]; float hgt[3]; Vec3 grad[3];
     for (int k = 0; k < 3; k++) {
@@ -812,7 +812,7 @@ static int Hills(const std::string& out, uint64_t seed) {
     g_cells.assign((size_t)WX * WY * WZ, 0);
     for (int cz = 0; cz < CH; cz++)
         for (int cx = 0; cx < CH; cx++) {
-            TerrainColumn t; HillsColumn(seed, ox + cx, oz + cz, t);
+            TerrainColumn t; HillsColumn(seed, ox + cx, oz + cz, t, HILLS_LATEST);
             for (int cy = 0; cy < t.chunks; cy++)
                 for (int ly = 0; ly < 16; ly++) {
                     int y = cy * 16 + ly;

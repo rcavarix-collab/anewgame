@@ -1,0 +1,149 @@
+# walkgrid: every player-facing word (D26). Mexican Spanish translation.
+#
+# One entry per line: key = text. A translation is a copy of this file
+# named for its language (e.g. es-MX.txt) with the texts changed; any key it
+# leaves out shows in English. {0}, {1}... are filled in by the game and
+# may move anywhere in the text. \n is a line break. Keep words few and
+# plain (show, don't tell). The game's text is capitals; a language
+# without capitals simply writes its own letters.
+#
+# The font to draw this language with: an installed system font, monospace.
+font = Consolas
+# The window and the title screen
+window.title = walkgrid
+title.name = WALKGRID
+title.new_game = NUEVA PARTIDA
+title.load_game = CARGAR PARTIDA
+title.options = OPCIONES
+title.quit = SALIR
+# Choosing a world slot
+slots.title_new = NUEVA PARTIDA - ELIGE UN ESPACIO
+slots.title_load = CARGAR PARTIDA - ELIGE UN ESPACIO
+slots.world = MUNDO {0}
+slots.overwrite = {0} - HAZ CLIC OTRA VEZ PARA SOBRESCRIBIR
+slots.saved = {0} - GUARDADO
+slots.empty = {0} - VACÍO
+slots.current = {0} (ACTUAL)
+# Pause
+pause.title = EN PAUSA
+pause.resume = CONTINUAR
+pause.options = OPCIONES
+pause.save = GUARDAR PARTIDA
+pause.load = CARGAR PARTIDA
+pause.quit_to_title = SALIR AL TÍTULO
+pause.quit = SALIR
+# Words every menu uses
+common.back = ATRÁS
+common.reset = RESTAURAR PREDETERMINADO
+common.on = ACTIVADO
+common.off = DESACTIVADO
+common.unavailable = NO DISPONIBLE
+# A toggle row: {0} is the setting, {1} its state (ON / OFF / UNAVAILABLE).
+common.toggle = {0}: {1}
+# Options
+options.title = OPCIONES
+options.look = AJUSTES DE MIRADA
+options.graphics = AJUSTES GRÁFICOS
+options.display = AJUSTES DE PANTALLA
+options.audio = AJUSTES DE AUDIO
+options.access = ACCESIBILIDAD
+options.keys = CONTROLES
+look.title = AJUSTES DE MIRADA
+look.invert_x = INVERTIR MIRADA X
+look.invert_y = INVERTIR MIRADA Y
+graphics.title = AJUSTES GRÁFICOS
+graphics.vsync = VSYNC
+graphics.shadows = SOMBRAS DEL SOL
+graphics.outlines = CONTORNOS DE BORDES
+graphics.ssao = AO EN ESPACIO DE PANTALLA
+graphics.bloom = RESPLANDOR (BLOOM)
+display.title = AJUSTES DE PANTALLA
+display.show_fps = MOSTRAR CONTADOR FPS
+display.profiler = PERFILADOR (F3)
+display.fullscreen = PANTALLA COMPLETA (F11)
+audio.title = AJUSTES DE AUDIO
+access.title = ACCESIBILIDAD
+access.toggle_move = ALTERNAR MOVIMIENTO
+access.high_contrast = INTERFAZ DE ALTO CONTRASTE
+access.mono = AUDIO MONO
+# Sliders: {0} is the value.
+slider.sens_x = SENSIBILIDAD X: {0}x
+slider.sens_y = SENSIBILIDAD Y: {0}x
+slider.render_distance = DISTANCIA DE RENDER: {0} CHUNKS
+slider.fine_detail = DETALLE FINO: {0} CHUNKS
+slider.fine_detail_off = DETALLE FINO: DESACTIVADO
+slider.fine_detail_all = DETALLE FINO: EN TODAS PARTES
+slider.frame_limit = LÍMITE DE CUADROS (VSYNC OFF): {0} FPS
+slider.master_volume = VOLUMEN PRINCIPAL: {0}%
+slider.music_volume = VOLUMEN DE MÚSICA: {0}%
+slider.world_volume = SONIDOS DEL MUNDO: {0}%
+slider.footstep_volume = PASOS: {0}%
+slider.fov = CAMPO DE VISIÓN: {0} DEG
+slider.music_intensity = INTENSIDAD DE MÚSICA: {0}%
+# Keybindings: {0} is the action, {1} the input.
+keys.title = CONTROLES
+keys.hint = HAZ CLIC EN UNA FILA, LUEGO PRESIONA LA NUEVA ENTRADA
+keys.row = {0}: [{1}]
+keys.waiting = {0}: PRESIONA ENTRADA (ESC CANCELA)
+keys.waiting_menu = {0}: PRESIONA ENTRADA (ESC = ESCAPE)
+action.forward = AVANZAR
+action.back = RETROCEDER
+action.left = IZQUIERDA
+action.right = DERECHA
+action.jump = SALTAR
+action.break = ROMPER
+action.place = COLOCAR
+action.menu = MENÚ DE PAUSA
+action.save = GUARDADO RÁPIDO
+action.load = CARGA RÁPIDA
+action.sprint = SPRINT
+action.crouch = AGACHARSE / DESLIZAR
+action.library = MATERIALES
+input.mouse_left = RATÓN IZQUIERDO
+input.mouse_right = RATÓN DERECHO
+input.mouse_middle = RATÓN CENTRAL
+input.unknown = ?
+# In play
+hud.click_to_play = HAZ CLIC PARA JUGAR
+hud.toggle_move = ALTERNAR MOVIMIENTO
+hud.fps = FPS: {0}
+hud.recording = GRABANDO RENDIMIENTO {0}
+# The materials library
+library.title = MATERIALES
+library.rows = FILAS {0}-{1} DE {2} (RUEDA)
+library.hint = HAZ CLIC EN UN MATERIAL PARA USARLO - ARRÁSTRALO A UN ESPACIO PARA GUARDARLO
+# Material names (by their registry name, blocks.h)
+material.air = AIRE
+material.foundation = CIMENTACIÓN
+material.meadow_grass = PASTO DE PRADERA
+material.dry_turf = CÉSPED SECO
+material.moss = MUSGO
+material.dirt = TIERRA
+material.loam = MARGAS
+material.clay = ARCILLA
+material.sand = ARENA
+material.gravel = GRAVA
+material.stone = PIEDRA
+material.slate = PIZARRA
+material.sandstone = ARENISCA
+material.snow = NIEVE
+# Short messages
+toast.saved = PARTIDA GUARDADA
+toast.save_failed = FALLO AL GUARDAR
+toast.autosaved = AUTOGUARDADO
+toast.autosave_failed = FALLO EN AUTOGUARDADO
+toast.loaded = PARTIDA CARGADA
+toast.load_failed = FALLO AL CARGAR
+toast.load_corrupt = FALLO AL CARGAR (¿GUARDADO DAÑADO?)
+toast.empty_slot = ESPACIO VACÍO
+toast.screenshot = CAPTURA GUARDADA: {0}
+toast.screenshot_failed = FALLO EN CAPTURA
+toast.report = INFORME DE RENDIMIENTO GUARDADO: {0}
+toast.report_failed = NO SE PUDO GUARDAR EL INFORME DE RENDIMIENTO
+toast.recording = GRABANDO RENDIMIENTO POR 30 S - JUEGA CON NORMALIDAD
+# Start-up problems
+startup.texture_problem = 1 PROBLEMA DE TEXTURA - VER ASSETS\TEXTURES\_ERRORS.TXT
+startup.texture_problems = {0} PROBLEMAS DE TEXTURA - VER ASSETS\TEXTURES\_ERRORS.TXT
+startup.effects_failed = ALGUNOS EFECTOS GRÁFICOS FALLARON AL CARGAR - VER SHADER_ERRORS.TXT
+startup.join = {0}  /  {1}
+startup.no_graphics = walkgrid no puede iniciar: necesita una tarjeta gráfica con soporte de feature level 11.0 (alrededor de 2010 o más reciente).

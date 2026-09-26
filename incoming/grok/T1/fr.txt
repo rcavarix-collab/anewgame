@@ -1,0 +1,149 @@
+# walkgrid: every player-facing word (D26). French translation.
+#
+# One entry per line: key = text. A translation is a copy of this file
+# named for its language (e.g. fr.txt) with the texts changed; any key it
+# leaves out shows in English. {0}, {1}... are filled in by the game and
+# may move anywhere in the text. \n is a line break. Keep words few and
+# plain (show, don't tell). The game's text is capitals; a language
+# without capitals simply writes its own letters.
+#
+# The font to draw this language with: an installed system font, monospace.
+font = Consolas
+# The window and the title screen
+window.title = walkgrid
+title.name = WALKGRID
+title.new_game = NOUVELLE PARTIE
+title.load_game = CHARGER PARTIE
+title.options = OPTIONS
+title.quit = QUITTER
+# Choosing a world slot
+slots.title_new = NOUVELLE PARTIE - CHOISIR UN EMPLACEMENT
+slots.title_load = CHARGER PARTIE - CHOISIR UN EMPLACEMENT
+slots.world = MONDE {0}
+slots.overwrite = {0} - CLIQUEZ ENCORE POUR ÉCRASER
+slots.saved = {0} - SAUVEGARDÉ
+slots.empty = {0} - VIDE
+slots.current = {0} (ACTUEL)
+# Pause
+pause.title = EN PAUSE
+pause.resume = REPRENDRE
+pause.options = OPTIONS
+pause.save = SAUVEGARDER
+pause.load = CHARGER PARTIE
+pause.quit_to_title = QUITTER VERS TITRE
+pause.quit = QUITTER
+# Words every menu uses
+common.back = RETOUR
+common.reset = RÉINITIALISER
+common.on = ACTIVÉ
+common.off = DÉSACTIVÉ
+common.unavailable = INDISPONIBLE
+# A toggle row: {0} is the setting, {1} its state (ON / OFF / UNAVAILABLE).
+common.toggle = {0} : {1}
+# Options
+options.title = OPTIONS
+options.look = RÉGLAGES REGARD
+options.graphics = RÉGLAGES GRAPHIQUES
+options.display = RÉGLAGES AFFICHAGE
+options.audio = RÉGLAGES AUDIO
+options.access = ACCESSIBILITÉ
+options.keys = TOUCHES
+look.title = RÉGLAGES REGARD
+look.invert_x = INVERSER REGARD X
+look.invert_y = INVERSER REGARD Y
+graphics.title = RÉGLAGES GRAPHIQUES
+graphics.vsync = VSYNC
+graphics.shadows = OMBRES DU SOLEIL
+graphics.outlines = CONTOURS DES ARÊTES
+graphics.ssao = AO ESPACE ÉCRAN
+graphics.bloom = LUEUR (BLOOM)
+display.title = RÉGLAGES AFFICHAGE
+display.show_fps = AFFICHER COMPTEUR FPS
+display.profiler = PROFILEUR (F3)
+display.fullscreen = PLEIN ÉCRAN (F11)
+audio.title = RÉGLAGES AUDIO
+access.title = ACCESSIBILITÉ
+access.toggle_move = BASCULE MOUVEMENT
+access.high_contrast = INTERFACE HAUT CONTRASTE
+access.mono = AUDIO MONO
+# Sliders: {0} is the value.
+slider.sens_x = SENSIBILITÉ X : {0}x
+slider.sens_y = SENSIBILITÉ Y : {0}x
+slider.render_distance = DISTANCE RENDU : {0} CHUNKS
+slider.fine_detail = DÉTAIL FIN : {0} CHUNKS
+slider.fine_detail_off = DÉTAIL FIN : DÉSACTIVÉ
+slider.fine_detail_all = DÉTAIL FIN : PARTOUT
+slider.frame_limit = LIMITE IMAGES (VSYNC OFF) : {0} FPS
+slider.master_volume = VOLUME PRINCIPAL : {0}%
+slider.music_volume = VOLUME MUSIQUE : {0}%
+slider.world_volume = SONS MONDE : {0}%
+slider.footstep_volume = PAS : {0}%
+slider.fov = CHAMP DE VISION : {0} DEG
+slider.music_intensity = INTENSITÉ MUSIQUE : {0}%
+# Keybindings: {0} is the action, {1} the input.
+keys.title = TOUCHES
+keys.hint = CLIQUEZ UNE LIGNE, PUIS APPUYEZ SUR LA NOUVELLE ENTRÉE
+keys.row = {0} : [{1}]
+keys.waiting = {0} : APPUYEZ ENTRÉE (ÉCHAP ANNULE)
+keys.waiting_menu = {0} : APPUYEZ ENTRÉE (ÉCHAP = ÉCHAP)
+action.forward = AVANCER
+action.back = RECULER
+action.left = GAUCHE
+action.right = DROITE
+action.jump = SAUTER
+action.break = CASSER
+action.place = PLACER
+action.menu = MENU PAUSE
+action.save = SAUVEGARDE RAPIDE
+action.load = CHARGEMENT RAPIDE
+action.sprint = SPRINT
+action.crouch = S'ACCROUPIR / GLISSER
+action.library = MATÉRIAUX
+input.mouse_left = SOURIS GAUCHE
+input.mouse_right = SOURIS DROITE
+input.mouse_middle = SOURIS MILIEU
+input.unknown = ?
+# In play
+hud.click_to_play = CLIQUER POUR JOUER
+hud.toggle_move = BASCULE MOUVEMENT
+hud.fps = FPS : {0}
+hud.recording = ENREGISTREMENT PERF {0}
+# The materials library
+library.title = MATÉRIAUX
+library.rows = LIGNES {0}-{1} SUR {2} (MOLETTE)
+library.hint = CLIQUEZ UN MATÉRIAU POUR L'UTILISER - GLISSEZ-LE SUR UN EMPLACEMENT POUR LE GARDER
+# Material names (by their registry name, blocks.h)
+material.air = AIR
+material.foundation = FONDATION
+material.meadow_grass = HERBE DE PRAIRIE
+material.dry_turf = GAZON SEC
+material.moss = MOUSSE
+material.dirt = TERRE
+material.loam = TERREAU
+material.clay = ARGILE
+material.sand = SABLE
+material.gravel = GRAVIER
+material.stone = PIERRE
+material.slate = ARDOISE
+material.sandstone = GRÈS
+material.snow = NEIGE
+# Short messages
+toast.saved = PARTIE SAUVEGARDÉE
+toast.save_failed = ÉCHEC SAUVEGARDE
+toast.autosaved = SAUVEGARDE AUTO
+toast.autosave_failed = ÉCHEC SAUVEGARDE AUTO
+toast.loaded = PARTIE CHARGÉE
+toast.load_failed = ÉCHEC CHARGEMENT
+toast.load_corrupt = ÉCHEC CHARGEMENT (SAUVEGARDE ENDOMMAGÉE ?)
+toast.empty_slot = EMPLACEMENT VIDE
+toast.screenshot = CAPTURE SAUVEGARDÉE : {0}
+toast.screenshot_failed = ÉCHEC CAPTURE
+toast.report = RAPPORT PERF SAUVEGARDÉ : {0}
+toast.report_failed = RAPPORT PERF NON SAUVEGARDÉ
+toast.recording = ENREGISTREMENT PERF 30 S - JOUEZ NORMALEMENT
+# Start-up problems
+startup.texture_problem = 1 PROBLÈME TEXTURE - VOIR ASSETS\TEXTURES\_ERRORS.TXT
+startup.texture_problems = {0} PROBLÈMES TEXTURE - VOIR ASSETS\TEXTURES\_ERRORS.TXT
+startup.effects_failed = CERTAINS EFFETS GRAPHIQUES N'ONT PAS CHARGÉ - VOIR SHADER_ERRORS.TXT
+startup.join = {0}  /  {1}
+startup.no_graphics = walkgrid ne peut pas démarrer : il faut une carte graphique avec support feature level 11.0 (environ 2010 ou plus récent).

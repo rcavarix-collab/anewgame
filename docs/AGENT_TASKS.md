@@ -362,3 +362,7 @@ At the next session, for each `incoming/grok/<task>.md` (or pasted answer):
 | 2026-09-26 | R6 | Delivered. Appraised: good, the best so far; keep worms and coarse-lattice density. `docs/grok_reviews/R6.md` |
 | 2026-09-26 | R7 | Delivered. Appraised: fair; invented a props list and missed the building layer (W067). `docs/grok_reviews/R7.md` |
 | 2026-09-26 | T2 | Delivered (8 of 126 texts looked at). Appraised: fair; five edits kept, waiting for the go-ahead. `docs/grok_reviews/T2.md` |
+| 2026-09-26 | T1 | Delivered three times (German, Mexican Spanish, French). Appraised: all keys and slots right; a few word fixes. `docs/grok_reviews/code_and_text.md` |
+| 2026-09-26 | P1 | Delivered. Appraised: good; ran correctly on a real save. |
+| 2026-09-26 | X2 | Delivered. Appraised: good; one C++ escape bug. |
+| 2026-09-26 | X1 | Delivered. Appraised: fair; two checks wrong, one from the task's own wording. |

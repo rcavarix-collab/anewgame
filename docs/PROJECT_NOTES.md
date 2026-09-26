@@ -1,6 +1,6 @@
 # walkgrid: project notes
 
-This file brings anyone up to speed: the owner, Claude, or another agent (the owner may use one for small tasks between Claude sessions). It covers what walkgrid is, how we work, what's built, how the code is laid out, how to add to it, and what's next. It's a maintained document: update it when something here changes, as part of the step that changed it. Last full update: 2026-09-26, after M1 and the first round of fixes from the owner's play-test (decisions up to D60).
+This file brings anyone up to speed: the owner, Claude, or another agent (the owner may use one for small tasks between Claude sessions). It covers what walkgrid is, how we work, what's built, how the code is laid out, how to add to it, and what's next. It's a maintained document: update it when something here changes, as part of the step that changed it. Last full update: 2026-09-26, after M1 and two rounds of fixes from the owner's play-tests (decisions up to D62).
 
 **If you are an agent starting here:** read this file, then `CLAUDE.md` (the working rules; they bind every agent, not only Claude), then the part of `DESIGN.md` for the system you'll touch. Don't start writing code until the owner has approved a plan that names the files you'll change (rule 1 below).
 
@@ -154,5 +154,7 @@ These are the places where content goes in as data or small, local code. Each ne
 4. **Documentation upkeep:** keep this file, `DESIGN.md` and `COST_LEDGER.md` true to the code, and flag anything that drifted.
 5. **Test coverage:** add native tests for pure functions that have few (e.g. `sky.h` atmosphere colours at eclipse, `strtable.cpp` edge cases, `ChooseGameFolder` paths).
 6. **Sound palette clips:** offline renders (`sound_demo.sh`) of existing sounds for the owner to review. Recipes change only with a decision.
+7. **Cheap realistic lighting (research only, no code):** survey ways to light the faceted ground realistically at no frame cost and without heavy post-processing (the owner dislikes over-processed looks): light baked into the ground when chunks are built (the mesher already records each corner's openness and sky view), better sky and sun colour models, aerial perspective, and whether screen-space AO can go. Say what each costs, when (at meshing or per frame), and what it would look like. The owner's golf-ball complaint (dimpled self-shadowing, D61 round) is the problem to solve.
+8. **Terracing, a nicer way (research only):** gentle slopes show one-cell steps as terraces (D62). A smoothing pass exists (`FacetShape::terrace`, off) but softens player edits too. Propose alternatives: marking edited cells, shaping at terrain generation, or others, with trade-offs.
 
 **Open design goals:** our own look (D60); realistic lighting at no frame cost, without heavy post-processing (owner, 2026-09-26: prefer light baked into the ground when chunks are built over screen-space effects); sand's own footstep sound (waiting on the owner hearing it); terracing on gentle slopes (parked, D62: a smoothing pass exists but is off because it softens one-cell edits); weather.

@@ -32,6 +32,29 @@ The Kaplans' preference framework crosses two needs, **understanding** and **exp
 - **Hagerhall, Purcell & Taylor (2004)** measured real **landscape silhouette outlines** (the skyline) and found preference related to their fractal dimension, suggesting fractal structure explains part of the known preference for natural scenes. [s]
 - **Why this matters for us:** it's a figure we can **measure ourselves**. Render skylines from the facet preview tool, box-count the outline, and compare with the 1.3–1.5 band. Our terrain is sums of value noise at a few scales, so its roughness is tunable.
 
+### Individual differences: Sevenant & Antrop 2010 (read in full [r], supplied by the owner)
+*Land Use Policy* 27, 827–842.
+
+**What they did:**
+- 642 residents of Ghent, Belgium, rated 20 panoramic photographs of everyday rural and village landscapes for beauty.
+- They also rated seven landscape dimensions: care, naturalness, disturbance (elements out of context), openness, complexity, urbanisation and typicality.
+- Instead of assuming everyone weighs these the same, **latent class analysis** found groups of people who weigh them differently.
+
+**What they found:**
+- **People differ a lot.** For most dimensions the biggest share of variation came from the **interaction** between the person and the landscape: different people respond differently to the same scene. Five preference groups appeared, with nearly 30% in the largest.
+- **Care (stewardship) and naturalness** raised beauty most strongly overall. Care mattered more than the often-assumed dominance of naturalness.
+- **Disturbance** (things that don't fit their context) and urbanisation lowered it most. Disturbance was strongly tied to **low coherence**.
+- **Openness, complexity and typicality had small effects.** Openness wasn't significant at all in their data, though the authors note their photos varied little in openness.
+- **Attitudes predicted group membership better than demographics.** Environmental attitude, where people live, age and education mattered; gender and similar variables mostly didn't.
+
+**Limits (theirs and ours):** one region's rural landscapes, photographs rather than presence, urban residents, linear relations only.
+
+**What it changes for walkgrid:**
+- It's **independent evidence that preference isn't universal,** agreeing with Stamps' heterogeneity (section 1). So the design rules are for most players, not all.
+- **Disturbance is the thing to avoid most:** elements that don't belong to their context. A single out-of-place material or form breaks coherence. That strengthens rule 5 (districts with a consistent character).
+- **Care:** signs that a place is looked after raise its appeal. In walkgrid that's the player's own work (paths, tended ground, built places), supporting rule 12 (traces make places).
+- **Openness mattered less here than prospect–refuge theory suggests.** Keep vistas as rare moments (rule 7), not a constant goal.
+
 ### Arousal and complexity: a caution
 Berlyne (1971) proposed an inverted U: moderate complexity and novelty please most. It shaped the field, but **later studies mostly failed to support it** [s]. We don't design to it.
 
@@ -146,6 +169,7 @@ Proposals to test by eye in the game, and by measurement where possible. Each na
 All [s] unless marked; full citations in BIBLIOGRAPHY.md 57–76. Web pages consulted 2026-09-26 through search results only; no site was fetched.
 - Kaplan & Kaplan 1989 [k] (the book); Kaplan 1995 [s]
 - Stamps 2004 [s]
+- Sevenant & Antrop 2010 [r]
 - Appleton 1975 [s]; Orians & Heerwagen 1992 [k]
 - Spehar, Clifford, Newell & Taylor 2003 [s]; Hagerhall, Purcell & Taylor 2004 [s]
 - Berlyne 1971 [s], with the later critique [s]

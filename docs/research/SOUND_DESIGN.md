@@ -24,12 +24,33 @@ Held up against `sfx_synth.cpp`, `soundscape.cpp` and `docs/SOUND_PALETTE.md`.
 
 ## 2. How the ear tells materials apart
 
-- **Klatzky, Pai & Krotkov (2000), *Presence*:** in judging material from contact sounds, **how fast the sound decays** was the most important cue, more than pitch. A simplified material model built on that was supported. [s]
-- In physical terms: hard, stiff materials (metal, glass, stone) have **low internal damping** and ring on; soft ones (wood, earth, plants) damp quickly [k: the physics, standard].
-- **Against ours:**
-  - `Hardness()` sets how footsteps and landings sound per material. **For granular ground that's right:** sand, earth and snow crunch longer as the grains settle (Cook's walking models, below).
-  - **For impacts on solids, decay is the key cue,** and SOUND_PALETTE 1.6 caps metallic partials to die within about 60 ms, so they "never sustain as a pitch". That's a sound musical rule, but it squeezes out the main cue that tells stone from glass from metal.
-  - **Try (owner's call, since it touches 1.6):** let a harder material ring a little longer, on a **safe pitch from the current chord** so it stays in harmony, and keep the ring quiet. A ringing stone chime on a safe tone is music; a buzzing off-key ring is what 1.6 was written against.
+**Klatzky, Pai & Krotkov (2000), *Presence*.** Read in full [r]: the authors' preprint, supplied by the owner.
+
+**The physics they build on:**
+- A struck object's sound is a sum of decaying sinusoids, its **modes**.
+- Each mode's frequency depends on the object's stiffness, density, shape and how it's held.
+- Its **decay** depends mostly on the material's internal friction (damping), which is **shape-invariant**: the same for a small or large piece of the same material.
+- In the model they use, the time for a mode to fall by a factor e is **inversely proportional to its frequency**, so **higher partials die sooner than lower ones**. One number per material (a decay parameter) sets how fast.
+
+**What they did:** four experiments with synthesised struck-bar sounds, varying pitch and that decay parameter.
+- Listeners rated how likely two sounds were to come from the same material.
+- As a control, one group was asked about the bar's length instead.
+- Finally, listeners sorted sounds into rubber, wood, glass and steel.
+
+**What they found:**
+- **Decay is the main cue to material,** about **twice as strong as pitch**, with the two acting independently. Together they explained around four-fifths of the similarity judgements.
+- **It's the rate of decay itself,** not total energy or how long the sound lasts: holding energy roughly constant didn't change the result.
+- **The control confirmed it's about material:** asked about length, listeners leaned on decay much less.
+- **Categories fall in order of decay:** rubber shortest, then wood, glass, and steel longest, matching measured damping of those materials. **Glass** differs from **steel** mainly by being **higher-pitched**: people judge categories by pitch and decay together. (Their tables of fitted values aren't copied, D68; the order and the roles are what matter.)
+- **Frequency-dependent decay is essential.** In an informal test, the same modes with **one decay rate for all frequencies didn't sound like a single uniform material.**
+- **For games:** a one-parameter material model is enough to tell materials apart and to sort them into categories, which matters because audio gets a tiny share of the processor (they cite about 3% in games of the time).
+
+**Against ours:**
+- `Hardness()` sets how footsteps and landings sound per material. **For granular ground that's right:** sand, earth and snow crunch longer as grains settle, a different physics from a struck solid (Cook, section 3).
+- **For impacts on solids, decay is the main cue,** and SOUND_PALETTE 1.6 caps metallic partials to die within about 60 ms. That squeezes out the cue that tells stone from glass from metal.
+- **Two changes, both within D25 and the harmony lock:**
+  1. **Frequency-dependent decay in every struck voice:** each partial's decay time inversely proportional to its frequency, with one decay number per material. It's cheap, it's what makes a voice sound like one object, and it helps even inside the 60 ms cap.
+  2. **Longer decay for harder materials** (stone, crystal, glass, metal), on a **safe pitch from the current chord**, and quiet. **Owner's call,** since it relaxes 1.6's cap for impacts on solids.
 
 ## 3. Synthesising contact sounds
 
@@ -92,7 +113,7 @@ Held up against `sfx_synth.cpp`, `soundscape.cpp` and `docs/SOUND_PALETTE.md`.
 
 1. **The event grammar** (material × interaction × pattern) as the checklist for every world sound. Free.
 2. **Distance darkening,** and a reverb share that grows with distance. Cheap.
-3. **Modes per material for impacts,** pitched to safe tones, with decay longer for harder materials. **Owner's call:** it relaxes SOUND_PALETTE 1.6's 60 ms cap.
+3. **Modes per material for impacts,** pitched to safe tones, with each partial's decay inversely proportional to its frequency (free), and a longer overall decay for harder materials. **Owner's call:** the longer decay relaxes SOUND_PALETTE 1.6's 60 ms cap.
 4. **Grain counts from the event** for digs and crumbles. Cheap.
 5. **Footsteps on the stride, quantised to the beat,** with patterns per surface. Owner's call, pending.
 6. **Informative sounds:** break-through and unsupported cues. Design work.
@@ -102,7 +123,7 @@ Held up against `sfx_synth.cpp`, `soundscape.cpp` and `docs/SOUND_PALETTE.md`.
 
 All [s] unless marked; full citations in BIBLIOGRAPHY.md 111–122. Search results only; no site was fetched.
 - Gaver 1993
-- Klatzky, Pai & Krotkov 2000
+- Klatzky, Pai & Krotkov 2000 [r]
 - van den Doel, Kry & Pai 2001
 - Cook 2002; Cook 1997 (PhISM)
 - Farnell 2010 (bibliography 4)

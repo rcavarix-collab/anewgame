@@ -153,7 +153,7 @@ Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) an
 ## Sound design (SOUND_DESIGN.md; search results consulted 2026-09-26)
 
 111. Gaver, W. W. 1993. What in the World Do We Hear? An Ecological Approach to Auditory Event Perception. *Ecological Psychology* 5(1), 1–29. DOI 10.1207/s15326969eco0501_1. [s] ~
-112. Klatzky, R. L., Pai, D. K. and Krotkov, E. P. 2000. Perception of Material from Contact Sounds. *Presence: Teleoperators and Virtual Environments* 9(4), 399–410. [s] ~
+112. Klatzky, R. L., Pai, D. K. and Krotkov, E. P. 2000. Perception of Material from Contact Sounds. *Presence: Teleoperators and Virtual Environments* 9(4), 399–410. Authors' preprint ("to appear in Presence, MIT Press, 2000"), supplied by the owner. [r] ✓ (title, authors, journal, year from the preprint; volume and pages ~)
 113. van den Doel, K., Kry, P. G. and Pai, D. K. 2001. FoleyAutomatic: Physically-Based Sound Effects for Interactive Simulation and Animation. In *Proceedings of SIGGRAPH 2001*, ACM, 537–544. DOI 10.1145/383259.383322. [s] ~
 114. Cook, P. R. 2002. *Real Sound Synthesis for Interactive Applications*. A K Peters, Natick, MA. [s] ~
 115. Cook, P. R. 1997. Physically Informed Sonic Modeling (PhISM): Synthesis of Percussive Sounds. *Computer Music Journal* 21(3). [s] ~ (issue ?)
@@ -171,8 +171,8 @@ Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) an
 124. Horton, R. E. 1945. Erosional Development of Streams and Their Drainage Basins. *Geological Society of America Bulletin* 56(3), 275–370. [k] ?
 125. Strahler, A. N. 1957. Quantitative Analysis of Watershed Geomorphology. *Transactions, American Geophysical Union* 38(6), 913–920. [k] ?
 126. Hack, J. T. 1957. Studies of Longitudinal Stream Profiles in Virginia and Maryland. US Geological Survey Professional Paper 294-B. [k] ?
-127. Smith, G. and Whitehead, J. 2010. Analyzing the Expressive Range of a Level Generator. In *Proceedings of the 2010 Workshop on Procedural Content Generation in Games (PCGames '10)*, ACM. DOI 10.1145/1814256.1814260. Authors' copy at UC Santa Cruz (blocked from this environment). [s] ~
-128. Shaker, N., Togelius, J. and Nelson, M. J. 2016. *Procedural Content Generation in Games: A Textbook and an Overview of Current Research*. Springer. ISBN 978-3-319-42714-0. [s] ~
+127. Smith, G. and Whitehead, J. 2010. Analyzing the Expressive Range of a Level Generator. In *Proceedings of the 2010 Workshop on Procedural Content Generation in Games (PCGames '10)*, Monterey, CA, 18 June 2010. ACM. DOI 10.1145/1814256.1814260. Supplied by the owner. [r] ✓
+128. Shaker, N., Togelius, J. and Nelson, M. J. 2016. *Procedural Content Generation in Games: A Textbook and an Overview of Current Research*. Springer. ISBN 978-3-319-42714-0. Chapter 4, "Fractals, Noise and Agents with Applications to Landscapes", pp. 57–72, supplied by the owner. [r] ✓ (chapter 4)
 
 ## Accessibility (ACCESSIBILITY.md)
 
@@ -203,6 +203,15 @@ Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) an
 147. ISO/CIE 11664-6. Colorimetry, Part 6: CIEDE2000 Colour-Difference Formula. ISO and CIE. [s] ~
 148. Schloss, K. B. and Palmer, S. E. 2011. Aesthetic Response to Color Combinations: Preference, Harmony, and Similarity. *Attention, Perception, & Psychophysics* 73(2), 551–571. DOI 10.3758/s13414-010-0027-0. [s] ~ (pages ?)
 149. (reserved)
+
+## Supplied by the owner, 2026-09-26 (read at the source)
+
+150. Sevenant, M. and Antrop, M. 2010. The Use of Latent Classes to Identify Individual Differences in the Importance of Landscape Dimensions for Aesthetic Preference. *Land Use Policy* 27(3), 827–842. DOI 10.1016/j.landusepol.2009.11.002. [r] ✓ (issue ~)
+151. Huggett, R. J. 2017. *Fundamentals of Geomorphology*, 4th edition. Routledge Fundamentals of Physical Geography. Routledge, Abingdon and New York. ISBN 978-1-138-94065-9 (paperback). Publisher's preview: front matter and chapter 1. [r] ✓ (chapter 1 only)
+152. Doran, J. and Parberry, I. 2010. Controlled Procedural Terrain Generation Using Software Agents. *IEEE Transactions on Computational Intelligence and AI in Games* 2(2), 111–119. [k] ✓ (as cited in 128)
+153. Kirkby, M. J. 1971. Hillslope Process–Response Models Based on the Continuity Equation. In *Slopes: Form and Process*, Institute of British Geographers Special Publication 3. [k] ? (the model is described in 151; the citation is from knowledge)
+154. van den Doel, K. and Pai, D. K. 1998. The Sounds of Physical Shapes. *Presence* 7(4), 382–395. [k] ✓ (as cited in 112)
+155. Wildes, R. P. and Richards, W. A. 1988. Recovering Material Properties from Sound. In W. Richards (ed.), *Natural Computation*, MIT Press. [k] ✓ (as cited in 112)
 
 ## Verifying the "?" entries
 

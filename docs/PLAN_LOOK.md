@@ -43,6 +43,12 @@ What this is: the owner's third play-test (2026-09-26, 1080p, render distance 3)
 | H | Slate | Lighter and less saturated, in its generator | None | W066 |
 | – | Screenshot read-back | Read the picture back one frame later, so F2 costs almost nothing | None | (small change) |
 
+## Also on the list, from Grok's R1 (appraised in docs/grok_reviews/R1.md)
+
+- A longer sky-view reach (16–24 blocks), after item G shows whether per-corner baking causes the noon patches.
+- A tuning pass on the day's colours in `ComputeAtmosphere`.
+- Height-aware haze, once we can see further.
+
 ## Open questions for the owner (asked after the Grok review)
 
 1. **F, texture density.** Three choices:

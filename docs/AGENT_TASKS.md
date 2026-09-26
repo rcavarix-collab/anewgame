@@ -354,3 +354,4 @@ At the next session, for each `incoming/grok/<task>.md` (or pasted answer):
 | Date | Task | Result (delivered / reviewed / merged / sent back) |
 |---|---|---|
 | 2026-09-26 | R1 | Stopped. The owner pasted R1's three parts correctly, as a first chat; the agent still quoted R2's inputs, which no R1 pack ever contained (checked in every commit), and the Brief then told it to stop when something was missing. Rewritten: one self-contained paste per task, facts in plain words, assume and label instead of stopping, private chats. |
+| 2026-09-26 | R1 | Delivered (second attempt). Appraised: fair. Keep a longer sky-view reach, a colour-curve tuning pass, height-aware haze for later; three options dropped (already exist, or rest on things that don't). `docs/grok_reviews/R1.md` |

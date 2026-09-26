@@ -181,12 +181,15 @@ static const char* g_atmosphereSrc =
     "    col += fSunColor.rgb * (0.10f * pow(s, 8.0f) + 0.25f * pow(s, 64.0f));\n"
     "    return col;\n"
     "}\n"
-    // Distance fog: a gentle aerial haze that builds from nearby (so depth
-    // reads), and the loaded world's edge fading fully into the sky.
+    // Distance fog: a faint aerial haze at a fixed scale (so depth reads
+    // the same at any render distance), and the loaded world's edge fading
+    // fully into the sky over its last 30%. The haze once scaled with the
+    // render distance and the fade began halfway out, so at distance 5 a
+    // cliff 60 blocks off came out a pale, textureless wall (owner).
     "float FogAmount(float dist) {\n"
-    "    float haze = 1.0f - exp(-dist / max(fFog.y * 1.2f, 1.0f));\n"
+    "    float haze = 1.0f - exp(-dist / 260.0f);\n"
     "    float f = saturate((dist - fFog.x) / max(fFog.y - fFog.x, 1.0f));\n"
-    "    return max(haze * 0.55f, f * f * (3.0f - 2.0f * f));\n"
+    "    return max(haze * 0.45f, f * f * (3.0f - 2.0f * f));\n"
     "}\n"
     "float3 ToDisplay(float3 x) {\n"
     "    x *= fFog.z;\n"
@@ -1202,7 +1205,7 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         v4(f.ambientUp, atm.ambientUp, 0);
         v4(f.ambientDown, atm.ambientDown, 0);
         v4(f.camPos, eye, (float)(g_worldTick / 60.0));
-        f.fog[0] = fogEnd * 0.5f; f.fog[1] = fogEnd; f.fog[2] = atm.exposure; f.fog[3] = CLOUD_COVER;
+        f.fog[0] = fogEnd * 0.7f; f.fog[1] = fogEnd; f.fog[2] = atm.exposure; f.fog[3] = CLOUD_COVER;
         D3D11_MAPPED_SUBRESOURCE mapped;
         g_context->Map(g_frameCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         memcpy(mapped.pData, &f, sizeof(f));

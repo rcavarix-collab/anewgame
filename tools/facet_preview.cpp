@@ -361,9 +361,9 @@ static Vec3 SkyColorAt(const Atmosphere& a, Vec3 sun, Vec3 d) {
     return col;
 }
 static float FogAmount(float dist, float fogStart, float fogEnd) {
-    float haze = 1.0f - expf(-dist / std::max(fogEnd * 1.2f, 1.0f));
+    float haze = 1.0f - expf(-dist / 260.0f); // the world shader's (render.cpp FogAmount)
     float f = Sat((dist - fogStart) / std::max(fogEnd - fogStart, 1.0f));
-    return std::max(haze * 0.55f, f * f * (3.0f - 2.0f * f));
+    return std::max(haze * 0.45f, f * f * (3.0f - 2.0f * f));
 }
 static float ToDisplay1(float x, float exposure) {
     x *= exposure;
@@ -550,7 +550,7 @@ static void Render(const View& v, const std::string& outDir, FILE* stats, int W 
     }
 
     // ---- shading ----
-    float fogEnd = 6 * 16.0f, fogStart = fogEnd * 0.5f; // render distance 6
+    float fogEnd = 6 * 16.0f, fogStart = fogEnd * 0.7f; // render distance 6
     std::vector<Vec3> hdr((size_t)RW * RH);
     std::atomic<int> nextRow{ 0 };
     auto worker = [&]() {

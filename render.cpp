@@ -71,7 +71,11 @@ struct FrameCBData {
     float zenith[4], horizon[4], twilight[4], ambientUp[4], ambientDown[4];
     float camPos[4], fog[4];
     float wind[4]; // xy the jet stream's direction (east, north), zw the clouds' drift so far (sky.h JetStreamAngle)
+    float clouds[4]; // x high-streak cover, y low-cloud cover (0 none .. 1 overcast), zw the low clouds' drift (blocks)
 };
+// The cloud layers' knobs (D59): what a future weather system sets. Today
+// fixed: plenty of thin high streaks, now and then a big low cloud.
+static const float CIRRUS_COVER = 0.55f, CUMULUS_COVER = 0.28f;
 static const float CLOUD_COVER = 0.50f; // noise threshold: higher = clearer skies
 
 // Off-screen scene target + a readable depth buffer, for the post pass.
@@ -170,7 +174,27 @@ static const char* g_atmosphereSrc =
     "    float4 fCamPos;      // xyz eye; w = time in seconds (clouds)\n"
     "    float4 fFog;         // x fog start, y fog end (blocks), z exposure, w cloud cover\n"
     "    float4 fWind;        // xy the high wind's direction (east, north), zw the clouds' drift\n"
+    "    float4 fClouds;      // x high-streak cover, y low-cloud cover (0..1), zw the low clouds' drift (blocks)\n"
     "};\n"
+    // Noise shared by the sky and world shaders (the clouds and their shadows).
+    "float Hash2(float2 p) { p = frac(p * float2(0.1031f, 0.1030f)); p += dot(p, p.yx + 33.33f); return frac((p.x + p.y) * p.x); }\n"
+    "float Noise2(float2 p) {\n"
+    "    float2 i = floor(p), f = frac(p), u = f * f * (3.0f - 2.0f * f);\n"
+    "    return lerp(lerp(Hash2(i), Hash2(i + float2(1, 0)), u.x), lerp(Hash2(i + float2(0, 1)), Hash2(i + float2(1, 1)), u.x), u.y);\n"
+    "}\n"
+    // The low clouds (D59): big, soft, occasional, on a plane 220 blocks up,
+    // drifting with the wind. One function for the sky (where a view ray
+    // meets the plane) and the ground (where the sun's ray does), so a
+    // cloud and its shadow always match. `detail` 0: the ground's cheaper
+    // read (two octaves) -- a soft shadow needs no more.
+    "static const float CUMULUS_HEIGHT = 220.0f;\n"
+    "float CumulusDensity(float2 w, bool detail) {\n"
+    "    float2 p = (w - fClouds.zw) / 150.0f;\n"
+    "    float n = 0.62f * Noise2(p) + 0.38f * Noise2(p * 2.3f + 7.1f);\n"
+    "    if (detail) n = n * 0.85f + 0.15f * Noise2(p * 6.1f + 3.3f);\n"
+    "    float cover = 1.0f - fClouds.y;\n"                     // cover 0.28: only the tops of the noise
+    "    return smoothstep(cover * 0.78f + 0.12f, cover * 0.78f + 0.24f, n);\n"
+    "}\n"
     "float3 SkyColor(float3 d) {\n"
     "    float h = saturate(d.y);\n"
     "    float3 col = lerp(fHorizon.rgb, fZenith.rgb, pow(h, 0.5f));\n"
@@ -388,6 +412,13 @@ static const char* g_shaderSrc =
     "            shadow = lerp(ShadowLit(shadowPrev, mul(float4(wpos, 1.0f), lightViewProjPrev)), shadow, params.z);\n"
     "        sunLit *= shadow;\n"
     "    }\n"
+    // Low clouds' shadows (D59), with the sun shadows: where the sun's ray
+    // from this point meets the cloud plane, a soft light shadow.
+    "    [branch] if (params.x > 0.5f && sunLit > 0.0f && fSunDir.y > 0.05f && fClouds.y > 0.0f) {\n"
+    "        float2 w = i.wpos.xz + fSunDir.xz * ((CUMULUS_HEIGHT - i.wpos.y) / fSunDir.y);\n"
+    "        float cs = 1.0f - 0.45f * CumulusDensity(w, false);\n"
+    "        sunLit *= cs; shadow *= cs;\n"
+    "    }\n"
     "#endif\n"
     // Sky light (23.4): the sky's share of the ambient, so pits, overhangs
     // and hollows go dark and a cliff face sees about half.
@@ -590,11 +621,6 @@ static const char* g_skyShaderSrc =
     // Value noise on a high plane (so they look small and far off),
     // stretched along the wind and domain-warped into wisps, drifting with
     // time -- sky pixels only, so the cost is fixed.
-    "float Hash2(float2 p) { p = frac(p * float2(0.1031f, 0.1030f)); p += dot(p, p.yx + 33.33f); return frac((p.x + p.y) * p.x); }\n"
-    "float Noise2(float2 p) {\n"
-    "    float2 i = floor(p), f = frac(p), u = f * f * (3.0f - 2.0f * f);\n"
-    "    return lerp(lerp(Hash2(i), Hash2(i + float2(1, 0)), u.x), lerp(Hash2(i + float2(0, 1)), Hash2(i + float2(1, 1)), u.x), u.y);\n"
-    "}\n"
     "float CloudNoise(float3 d) {\n"
     "    float2 base = d.xz / (d.y + 0.06f) * 0.45f;\n"                                   // a high sheet: flat, far away
     // The sheet drifts with the jet stream (fWind.zw, summed over time so
@@ -602,7 +628,7 @@ static const char* g_skyShaderSrc =
     // wind's current direction.
     "    base -= fWind.zw;\n"
     "    float2 p = float2(dot(base, fWind.xy), dot(base, float2(-fWind.y, fWind.x)));\n" // into the wind's frame
-    "    p = p * float2(0.6f, 3.2f);\n"                                                     // long along the wind, thin across
+    "    p = p * float2(0.45f, 4.6f);\n"                                                    // long along the wind, thin across: fine streaks
     "    p.y += (Noise2(p * float2(0.7f, 0.25f) + 5.2f) - 0.5f) * 2.4f;\n"                     // warp the streaks into wisps
     "    return 0.5f * Noise2(p) + 0.25f * Noise2(p * 2.07f + 17.1f) + 0.15f * Noise2(p * float2(4.3f, 3.1f) + 5.3f) + 0.1f * Noise2(p * float2(9.1f, 6.7f) + 9.7f);\n"
     "}\n"
@@ -617,8 +643,10 @@ static const char* g_skyShaderSrc =
     "        cloudN = CloudNoise(d);\n"
     // Sparse and translucent: at most ~55% opacity by day and ~25% at
     // night, so the stars and moon still show through.
-    "        float wisp = smoothstep(fFog.w, fFog.w + 0.28f, cloudN);\n"
-    "        cloud = wisp * wisp * lerp(0.55f, 0.25f, params.x) * smoothstep(0.02f, 0.2f, d.y);\n"
+    // High streaks (cirrus, D59): many, thin and wispy, pulled along the
+    // jet stream; fClouds.x is how much of the sky they cover.
+    "        float wisp = smoothstep(0.62f - 0.32f * fClouds.x, 0.62f - 0.32f * fClouds.x + 0.30f, cloudN);\n"
+    "        cloud = wisp * wisp * lerp(0.38f, 0.18f, params.x) * smoothstep(0.02f, 0.2f, d.y);\n"
     "    }\n"
     // Stars and moon behind the clouds.
     "    float3 s = float3(dot(starRow0.xyz, d), dot(starRow1.xyz, d), dot(starRow2.xyz, d));\n"
@@ -656,9 +684,21 @@ static const char* g_skyShaderSrc =
     // the sun, and it catches the sunset's colour first.
     "    float3 cloudLit = fAmbientUp.rgb * 1.3f + fSunColor.rgb * (0.35f + 0.9f * pow(saturate(mu), 6.0f)) + fMoonColor.rgb * 1.2f;\n"
     "    col = lerp(col, cloudLit, cloud);\n"
+    // Low clouds in front of all that: where the view ray meets their plane,
+    // fading toward the horizon. Lit white on top toward the sun, grey
+    // beneath, and dark at night.
+    "    float low = 0.0f;\n"
+    "    [branch] if (d.y > 0.03f && fClouds.y > 0.0f) {\n"
+    "        float t = (CUMULUS_HEIGHT - fCamPos.y) / d.y;\n"
+    "        float2 w = fCamPos.xz + d.xz * t;\n"
+    "        low = CumulusDensity(w, true) * smoothstep(0.03f, 0.18f, d.y);\n"
+    "        float thick = CumulusDensity(w + fSunDir.xz * 40.0f, false);\n"    // more cloud toward the sun: the far side is in its own shade
+    "        float3 lowCol = fAmbientUp.rgb * 1.05f + fSunColor.rgb * (0.55f - 0.35f * thick) * (0.6f + 0.4f * saturate(fSunDir.y * 3.0f)) + fMoonColor.rgb * 0.8f;\n"
+    "        col = lerp(col, lowCol, low * 0.9f);\n"
+    "    }\n"
     // Glow mask for bloom: the disc, plus a softer halo around it.
     "    float sunGlow = saturate(sunDisc + 0.5f * smoothstep(0.985f, 0.9996f, mu) * params.y * above);\n"
-    "    return float4(ToDisplay(col), sunGlow * (1.0f - cloud));\n"
+    "    return float4(ToDisplay(col), sunGlow * (1.0f - cloud) * (1.0f - low));\n"
     "}\n";
 
 // ---- Ground meshes (DESIGN.md 23.3): built on the job threads ----
@@ -1248,6 +1288,10 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
             const float speed = 0.0067f / 60.0f; // cloud-sheet units a tick: the old drift's pace
             driftX += wx * speed * ticks; driftZ += wz * speed * ticks;
             f.wind[0] = wx; f.wind[1] = wz; f.wind[2] = (float)driftX; f.wind[3] = (float)driftZ;
+            // The low clouds drift with the same wind, lower and slower: 2.5 blocks a second.
+            static double lowX = 0.0, lowZ = 0.0;
+            lowX += wx * 2.5 / 60.0 * ticks; lowZ += wz * 2.5 / 60.0 * ticks;
+            f.clouds[0] = CIRRUS_COVER; f.clouds[1] = CUMULUS_COVER; f.clouds[2] = (float)lowX; f.clouds[3] = (float)lowZ; // unwrapped: a wrap would jump the clouds
         }
         f.fog[0] = fogEnd * 0.7f; f.fog[1] = fogEnd; f.fog[2] = atm.exposure; f.fog[3] = CLOUD_COVER;
         D3D11_MAPPED_SUBRESOURCE mapped;

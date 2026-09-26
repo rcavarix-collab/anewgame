@@ -41,6 +41,8 @@ Every system, what it's allowed to cost (its budget), and what it was last measu
 | Start-up to first frame | ≤ the M0 baseline | 0.99 s (cold shader cache): this is the baseline |
 | Hidden-chunk walk (M1.11) | inside RENDER | About 0.3 ms at render distance 12 with everything in view (tests, -O1); the frustum cuts it down. Openings: about 40 µs a chunk on the job threads. Awaiting a report |
 | Fine detail everywhere (D49) | ≤ 1.5 million visible triangles | Level 2 is about 6× level 0 on lumpy ground (1,031 against 6,351 triangles in 4 hill chunks). The owner's run at the old default: 158,000 at render distance 5. Everywhere may pass 1.5 million at large render distances: awaiting a report; the setting steps back down for lesser machines |
+| Clouds and their shadows (D59) | inside GPU WORLD | Sky pixels: two cloud layers (a few noise reads). Ground pixels: two noise reads for the low clouds' shadows, only with Sun Shadows on. Awaiting a report |
+| Continuous sun shadows (D52) | GPU SHADOW | A quarter of the shadow map every frame while the sun moves, plus the crossfade's second read. Awaiting a report |
 | UI font atlas (M1.10) | — | 12 rows of glyphs for English (was 6): about 2.6 MB of video memory (was 1.3 MB); its bake is inside TEXTURES in the boot timeline. Awaiting a report |
 
 The per-system numbers above are the first split of the totals in FOUNDATIONS 4. The M0 baseline will show where they're wrong, and they'll be adjusted then (logged).

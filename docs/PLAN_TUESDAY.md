@@ -69,6 +69,14 @@ Decided by what the debug views show: a longer baked sky view (16–24 blocks), 
   - fog toward the sky's colour.
 
   Also a one-page outside-playtester protocol (think-aloud, no help given, no telemetry). Owner questions on the game's aesthetics, competence and relatedness are listed in GAME_DESIGN.md 5.
+- **Music and world sound (docs/research/MUSIC.md):**
+  - a roughness-by-register check in the analyzer, with wide intervals in the low pads;
+  - slow spectral drift in the voices;
+  - reverb for world sounds that follows the soundscape census (caves sound like caves);
+  - rare musical arrivals at sunrise and at landmarks;
+  - motifs of place.
+
+  Owner's calls: harmony by region, day tempo.
 - Sky settings (cloud amount, cloud speed), now or with weather.
 - A faint wind bed in the world sound that rises when the low clouds move faster.
 - Start planning the building layer (W067) if it becomes M2, with Grok researching alongside.

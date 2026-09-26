@@ -127,6 +127,29 @@ Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) an
 89. Drachen, A., Mirza-Babaei, P. and Nacke, L. (eds.) 2018. *Games User Research*. Oxford University Press. ISBN 978-0-19-879484-4. [s] ~
 90. Fullerton, T. *Game Design Workshop: A Playcentric Approach to Creating Innovative Games*. CRC Press (4th edition 2018). [k] ?
 
+## Music and sound (MUSIC.md; search results consulted 2026-09-26)
+
+91. Plomp, R. and Levelt, W. J. M. 1965. Tonal Consonance and Critical Bandwidth. *Journal of the Acoustical Society of America* 38(4), 548–560. Authors' copy at the Max Planck Institute for Psycholinguistics. [s] ✓ (from the publisher's page)
+92. McDermott, J. H., Schultz, A. F., Undurraga, E. A. and Godoy, R. A. 2016. Indifference to Dissonance in Native Amazonians Reveals Cultural Variation in Music Perception. *Nature* 535, 547–550. DOI 10.1038/nature18635. [s] ~ (pages ?)
+93. Huron, D. 2001. Tone and Voice: A Derivation of the Rules of Voice-Leading from Perceptual Principles. *Music Perception* 19(1), 1–64. [s] ✓ (from the publisher's page)
+94. Huron, D. 2006. *Sweet Anticipation: Music and the Psychology of Expectation*. MIT Press. [k] ?
+95. Bregman, A. S. 1990. *Auditory Scene Analysis: The Perceptual Organization of Sound*. MIT Press. [k] ?
+96. Grey, J. M. 1977. Multidimensional Perceptual Scaling of Musical Timbres. *Journal of the Acoustical Society of America* 61(5), 1270–1277. [s] ✓ (from the publisher's page)
+97. McAdams, S., Winsberg, S., Donnadieu, S., De Soete, G. and Krimphoff, J. 1995. Perceptual Scaling of Synthesized Musical Timbres: Common Dimensions, Specificities, and Latent Subject Classes. *Psychological Research* 58, 177–192. [s] ~
+98. Rimsky-Korsakov, N. 1913. *Principles of Orchestration* (ed. M. Steinberg). Public domain; English translation 1922. [k] ?
+99. Schroeder, M. R. 1962. Natural Sounding Artificial Reverberation. *Journal of the Audio Engineering Society* 10(3), 219–223. [s] ~
+100. Salimpoor, V. N., Benovoy, M., Larcher, K., Dagher, A. and Zatorre, R. J. 2011. Anatomically Distinct Dopamine Release during Anticipation and Experience of Peak Emotion to Music. *Nature Neuroscience* 14(2), 257–262. DOI 10.1038/nn.2726. [s] ~
+101. Meyer, L. B. 1956. *Emotion and Meaning in Music*. University of Chicago Press. [k] ?
+102. Juslin, P. N. and Västfjäll, D. 2008. Emotional Responses to Music: The Need to Consider Underlying Mechanisms. *Behavioral and Brain Sciences* 31(5), 559–575 (with commentaries, to 621). [s] ~
+103. Margulis, E. H. 2014. *On Repeat: How Music Plays the Mind*. Oxford University Press. [k] ?
+104. Collins, K. 2008. *Game Sound: An Introduction to the History, Theory, and Practice of Video Game Music and Sound Design*. MIT Press. [k] ?
+105. Husain, G., Thompson, W. F. and Schellenberg, E. G. 2002. Effects of Musical Tempo and Mode on Arousal, Mood, and Spatial Abilities. *Music Perception* 20(2), 151–171. [s] ✓ (from the publisher's page)
+106. Eno, B. 1978. Liner notes to *Ambient 1: Music for Airports*. (A primary artist's statement, not peer-reviewed.) [k] ?
+107. Chowning, J. M. 1973. The Synthesis of Complex Audio Spectra by Means of Frequency Modulation. *Journal of the Audio Engineering Society* 21(7), 526–534. [s] ~ (first page 526 or 527 ?)
+108. Karplus, K. and Strong, A. 1983. Digital Synthesis of Plucked-String and Drum Timbres. *Computer Music Journal* 7(2), 43–55. [k] ?
+109. Smith, J. O. *Physical Audio Signal Processing*. Online book, Center for Computer Research in Music and Acoustics (CCRMA), Stanford University. ccrma.stanford.edu/~jos/pasp. [k] ?
+110. Plut, C. and Pasquier, P. 2020. Generative Music in Video Games: State of the Art, Challenges, and Prospects. *Entertainment Computing* 33, 100337. [s] ~ (volume and article number ?)
+
 ## Verifying the "?" entries
 
 A helper task, or the owner with Unpaywall or the DOI links, can confirm each "?" against the paper's first page. When one is confirmed, change it to ✓ here.

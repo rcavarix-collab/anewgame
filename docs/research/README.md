@@ -22,4 +22,5 @@ Our own research: theory and explanation from reliable sources (D66), a regular 
 | [TONE_MAPPING.md](TONE_MAPPING.md) | Our tone curve and our own look | Reinhard 2002 (JGT) [r], Reinhard et al. 2002 [s] |
 | [LANDSCAPE.md](LANDSCAPE.md) | How people enjoy, read and find their way through a landscape; twelve design rules for terrain, far land, colour and sound | Kaplan, Appleton, Spehar et al., Lynch, Keltner & Haidt, Palmer & Schloss, Pijanowski et al. [s] |
 | [GAME_DESIGN.md](GAME_DESIGN.md) | Why people play; walkgrid held against the theory; how to see our own blind spots | Hunicke et al., Ryan et al., Sweetser & Wyeth, Pinelle et al. [s] |
+| [MUSIC.md](MUSIC.md) | Consonance by register, voice leading, timbre, reverb, expectation; nine things to try in our music and world sound | Plomp & Levelt, Huron, Grey, McAdams et al., Schroeder, Salimpoor et al., Chowning [s] |
 | [PAPER_IDEAS.md](PAPER_IDEAS.md) | Papers we might write from the project (background) | none yet |

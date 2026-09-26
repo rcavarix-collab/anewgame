@@ -357,7 +357,7 @@ static const char* g_shaderSrc =
     "    float3 ns = normalize(i.nrm);\n"
     // Projection weights, sharpened so a slope takes mostly one projection.
     "    float3 pw = ns * ns; pw *= pw; pw /= max(pw.x + pw.y + pw.z, 1e-5f);\n"
-    "    float topness = smoothstep(0.25f, 0.42f, ns.y);\n"
+    "    float topness = smoothstep(0.10f, 0.25f, ns.y);\n"
     "    bool up = ns.y >= 0.0f;\n"
     // Texels per screen pixel along the surface (64 texels a block).
     "    float foot = max(length(ddx(i.wpos)), length(ddy(i.wpos))) * 64.0f;\n"
@@ -613,9 +613,12 @@ static const char* g_skyShaderSrc =
     "    float3 key = float3(floor(g), face);\n"
     "    if (Hash(key) > 0.18f) return 0.0f;\n"
     "    float2 spot = float2(Hash(key + 7.1f), Hash(key + 3.7f)) * 0.7f + 0.15f;\n"
-    "    float size = 0.17f + 0.20f * Hash(key + 1.3f);\n"
+    // Sizes between the old tiny points and the owner's "snowflakes": a
+    // sharp core with a short soft falloff, a few bright ones larger.
+    "    float hb = Hash(key + 9.2f);\n"
+    "    float size = 0.09f + 0.07f * Hash(key + 1.3f) + 0.08f * hb * hb;\n"
     "    float b = saturate(1.0f - length(frac(g) - spot) / size);\n"
-    "    return b * b * (0.5f + 0.9f * Hash(key + 9.2f));\n"
+    "    return b * b * b * (0.7f + 1.4f * hb);\n"
     "}\n"
     // Clouds: thin, wispy high-altitude streaks (cirrus), not heavy puffs.
     // Value noise on a high plane (so they look small and far off),
@@ -628,7 +631,7 @@ static const char* g_skyShaderSrc =
     // wind's current direction.
     "    base -= fWind.zw;\n"
     "    float2 p = float2(dot(base, fWind.xy), dot(base, float2(-fWind.y, fWind.x)));\n" // into the wind's frame
-    "    p = p * float2(0.45f, 4.6f);\n"                                                    // long along the wind, thin across: fine streaks
+    "    p = p * float2(0.45f, 7.5f);\n"                                                    // long along the wind, thin across: fine streaks
     "    p.y += (Noise2(p * float2(0.7f, 0.25f) + 5.2f) - 0.5f) * 2.4f;\n"                     // warp the streaks into wisps
     "    return 0.5f * Noise2(p) + 0.25f * Noise2(p * 2.07f + 17.1f) + 0.15f * Noise2(p * float2(4.3f, 3.1f) + 5.3f) + 0.1f * Noise2(p * float2(9.1f, 6.7f) + 9.7f);\n"
     "}\n"
@@ -646,12 +649,13 @@ static const char* g_skyShaderSrc =
     // High streaks (cirrus, D59): many, thin and wispy, pulled along the
     // jet stream; fClouds.x is how much of the sky they cover.
     "        float wisp = smoothstep(0.62f - 0.32f * fClouds.x, 0.62f - 0.32f * fClouds.x + 0.30f, cloudN);\n"
-    "        cloud = wisp * wisp * lerp(0.38f, 0.18f, params.x) * smoothstep(0.02f, 0.2f, d.y);\n"
+    "        cloud = wisp * wisp * lerp(0.26f, 0.14f, params.x) * smoothstep(0.02f, 0.2f, d.y);\n"
     "    }\n"
     // Stars and moon behind the clouds.
     "    float3 s = float3(dot(starRow0.xyz, d), dot(starRow1.xyz, d), dot(starRow2.xyz, d));\n"
     "    float veil = 1.0f - cloud;\n"
-    "    col += Stars(s) * params.x * above * veil * float3(0.8f, 0.85f, 1.0f);\n"
+    "    float moonMask = Disc(d, moon.xyz, 0.999449f) * above;\n"
+    "    col += Stars(s) * params.x * above * veil * (1.0f - moonMask) * float3(0.8f, 0.85f, 1.0f);\n"
     // The moon (D57): a small sphere lit from the sun's side, so its phase
     // is where the sun actually is -- a crescent near the sun, full
     // opposite it -- with a faint glow on its dark side. Where it's in the
@@ -659,7 +663,6 @@ static const char* g_skyShaderSrc =
     // full shadow turns a deep red, as sunlight bent round the world does.
     // Its disc (radius 1.9 degrees, sky.h MOON_DISC_RADIUS) hides whatever
     // is behind it, including the sun.
-    "    float moonMask = Disc(d, moon.xyz, 0.999449f) * above;\n"
     "    [branch] if (moonMask > 0.0f) {\n"
     "        float3 q = (d - moon.xyz * dot(d, moon.xyz)) / 0.0332f;\n"   // across the disc, 0..1 at the rim
     "        float3 nrm = q - moon.xyz * sqrt(saturate(1.0f - dot(q, q)));\n" // the visible face points back at us
@@ -667,12 +670,14 @@ static const char* g_skyShaderSrc =
     "        float ang = acos(clamp(dot(d, -fSunDir.xyz), -1.0f, 1.0f));\n"
     "        float umbra = 1.0f - smoothstep(0.0434f, 0.0474f, ang);\n"   // sky.h UMBRA_RADIUS, a soft rim
     "        float pen = 1.0f - smoothstep(0.0454f, 0.0785f, ang);\n"     // PENUMBRA_RADIUS
-    "        float3 face = float3(0.9f, 0.92f, 1.0f) * 1.4f * (lit * (1.0f - 0.55f * pen) + 0.035f);\n"
+    "        float3 face = float3(0.9f, 0.92f, 1.0f) * 1.4f * (lit * (1.0f - 0.55f * pen) + 0.004f);\n"
     "        face = lerp(face, float3(0.55f, 0.13f, 0.05f) * 0.32f * (0.3f + lit), umbra);\n"
-    // Against the day sky a new moon's dark face barely shows -- except
-    // in front of the sun, where it's the dark disc of an eclipse.
-    "        float show = max(moon.w, params.z);\n"
-    "        col = lerp(col, face * (1.0f - params.z * 0.97f), moonMask * show * veil);\n"
+    // Its lit part adds to the sky; its dark part is simply sky (the air
+    // in front of it is lit), so a new moon vanishes by day and a
+    // crescent's dark side is the night sky -- the stars behind it are
+    // hidden above. In front of the sun it's the dark disc of an eclipse.
+    "        col *= 1.0f - moonMask * params.z * 0.97f;\n"
+    "        col += face * moonMask * moon.w * veil;\n"
     "    }\n"
     // The sun's disc (bright enough to bloom), dimmed by cloud, hidden
     // behind the moon; at totality a faint pearly corona rings it.
@@ -691,9 +696,22 @@ static const char* g_skyShaderSrc =
     "    [branch] if (d.y > 0.03f && fClouds.y > 0.0f) {\n"
     "        float t = (CUMULUS_HEIGHT - fCamPos.y) / d.y;\n"
     "        float2 w = fCamPos.xz + d.xz * t;\n"
-    "        low = CumulusDensity(w, true) * smoothstep(0.03f, 0.18f, d.y);\n"
-    "        float thick = CumulusDensity(w + fSunDir.xz * 40.0f, false);\n"    // more cloud toward the sun: the far side is in its own shade
-    "        float3 lowCol = fAmbientUp.rgb * 1.05f + fSunColor.rgb * (0.55f - 0.35f * thick) * (0.6f + 0.4f * saturate(fSunDir.y * 3.0f)) + fMoonColor.rgb * 0.8f;\n"
+    // Depth without volumes (D61): the cloud's own shape nearby shades it.
+    // Its slope says which edges face the sun (lit rims) and which face
+    // away; its thickness darkens the middle and underside; toward the
+    // sun, thin edges glow (a silver lining). Four cheap reads.
+    "        float raw = CumulusDensity(w, true);\n"
+    "        low = raw * smoothstep(0.03f, 0.18f, d.y);\n"
+    "        float2 grad = float2(CumulusDensity(w + float2(10, 0), false) - CumulusDensity(w - float2(10, 0), false),\n"
+    "                             CumulusDensity(w + float2(0, 10), false) - CumulusDensity(w - float2(0, 10), false));\n"
+    "        float rim = saturate(-dot(grad, normalize(fSunDir.xz + 1e-4f)) * 1.6f);\n"   // thinning toward the sun: the sun-facing edge
+    "        float core = smoothstep(0.35f, 1.0f, raw);\n"
+    "        float edge = raw * (1.0f - raw) * 4.0f;\n"
+    "        float high = 0.6f + 0.4f * saturate(fSunDir.y * 3.0f);\n"
+    "        float3 lowCol = fAmbientUp.rgb * (1.0f - 0.35f * core)\n"
+    "                      + fSunColor.rgb * high * (0.22f + 0.55f * rim) * (1.0f - 0.45f * core)\n"
+    "                      + fSunColor.rgb * edge * pow(saturate(mu), 3.0f) * 1.2f\n"
+    "                      + fMoonColor.rgb * 0.8f * (1.0f - 0.4f * core);\n"
     "        col = lerp(col, lowCol, low * 0.9f);\n"
     "    }\n"
     // Glow mask for bloom: the disc, plus a softer halo around it.

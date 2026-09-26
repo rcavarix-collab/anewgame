@@ -414,7 +414,7 @@ static Surface Material(Vec3 p, Vec3 nSmooth, Vec3 nGeo, const uint8_t mat[3], c
     // Which face of the material a slope shows: its top up to ~50 degrees,
     // its side only on steep ground -- so a one-cell rise in a meadow stays
     // grass, and a cliff shows its strata.
-    float topness = Sat((nSmooth.y - 0.25f) / 0.17f); // the world shader's smoothstep(0.25, 0.42) (D50)
+    float topness = Sat((nSmooth.y - 0.10f) / 0.15f); // the world shader's smoothstep(0.10, 0.25) (D61)
     topness = topness * topness * (3 - 2 * topness);
     Vec3 col[3]; float hgt[3]; Vec3 grad[3];
     for (int k = 0; k < 3; k++) {

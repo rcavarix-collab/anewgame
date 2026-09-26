@@ -20,7 +20,7 @@ static const float SENS_MIN = 0.25f, SENS_MAX = 3.0f;
 void ResetLookSettings() { g_sensitivityMultX = 1.0f; g_sensitivityMultY = 1.0f; g_invertX = false; g_invertY = false; }
 void ResetGraphicsSettings() {
     g_loadRadius = 3;
-    g_fineDetail = 2;
+    g_fineDetail = 4; // everywhere (D49)
     g_shadows = true; g_postEdges = false; g_postSSAO = false; g_bloom = true;
     g_vsync = true; g_frameLimit = 60;
     g_lastPlayerChunkX = INT32_MIN; g_lastPlayerChunkZ = INT32_MIN; // force a rescan at the new radius
@@ -42,7 +42,7 @@ SliderRange GetSliderRange(int id) {
     switch (id) {
     case SLIDER_SENS_X: case SLIDER_SENS_Y: return { SENS_MIN, SENS_MAX };
     case SLIDER_RENDER_DIST: return { 1.0f, 8.0f };
-    case SLIDER_FINE_DETAIL: return { 0.0f, 3.0f };
+    case SLIDER_FINE_DETAIL: return { 0.0f, 4.0f }; // 4: everywhere
     case SLIDER_FRAME_LIMIT: return { 30.0f, 200.0f };
     case SLIDER_MASTER_VOLUME: case SLIDER_MUSIC_VOLUME: case SLIDER_WORLD_VOLUME: return { 0.0f, 1.0f };
     case SLIDER_FOOTSTEP_VOLUME: return { 0.0f, 2.0f };
@@ -114,7 +114,7 @@ std::string GetSliderLabel(int id) {
     case SLIDER_SENS_X: snprintf(x, sizeof(x), "%.2f", g_sensitivityMultX); return StrF("slider.sens_x", { x });
     case SLIDER_SENS_Y: snprintf(x, sizeof(x), "%.2f", g_sensitivityMultY); return StrF("slider.sens_y", { x });
     case SLIDER_RENDER_DIST: return StrF("slider.render_distance", { std::to_string(g_loadRadius) });
-    case SLIDER_FINE_DETAIL: return g_fineDetail == 0 ? Str("slider.fine_detail_off") : StrF("slider.fine_detail", { std::to_string(g_fineDetail) });
+    case SLIDER_FINE_DETAIL: return g_fineDetail == 0 ? Str("slider.fine_detail_off") : g_fineDetail >= 4 ? Str("slider.fine_detail_all") : StrF("slider.fine_detail", { std::to_string(g_fineDetail) });
     case SLIDER_FRAME_LIMIT: return StrF("slider.frame_limit", { std::to_string(g_frameLimit) }); // vsync paces frames when on (main.cpp)
     case SLIDER_MASTER_VOLUME: return StrF("slider.master_volume", { pct(g_masterVolume) });
     case SLIDER_MUSIC_VOLUME: return StrF("slider.music_volume", { pct(g_musicVolume) });

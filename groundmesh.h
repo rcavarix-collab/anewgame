@@ -82,6 +82,9 @@ struct GroundMesh {
 // chunk only drops a level once it's a whole chunk past the edge, so
 // walking along an edge doesn't rebuild chunks back and forth (F4).
 int GroundWantLevel(int d, int current, int fine);
+// The FINE DETAIL setting's top step: every chunk at the finest cut, at any
+// distance (the default, D49).
+static const int GROUND_FINE_ALL = 4;
 
 // Job thread: the chunk's facets, packed, with fine detail cut to `level`
 // (0 whole, 1 2x2, 2 4x4) where the materials call for it (DESIGN.md 23.6).

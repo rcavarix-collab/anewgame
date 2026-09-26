@@ -32,7 +32,7 @@ bool g_invertX = false, g_invertY = false;
 bool g_showFPS = false;
 bool g_fullscreen = false;
 bool g_shadows = true, g_postEdges = false, g_postSSAO = false, g_bloom = true;
-int g_fineDetail = 2;
+int g_fineDetail = 4; // everywhere (D49; groundmesh.h GROUND_FINE_ALL)
 float g_masterVolume = 1.0f;
 float g_musicVolume = 1.0f;
 float g_worldVolume = 1.0f;
@@ -82,7 +82,7 @@ bool SaveSettings() {
     ss << "showProfiler=" << (g_showProfiler ? 1 : 0) << "\n";
     ss << "fullscreen=" << (g_fullscreen ? 1 : 0) << "\n";
     ss << "sun_shadows=" << (g_shadows ? 1 : 0) << "\n";
-    ss << "fine_detail=" << g_fineDetail << "\n";
+    ss << "fine_detail_2=" << g_fineDetail << "\n"; // a new key: the old one held the old default (2), not a choice
     ss << "outlines=" << (g_postEdges ? 1 : 0) << "\n";
     ss << "ssao=" << (g_postSSAO ? 1 : 0) << "\n";
     ss << "bloom=" << (g_bloom ? 1 : 0) << "\n";
@@ -152,8 +152,8 @@ void LoadSettings() {
     // "sun_shadows", not the old "shadows": shadows now carry the lighting
     // (4.9) and default on, so an old file's default-off doesn't stick.
     g_shadows = getB("sun_shadows", g_shadows);
-    g_fineDetail = (int)getF("fine_detail", (float)g_fineDetail);
-    g_fineDetail = g_fineDetail < 0 ? 0 : g_fineDetail > 3 ? 3 : g_fineDetail;
+    g_fineDetail = (int)getF("fine_detail_2", (float)g_fineDetail);
+    g_fineDetail = g_fineDetail < 0 ? 0 : g_fineDetail > 4 ? 4 : g_fineDetail;
     g_postEdges = getB("outlines", g_postEdges);
     g_postSSAO = getB("ssao", g_postSSAO);
     g_bloom = getB("bloom", g_bloom);

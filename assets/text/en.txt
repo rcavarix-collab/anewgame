@@ -83,6 +83,7 @@ slider.sens_y = Y SENSITIVITY: {0}x
 slider.render_distance = RENDER DISTANCE: {0} CHUNKS
 slider.fine_detail = FINE DETAIL: {0} CHUNKS
 slider.fine_detail_off = FINE DETAIL: OFF
+slider.fine_detail_all = FINE DETAIL: EVERYWHERE
 slider.frame_limit = FRAME LIMIT (VSYNC OFF): {0} FPS
 slider.master_volume = MASTER VOLUME: {0}%
 slider.music_volume = MUSIC VOLUME: {0}%

@@ -68,6 +68,7 @@ void CopyGroundCells(World& w, const ChunkCoord& cc, GroundCells& out) {
 
 int GroundWantLevel(int d, int current, int fine) {
     if (fine <= 0) return 0;
+    if (fine >= GROUND_FINE_ALL) return 2; // every chunk at the finest cut (D49)
     int want = d < fine ? 2 : d < 2 * fine ? 1 : 0;
     if (current > want) {
         int keep = d < fine + 1 ? 2 : d < 2 * fine + 1 ? 1 : 0;

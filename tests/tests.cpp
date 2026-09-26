@@ -1465,6 +1465,7 @@ static void TestDetailBands() {
     CHECK(GroundWantLevel(3, 2, 2) == 1);  // a chunk further: drops
     CHECK(GroundWantLevel(4, 1, 2) == 1 && GroundWantLevel(5, 1, 2) == 0);
     CHECK(GroundWantLevel(0, -1, 0) == 0 && GroundWantLevel(0, 2, 0) == 0); // off
+    CHECK(GroundWantLevel(0, -1, GROUND_FINE_ALL) == 2 && GroundWantLevel(40, 0, GROUND_FINE_ALL) == 2); // everywhere (D49)
     // Neighbouring chunks built at different levels meet exactly: every
     // edge chunk (0, y, 0) leaves open along x = 16 is closed by chunk
     // (1, y, 0)'s reverse edge, at each pairing of levels.

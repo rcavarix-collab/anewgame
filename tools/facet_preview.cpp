@@ -42,6 +42,9 @@ static inline Vec3 Mul(Vec3 a, Vec3 b) { return { a.x * b.x, a.y * b.y, a.z * b.
 static inline Vec3 LerpV(Vec3 a, Vec3 b, float t) { return a + (b - a) * t; }
 static inline float Len(Vec3 a) { return sqrtf(Dot(a, a)); }
 static inline float Frac(float x) { return x - floorf(x); }
+// How far each facet's lighting normal leans to the smooth one (render.cpp:
+// 0.55, D46); 0 draws the look before.
+static float g_soften = 0.55f;
 
 // ---------------------------------------------------------------------
 // Textures: the authored .vtex art, as linear colour and height with mips
@@ -583,15 +586,17 @@ static void Render(const View& v, const std::string& outDir, FILE* stats, int W 
                 float pixAngle = 2 * cam.tanHalf / RH;
                 float foot = dist * pixAngle / std::max(0.3f, fabsf(Dot(dir, nGeo)));
                 float lod = log2f(std::max(1e-4f, foot * 32.0f)) - 0.5f;
-                Surface s = Material(p, ns, nGeo, A.mat, w, lod);
+                // The softer look (D46): lighting normal partway to the smooth one.
+                Vec3 nL = Normalize(LerpV(nGeo, ns, g_soften));
+                Surface s = Material(p, ns, nL, A.mat, w, lod);
                 Vec3 albedo = Mul(s.albedo, WorldVariation(p));
                 Vec3 n = s.bumpN;
                 // The world shader's lighting (render.cpp PSMain).
-                float facing = Sat(Dot(nGeo, sun) * 8.0f);
+                float facing = g_soften > 0 ? Sat(Dot(nL, sun) * 4.0f) : Sat(Dot(nGeo, sun) * 8.0f);
                 float sunLit = sqrtf(Sat(Dot(n, sun))) * facing;
                 if (sunLit > 0) {
                     float lx, ly, lz;
-                    toLight(p + nGeo * 0.08f, lx, ly, lz);
+                    toLight(p + nGeo * 0.2f, lx, ly, lz);
                     float lit = 0; int taps = 0;
                     for (int oy = -1; oy <= 1; oy++)
                         for (int ox = -1; ox <= 1; ox++) {
@@ -841,6 +846,7 @@ int main(int argc, char** argv) {
     std::string texDir = TEXDIR;
     if (!LoadTextures(texDir)) return 1;
     if (only == "sheets") return Sheets(out);
+    if (argc > 4) g_soften = (float)atof(argv[4]); // hills SEED SOFTEN: 0 = the look before D46
     if (only == "hills") return Hills(out, argc > 3 ? strtoull(argv[3], nullptr, 10) : 1);
     for (int i = 1; i < M_COUNT; i++)
         if (!SetMaterial(i, kMats[i].name, kMats[i].top, kMats[i].side, kMats[i].bump)) return 1;

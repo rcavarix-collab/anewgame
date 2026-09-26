@@ -342,8 +342,13 @@ static const char* g_shaderSrc =
     "    float3 albedo = m.col * WorldVariation(i.wpos);\n"
     // The relief tilts the facet's normal, fading with distance (no glitter).
     "    float farBlend = saturate((dist - 10.0f) / 22.0f);\n"
-    "    float3 bump = m.bump - nGeo * dot(m.bump, nGeo);\n"
-    "    float3 n = normalize(nGeo + bump * (1.0f - farBlend));\n"
+    // The softer look (D46): light each facet partly by the smooth slope
+    // around it, so neighbouring facets differ in light by less -- no
+    // patchwork of dark and glaring triangles under a low sun -- while the
+    // silhouettes and the textures' projection stay exactly faceted.
+    "    float3 nL = normalize(lerp(nGeo, ns, 0.55f));\n"
+    "    float3 bump = m.bump - nL * dot(m.bump, nL);\n"
+    "    float3 n = normalize(nL + bump * (1.0f - farBlend));\n"
     "    float3 wpos = i.wpos + nGeo * params.w;\n"                      // normal offset (1.5 shadow texels): no acne
     "    float ao = i.aoSky.x;\n"
     "    float shadow = 1.0f;\n"
@@ -351,7 +356,7 @@ static const char* g_shaderSrc =
     // lights flat ground enough for its long shadows to read at dawn/dusk.
     // The facet itself must face the sun too, so bumps never light a side
     // turned away from it.
-    "    float facing = saturate(dot(nGeo, fSunDir.xyz) * 8.0f);\n"
+    "    float facing = saturate(dot(nL, fSunDir.xyz) * 4.0f);\n"
     "    float sunLit = sqrt(saturate(dot(n, fSunDir.xyz))) * facing;\n"
     "#ifndef NO_SHADOWS\n"
     "    if (params.x > 0.5f && sunLit > 0.0f) {\n"

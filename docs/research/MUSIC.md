@@ -25,11 +25,13 @@ World sounds take their pitches from safe sets against the current chord, follow
 
 **Against ours:**
 - The safe-set rule (no semitone against a sounding chord tone) handles the **pitch-class** half of consonance.
-- It ignores **register.** Our low pad register (80–160 Hz) folds in chord tones like Dm9's E and F. Near 100 Hz, a whole tone or even a minor third can sit within one critical band and sound muddy, whatever the pitch classes say.
-- The same goes for world sounds with deep bodies.
+- It ignores **register.** Checked in `music_synth.cpp` (`kChords`, `FoldInto`):
+  - **The low pads (80–160 Hz) are already right.** They take only each chord's root and fifth (open fourths and fifths: D3 over A2, G2 and D3, E2 and B2, A2 and D3), which is exactly the wide-low spacing the theory calls for.
+  - **The mid pads (175–350 Hz) take every chord tone, folded into one octave.** For Dm9 that's A3, C4, D4, E4, F4: a **semitone, E4 against F4, around 330–350 Hz**, plus whole tones either side. A semitone there sits well within one critical band, so it's the roughest spot in the track. The ninth chord's colour, voiced this closely, is paid for in muddiness.
+  - **World sounds with deep bodies** follow the bass and are fine. Their upper bodies land in the mid register too.
 - **Try (ours):**
-  - an offline **roughness check** in `sound_demo.sh analyze`: for every voicing the track can produce, sum a roughness estimate over its pairs of partials, using our own implementation of the critical-band idea, and flag low, close intervals;
-  - the traditional remedy, which Plomp & Levelt's analysis explains: **wide intervals low, closer ones high** (fifths and octaves in the bass register, colour tones such as 9ths and 7ths only in the mid and high registers).
+  - an offline **roughness check** in `sound_demo.sh analyze`: for every voicing the track can produce, sum a roughness estimate over its pairs of partials, using our own implementation of the critical-band idea, and flag close intervals;
+  - **open the mid voicing**, so colour tones sit an octave apart from the tones they clash with: the 9th (E) in the high pads only, the 3rd (F) in the mid. The same for the 7ths. The high register (390–720 Hz) already takes the upper tones, so this may only need the mid register's masks changed. Compare by ear.
 
 ## 2. Voice leading, streams and clarity
 
@@ -134,7 +136,7 @@ World sounds take their pitches from safe sets against the current chord, follow
 
 ## 9. What to try (ours; owner's calls marked)
 
-1. **Roughness check by register** (analyzer) and **wide-low voicing** in the pad banks. Cheap; improves clarity.
+1. **Roughness check by register** (analyzer), and **open the mid pads' voicing** (the Dm9 E4–F4 semitone). Cheap; improves clarity.
 2. **Spectral flux:** slow partial drift and brightness falling with each note's decay. Cheap.
 3. **World-sound reverb from the soundscape census:** caves sound like caves. Moderate; effects thread.
 4. **Rare arrivals:** cadences at sunrise and at first sight of landmarks. Design work; ties to LANDSCAPE.md.

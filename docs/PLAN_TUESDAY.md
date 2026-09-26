@@ -70,7 +70,7 @@ Decided by what the debug views show: a longer baked sky view (16–24 blocks), 
 
   Also a one-page outside-playtester protocol (think-aloud, no help given, no telemetry). Owner questions on the game's aesthetics, competence and relatedness are listed in GAME_DESIGN.md 5.
 - **Music and world sound (docs/research/MUSIC.md):**
-  - a roughness-by-register check in the analyzer, with wide intervals in the low pads;
+  - a roughness-by-register check in the analyzer, and an opened voicing for the mid pads (Dm9's E4–F4 semitone);
   - slow spectral drift in the voices;
   - reverb for world sounds that follows the soundscape census (caves sound like caves);
   - rare musical arrivals at sunrise and at landmarks;

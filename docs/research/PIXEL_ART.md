@@ -17,4 +17,4 @@
 
 ## To read (legal copies)
 
-- Gerstner et al. 2012, authors' copy (Princeton) and project page (cragl.cs.gmu.edu/pixelate).
+- Gerstner et al. 2012. The owner found the authors' Princeton site broken (2026-09-26). Other listed homes: the Eurographics Digital Library (diglib.eg.org, the NPAR proceedings) and the journal version's project page (cragl.cs.gmu.edu/pixelate).

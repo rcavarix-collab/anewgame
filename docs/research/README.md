@@ -17,6 +17,6 @@ Our own research: theory and explanation from reliable sources (D66), a regular 
 | [TEXTURE_BLENDING.md](TEXTURE_BLENDING.md) | Material edges and hiding repetition | Schuster et al. 2020 [r], Burley 2019 [r], Heitz & Neyret 2018 [s] |
 | [SURFACE_NETS.md](SURFACE_NETS.md) | Terracing, and a seam-safe answer | Gibson 1998 [r] |
 | [VERTEX_DARKENING.md](VERTEX_DARKENING.md) | Triangle patches from per-corner darkening (the noon patches) | first principles [m], practice [p] |
-| [DITHERING.md](DITHERING.md) | Blue-noise borders for the crisp mosaic | Ulichney 1993 [s] |
+| [DITHERING.md](DITHERING.md) | Blue-noise borders for the crisp mosaic | Ulichney 1993 [r] |
 | [PIXEL_ART.md](PIXEL_ART.md) | Palettes and marks for the 64-pixel materials | Gerstner et al. 2012 [s] |
-| [TONE_MAPPING.md](TONE_MAPPING.md) | Our tone curve and our own look | Reinhard et al. 2002 [s] |
+| [TONE_MAPPING.md](TONE_MAPPING.md) | Our tone curve and our own look | Reinhard 2002 (JGT) [r], Reinhard et al. 2002 [s] |

@@ -85,6 +85,48 @@ Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) an
 55. The Unicode Consortium. Unicode Standard Annexes: #9 (Bidirectional Algorithm), #11 (East Asian Width), #14 (Line Breaking), #29 (Text Segmentation). unicode.org/reports. [h] ?
 56. Catto, E. 2014. Understanding Constraints. Game Developers Conference 2014, talk. (The helper gave only "Catto GDC 2014"; the title is to check.) [h] ?
 
+## Landscape, perception and place (LANDSCAPE.md; search results consulted 2026-09-26)
+
+57. Kaplan, R. and Kaplan, S. 1989. *The Experience of Nature: A Psychological Perspective*. Cambridge University Press. [k] ?
+58. Kaplan, S. 1995. The Restorative Benefits of Nature: Toward an Integrative Framework. *Journal of Environmental Psychology* 15(3), 169–182. [s] ~ (pages ?)
+59. Stamps, A. E. 2004. Mystery, Complexity, Legibility and Coherence: A Meta-Analysis. *Journal of Environmental Psychology* 24(1), 1–16. [s] ~
+60. Appleton, J. 1975. *The Experience of Landscape*. John Wiley & Sons, London (revised edition 1996). [s] ~
+61. Orians, G. H. and Heerwagen, J. H. 1992. Evolved Responses to Landscapes. In J. H. Barkow, L. Cosmides and J. Tooby (eds.), *The Adapted Mind*, Oxford University Press, 555–579. [k] ?
+62. Spehar, B., Clifford, C. W. G., Newell, B. R. and Taylor, R. P. 2003. Universal Aesthetic of Fractals. *Computers & Graphics* 27(5), 813–820. [s] ~
+63. Hagerhall, C. M., Purcell, T. and Taylor, R. 2004. Fractal Dimension of Landscape Silhouette Outlines as a Predictor of Landscape Preference. *Journal of Environmental Psychology* 24(2), 247–255. [s] ~
+64. Berlyne, D. E. 1971. *Aesthetics and Psychobiology*. Appleton-Century-Crofts, New York. [s] ~
+65. Ulrich, R. S. 1984. View Through a Window May Influence Recovery from Surgery. *Science* 224(4647), 420–421. DOI 10.1126/science.6143402. [s] ✓ (from the publisher's page)
+66. Keltner, D. and Haidt, J. 2003. Approaching Awe, a Moral, Spiritual, and Aesthetic Emotion. *Cognition and Emotion* 17(2), 297–314. DOI 10.1080/02699930302297. [s] ~ (pages ?)
+67. Loewenstein, G. 1994. The Psychology of Curiosity: A Review and Reinterpretation. *Psychological Bulletin* 116(1), 75–98. [s] ~
+68. Lynch, K. 1960. *The Image of the City*. MIT Press, Cambridge, MA. [s] ~
+69. Darken, R. P. and Sibert, J. L. 1996. Wayfinding Strategies and Behaviors in Large Virtual Worlds. In *Proceedings of CHI '96*, ACM, 142–149. DOI 10.1145/238386.238459. [s] ~
+70. The Nobel Assembly at Karolinska Institutet. 2014. *Scientific Background: The Brain's Navigational Place and Grid Cell System* (the Nobel Prize in Physiology or Medicine 2014, O'Keefe; M.-B. Moser and E. I. Moser). nobelprize.org. [s]
+71. O'Shea, R. P., Blackburn, S. G. and Ono, H. 1994. Contrast as a Depth Cue. *Vision Research* 34(12), 1595–1604. [s] ~ (pages ?)
+72. Palmer, S. E. and Schloss, K. B. 2010. An Ecological Valence Theory of Human Color Preference. *Proceedings of the National Academy of Sciences* 107(19), 8877–8882. DOI 10.1073/pnas.0906172107. [s] ✓ (from the publisher's page)
+73. Pijanowski, B. C., Villanueva-Rivera, L. J., Dumyahn, S. L., Farina, A., Krause, B. L., Napoletano, B. M., Gage, S. H. and Pieretti, N. 2011. Soundscape Ecology: The Science of Sound in the Landscape. *BioScience* 61(3), 203–216. DOI 10.1525/bio.2011.61.3.6. [s] ~ (pages ?)
+74. Axelsson, Ö., Nilsson, M. E. and Berglund, B. 2010. A Principal Components Model of Soundscape Perception. *Journal of the Acoustical Society of America* 128(5), 2836–2846. [s] ~
+75. Ingold, T. 1993. The Temporality of the Landscape. *World Archaeology* 25(2), 152–174. DOI 10.1080/00438243.1993.9980235. [s] ~
+76. Tuan, Y.-F. 1974. *Topophilia: A Study of Environmental Perception, Attitudes, and Values*. Prentice-Hall; and 1977, *Space and Place: The Perspective of Experience*, University of Minnesota Press. [k] ?
+
+(Krause's acoustic niche hypothesis is cited through 73, of which he is an author.)
+
+## Game design (GAME_DESIGN.md; search results consulted 2026-09-26)
+
+77. Hunicke, R., LeBlanc, M. and Zubek, R. 2004. MDA: A Formal Approach to Game Design and Game Research. In *Proceedings of the AAAI Workshop on Challenges in Game AI* (WS-04-04). AAAI Press. Authors' copy at Northwestern University. [s] ~
+78. Caillois, R. 1958. *Les jeux et les hommes*. Gallimard; English translation by M. Barash, *Man, Play and Games*, Free Press, 1961. [s] ~
+79. Jenkins, H. 2004. Game Design as Narrative Architecture. In N. Wardrip-Fruin and P. Harrigan (eds.), *First Person: New Media as Story, Performance, and Game*, MIT Press. [s] ~ (pages ?)
+80. Ryan, R. M., Rigby, C. S. and Przybylski, A. 2006. The Motivational Pull of Video Games: A Self-Determination Theory Approach. *Motivation and Emotion* 30(4), 347–363. DOI 10.1007/s11031-006-9051-8. [s] ✓ (from the publisher's page)
+81. Przybylski, A. K., Rigby, C. S. and Ryan, R. M. 2010. A Motivational Model of Video Game Engagement. *Review of General Psychology* 14(2), 154–166. DOI 10.1037/a0019440. [s] ~
+82. Yee, N. 2006. Motivations for Play in Online Games. *CyberPsychology & Behavior* 9(6), 772–775. DOI 10.1089/cpb.2006.9.772. [s] ~
+83. Csikszentmihalyi, M. 1990. *Flow: The Psychology of Optimal Experience*. Harper & Row. [k] ?
+84. Sweetser, P. and Wyeth, P. 2005. GameFlow: A Model for Evaluating Player Enjoyment in Games. *Computers in Entertainment* 3(3). DOI 10.1145/1077246.1077253. [s] ~
+85. Bartle, R. 1996. Hearts, Clubs, Diamonds, Spades: Players Who Suit MUDs. *Journal of MUD Research* 1(1). [k] ? (practitioner, not validated)
+86. Camerer, C., Loewenstein, G. and Weber, M. 1989. The Curse of Knowledge in Economic Settings: An Experimental Analysis. *Journal of Political Economy* 97(5), 1232–1254. [k] ?
+87. Pinelle, D., Wong, N. and Stach, T. 2008. Heuristic Evaluation for Games: Usability Principles for Video Game Design. In *Proceedings of CHI 2008*, ACM, 1453–1462. DOI 10.1145/1357054.1357282. [s] ~ (pages ?)
+88. Nielsen, J. and Landauer, T. K. 1993. A Mathematical Model of the Finding of Usability Problems. In *Proceedings of INTERCHI '93*, ACM, 206–213. [k] ?
+89. Drachen, A., Mirza-Babaei, P. and Nacke, L. (eds.) 2018. *Games User Research*. Oxford University Press. ISBN 978-0-19-879484-4. [s] ~
+90. Fullerton, T. *Game Design Workshop: A Playcentric Approach to Creating Innovative Games*. CRC Press (4th edition 2018). [k] ?
+
 ## Verifying the "?" entries
 
 A helper task, or the owner with Unpaywall or the DOI links, can confirm each "?" against the paper's first page. When one is confirmed, change it to ✓ here.

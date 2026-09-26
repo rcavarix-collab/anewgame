@@ -61,6 +61,14 @@ Decided by what the debug views show: a longer baked sky view (16–24 blocks), 
   - chunk openings never recorded as closed when cells connect;
   - facet seams identical whichever neighbour is built first.
 - **F3: how long the oldest job has waited,** per channel (E13); only counts exist today.
+- **Creative direction (docs/research/LANDSCAPE.md, GAME_DESIGN.md):** twelve landscape rules for terrain v2 and the far ring, including:
+  - an offline skyline-roughness check in the facet preview (target D ≈ 1.3–1.5);
+  - lookouts beside shelters;
+  - regions with their own identity;
+  - rare landmarks and rare vistas;
+  - fog toward the sky's colour.
+
+  Also a one-page outside-playtester protocol (think-aloud, no help given, no telemetry). Owner questions on the game's aesthetics, competence and relatedness are listed in GAME_DESIGN.md 5.
 - Sky settings (cloud amount, cloud speed), now or with weather.
 - A faint wind bed in the world sound that rises when the low clouds move faster.
 - Start planning the building layer (W067) if it becomes M2, with Grok researching alongside.

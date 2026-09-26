@@ -20,3 +20,6 @@ Our own research: theory and explanation from reliable sources (D66), a regular 
 | [DITHERING.md](DITHERING.md) | Blue-noise borders for the crisp mosaic | Ulichney 1993 [r] |
 | [PIXEL_ART.md](PIXEL_ART.md) | Palettes and marks for the 64-pixel materials | Gerstner et al. 2012 [s] |
 | [TONE_MAPPING.md](TONE_MAPPING.md) | Our tone curve and our own look | Reinhard 2002 (JGT) [r], Reinhard et al. 2002 [s] |
+| [LANDSCAPE.md](LANDSCAPE.md) | How people enjoy, read and find their way through a landscape; twelve design rules for terrain, far land, colour and sound | Kaplan, Appleton, Spehar et al., Lynch, Keltner & Haidt, Palmer & Schloss, Pijanowski et al. [s] |
+| [GAME_DESIGN.md](GAME_DESIGN.md) | Why people play; walkgrid held against the theory; how to see our own blind spots | Hunicke et al., Ryan et al., Sweetser & Wyeth, Pinelle et al. [s] |
+| [PAPER_IDEAS.md](PAPER_IDEAS.md) | Papers we might write from the project (background) | none yet |

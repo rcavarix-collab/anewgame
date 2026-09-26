@@ -47,6 +47,7 @@ static inline float Frac(float x) { return x - floorf(x); }
 static float g_soften = 0.55f;
 // How far gentle slopes roll instead of terracing (facetmesh.h FacetShape::terrace, D62).
 static float g_terrace = 0.0f; // the game's default (off, pending the owner)
+static float g_fill = 1.0f;   // D63 fill light; 0 = the look before it
 
 // ---------------------------------------------------------------------
 // Textures: the authored .vtex art, as linear colour and height with mips
@@ -612,7 +613,12 @@ static void Render(const View& v, const std::string& outDir, FILE* stats, int W 
                 }
                 // Sky light (M1.6): the sky's share of the ambient.
                 float skyAmb = 0.25f + 0.75f * skyL;
-                Vec3 ambient = LerpV(atm.ambientDown, atm.ambientUp, n.y * 0.5f + 0.5f) * (ao * skyAmb);
+                Vec3 ambient = LerpV(atm.ambientDown, atm.ambientUp, n.y * 0.5f + 0.5f);
+                // Fill light (D63): brighter sky toward the sun, warm bounce from sunlit ground.
+                float toSun = Dot(n, sun) * 0.5f + 0.5f, groundLit = sqrtf(Sat(sun.y));
+                ambient = ambient + atm.sunColor * (g_fill * (0.12f * toSun * toSun + 0.25f * groundLit * Sat(0.5f - 0.5f * n.y)));
+                float lum = 0.2126f * ambient.x + 0.7152f * ambient.y + 0.0722f * ambient.z;
+                ambient = LerpV(ambient, Vec3{ lum, lum, lum }, 0.25f * g_fill) * (ao * skyAmb);
                 Vec3 direct = atm.sunColor * (sunLit * (0.55f + 0.45f * ao)) + atm.moonColor * (Sat(Dot(n, sky.moonDir)) * ao);
                 Vec3 col = Mul(albedo, ambient + direct);
                 col = LerpV(col, SkyColorAt(atm, sun, dir), FogAmount(dist, fogStart, fogEnd));
@@ -833,6 +839,8 @@ static int Hills(const std::string& out, uint64_t seed) {
     const Spot spots[] = {
         { "hills_a_morning", 40, 40, 110, 120, 7, 500 }, { "hills_b_noon", 150, 40, 80, 130, 7, 1500 },
         { "hills_c_evening", 96, 170, 90, 60, 7, 2750 }, { "hills_d_walk", 60, 100, 100, 110, 1.7f, 2300 },
+        // Low sun from either side: slopes in their own shadow (D63's fill light).
+        { "hills_e_dawn_east", 60, 96, 150, 96, 7, 260 }, { "hills_f_dawn_west", 150, 96, 60, 96, 7, 260 },
     };
     for (auto& sp : spots) {
         View v = { sp.name, sp.name, { sp.x, groundAt((int)sp.x, (int)sp.z) + sp.up, sp.z },
@@ -851,6 +859,7 @@ int main(int argc, char** argv) {
     if (only == "sheets") return Sheets(out);
     if (argc > 4) g_soften = (float)atof(argv[4]); // hills SEED SOFTEN [TERRACE]: 0 = the look before D46
     if (argc > 5) g_terrace = (float)atof(argv[5]); // 0 = the terraces before D62
+    if (argc > 6) g_fill = (float)atof(argv[6]); // 0 = no fill light (before D63)
     if (only == "hills") return Hills(out, argc > 3 ? strtoull(argv[3], nullptr, 10) : 1);
     for (int i = 1; i < M_COUNT; i++)
         if (!SetMaterial(i, kMats[i].name, kMats[i].top, kMats[i].side, kMats[i].bump)) return 1;

@@ -178,6 +178,8 @@ void TakeScreenshotIfRequested() {
     int w = 0, h = 0;
     std::filesystem::path path = NextScreenshotPath();
     bool ok = !path.empty() && ReadBackbuffer(pixels, w, h) && SavePngBGRA(path.c_str(), pixels.data(), w, h);
+    std::error_code ec;
+    ok = ok && std::filesystem::exists(path, ec); // only claim what's really on disk
     // Where it went, in full, so it can be found (the folder's path shown,
     // as the performance report does).
     ShowToast(ok ? StrF("toast.screenshot", { WideToUtf8(path.wstring()) }) : Str("toast.screenshot_failed"), ok ? 5.0f : 2.0f);

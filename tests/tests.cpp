@@ -24,6 +24,7 @@
 #include "../groundmesh.h"
 #include "../collide.h"
 #include "../strtable.h"
+#include "../gamefiles.h"
 static const uint64_t HILLS_V1_FINGERPRINT = 0xb337671eeedafb98ull; // walkgrid-hills v1, seed 1, column (0, 0): re-pinned in M1.9 when the registry was renumbered (same materials, same places; saves store names)
 #include <cstdio>
 #include <cstring>
@@ -1824,6 +1825,20 @@ static void TestHiddenChunks() {
     ResetWorldState(w);
 }
 
+// Where the game keeps its files (D45): the Documents folder Windows shows,
+// unless it's inside OneDrive; then Saved Games.
+static void TestGameFolder() {
+    printf("game folder\n");
+    namespace fs = std::filesystem;
+    CHECK(ChooseGameFolder("/Users/rc/Documents", "/Users/rc/Saved Games") == fs::path("/Users/rc/Documents/My Games/walkgrid"));
+    CHECK(ChooseGameFolder("/Users/rc/OneDrive/Documents", "/Users/rc/Saved Games") == fs::path("/Users/rc/Saved Games/walkgrid"));
+    CHECK(ChooseGameFolder("/Users/rc/onedrive/Documents", "/Users/rc/Saved Games") == fs::path("/Users/rc/Saved Games/walkgrid"));
+    CHECK(ChooseGameFolder("/Users/rc/OneDrive - Some Work/Documents", "/Users/rc/Saved Games") == fs::path("/Users/rc/Saved Games/walkgrid"));
+    CHECK(ChooseGameFolder("/Users/rc/OneDriveNotes/Documents", "/S") == fs::path("/Users/rc/OneDriveNotes/Documents/My Games/walkgrid")); // only a folder named OneDrive
+    CHECK(ChooseGameFolder("", "/Users/rc/Saved Games") == fs::path("/Users/rc/Saved Games/walkgrid"));
+    CHECK(ChooseGameFolder("/Users/rc/OneDrive/Documents", "").empty());
+}
+
 int main() {
     TestVtex();
     TestBlockTextures();
@@ -1851,6 +1866,7 @@ int main() {
     TestDetailBands();
     TestStringTable();
     TestHiddenChunks();
+    TestGameFolder();
     printf("\n%d checks, %d failed\n", g_checks, g_failures);
     return g_failures ? 1 : 0;
 }

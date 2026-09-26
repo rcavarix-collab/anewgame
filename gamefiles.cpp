@@ -10,6 +10,7 @@
 #include <windows.h>
 #include <shlobj.h> // SHGetKnownFolderPath
 #include "gamefiles.h"
+#include "strtable.h" // WideToUtf8
 #include <cstdio>
 #include <cwchar>
 #include <fstream>
@@ -44,35 +45,29 @@ static std::filesystem::path EnsureDirectoryBulletproof(std::filesystem::path di
     return dir;
 }
 
-// Resolves (creating if needed) Documents\My Games\walkgrid -- the
-// conventional PC-game save location: visible and easy for players to
-// find, back up, or copy between machines, unlike a hidden AppData
-// folder. Falls back to the current working directory (this prototype's
-// original behavior) if the known-folder lookup fails for any reason,
-// or if something unexpected already occupies part of the intended
-// path -- e.g. a plain file sitting where a folder needs to be. A save
-// attempt should always have somewhere safe to go rather than failing
-// forever because the "nice" location didn't pan out.
-// The game's folder is in the player's own local Documents folder
-// (%USERPROFILE%\Documents\My Games\walkgrid), never a cloud-synced one
-// (D28). Windows' "Documents" known folder can be redirected into OneDrive
-// by its backup feature, even for people who never use OneDrive, so the
-// profile folder is asked for instead and "Documents" is taken from there.
+// The game's folder (D45): Documents\My Games\walkgrid in the Documents
+// folder Windows shows the player -- where they look, and where other games
+// put theirs -- unless that Documents has been moved into OneDrive, then
+// Saved Games\walkgrid (never a cloud-synced folder, D28). See
+// ChooseGameFolder (gamefiles.h). A failed lookup falls back to the working
+// directory, so a save always has somewhere to go.
+static std::filesystem::path KnownFolder(REFKNOWNFOLDERID id) {
+    PWSTR p = nullptr;
+    std::filesystem::path out;
+    if (SUCCEEDED(SHGetKnownFolderPath(id, 0, nullptr, &p)) && p) out = p;
+    if (p) CoTaskMemFree(p);
+    return out;
+}
 static std::filesystem::path ResolveGameDataDirectory() {
-    namespace fs = std::filesystem;
-    PWSTR profilePath = nullptr;
-    fs::path dir;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &profilePath)) && profilePath)
-        dir = fs::path(profilePath) / L"Documents" / L"My Games" / L"walkgrid";
-    if (profilePath) CoTaskMemFree(profilePath);
-    return dir;
+    return ChooseGameFolder(KnownFolder(FOLDERID_Documents), KnownFolder(FOLDERID_SavedGames));
 }
 
-// Builds before this change kept the folder in the known-folder Documents
-// (possibly inside OneDrive). Once, if the local folder doesn't exist yet
-// and that older one does, its contents move across -- a rename when they
-// share a drive, else a copy and then removal -- so settings, saves and
-// screenshots aren't left behind.
+// Where earlier builds kept the folder: %USERPROFILE%\Documents\My Games\walkgrid
+// (M0.16 to M1.12, which Explorer doesn't show when Documents is redirected),
+// and Saved Games\walkgrid. Once, if the chosen folder doesn't exist yet and
+// one of those does, its contents move across -- a rename when they share a
+// drive, else a copy and then removal -- so settings, saves and screenshots
+// aren't left behind.
 static void MoveOldGameFolderOnce(const std::filesystem::path& dir) {
     namespace fs = std::filesystem;
     static bool done = false;
@@ -80,18 +75,21 @@ static void MoveOldGameFolderOnce(const std::filesystem::path& dir) {
     done = true;
     std::error_code ec;
     if (fs::exists(dir, ec)) return;
-    PWSTR docsPath = nullptr;
-    fs::path old;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, 0, nullptr, &docsPath)) && docsPath)
-        old = fs::path(docsPath) / L"My Games" / L"walkgrid";
-    if (docsPath) CoTaskMemFree(docsPath);
-    if (old.empty() || !fs::is_directory(old, ec) || fs::equivalent(old, dir, ec)) return;
-    fs::create_directories(dir.parent_path(), ec);
-    fs::rename(old, dir, ec);
-    if (!ec) return;
-    ec.clear();
-    fs::copy(old, dir, fs::copy_options::recursive, ec);
-    if (!ec) fs::remove_all(old, ec);
+    fs::path profile = KnownFolder(FOLDERID_Profile), saved = KnownFolder(FOLDERID_SavedGames);
+    std::vector<fs::path> olds;
+    if (!profile.empty()) olds.push_back(profile / L"Documents" / L"My Games" / L"walkgrid");
+    if (!saved.empty()) olds.push_back(saved / L"walkgrid");
+    for (const fs::path& old : olds) {
+        if (!fs::is_directory(old, ec) || fs::equivalent(old, dir, ec)) { ec.clear(); continue; }
+        fs::create_directories(dir.parent_path(), ec);
+        ec.clear();
+        fs::rename(old, dir, ec);
+        if (!ec) return;
+        ec.clear();
+        fs::copy(old, dir, fs::copy_options::recursive, ec);
+        if (!ec) fs::remove_all(old, ec);
+        return;
+    }
 }
 
 std::filesystem::path GameDataDirectory() {
@@ -133,11 +131,19 @@ std::filesystem::path NextScreenshotPath() {
 std::string WriteTextToSaveFolder(const char* fileName, const std::string& text) {
     std::filesystem::path dir = GameDataDirectory();
     std::filesystem::path path = dir.empty() ? std::filesystem::path(fileName) : dir / fileName;
-    std::ofstream f(path, std::ios::binary | std::ios::trunc); // wide paths, and no deprecated CRT calls (MSVC SDL checks)
-    if (!f) return "";
-    f.write(text.data(), (std::streamsize)text.size());
-    f.close();
-    return f ? path.string() : "";
+    {
+        std::ofstream f(path, std::ios::binary | std::ios::trunc); // wide paths, and no deprecated CRT calls (MSVC SDL checks)
+        if (!f) return "";
+        f.write(text.data(), (std::streamsize)text.size());
+        if (!f) return "";
+    }
+    // Only claim what's really on disk, by its full path (a relative
+    // fallback name alone once read as a folder that didn't exist).
+    std::error_code ec;
+    if (!std::filesystem::exists(path, ec)) return "";
+    std::filesystem::path full = std::filesystem::absolute(path, ec);
+    std::wstring w = (ec ? path : full).wstring();
+    return WideToUtf8(w); // UTF-8, as the toast draws it
 }
 
 // Crash-safe write (Section 7.3): the whole buffer goes to <path>.tmp

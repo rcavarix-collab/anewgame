@@ -616,7 +616,7 @@ static void Render(const View& v, const std::string& outDir, FILE* stats, int W 
                 Vec3 ambient = LerpV(atm.ambientDown, atm.ambientUp, n.y * 0.5f + 0.5f);
                 // Fill light (D63): brighter sky toward the sun, warm bounce from sunlit ground.
                 float toSun = Dot(n, sun) * 0.5f + 0.5f, groundLit = sqrtf(Sat(sun.y));
-                ambient = ambient + atm.sunColor * (g_fill * (0.12f * toSun * toSun + 0.25f * groundLit * Sat(0.5f - 0.5f * n.y)));
+                ambient = ambient + atm.sunColor * (g_fill * (0.08f + 0.12f * toSun * toSun + 0.25f * groundLit * Sat(0.5f - 0.5f * n.y)));
                 float lum = 0.2126f * ambient.x + 0.7152f * ambient.y + 0.0722f * ambient.z;
                 ambient = LerpV(ambient, Vec3{ lum, lum, lum }, 0.25f * g_fill) * (ao * skyAmb);
                 Vec3 direct = atm.sunColor * (sunLit * (0.55f + 0.45f * ao)) + atm.moonColor * (Sat(Dot(n, sky.moonDir)) * ao);
@@ -841,6 +841,7 @@ static int Hills(const std::string& out, uint64_t seed) {
         { "hills_c_evening", 96, 170, 90, 60, 7, 2750 }, { "hills_d_walk", 60, 100, 100, 110, 1.7f, 2300 },
         // Low sun from either side: slopes in their own shadow (D63's fill light).
         { "hills_e_dawn_east", 60, 96, 150, 96, 7, 260 }, { "hills_f_dawn_west", 150, 96, 60, 96, 7, 260 },
+        { "probe_1", 96, 30, 96, 100, 14, 230 }, { "probe_2", 40, 150, 120, 150, 14, 230 }, { "probe_3", 150, 150, 150, 60, 14, 230 },
     };
     for (auto& sp : spots) {
         View v = { sp.name, sp.name, { sp.x, groundAt((int)sp.x, (int)sp.z) + sp.up, sp.z },

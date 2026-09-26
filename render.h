@@ -38,7 +38,10 @@ extern ID3D11ShaderResourceView* g_blockTexSRV; // Texture2DArray: one layer per
 extern ID3D11ShaderResourceView* g_iconSRV;     // hotbar icon strip, one cell per BlockID
 
 // World shader b0 (see the world shader's cbuffer CB for each field).
-struct CBData { Mat4 mvp; Mat4 lightViewProj; float params[4]; float glowDrive[4]; float glowGrid[4]; };
+// lightViewProjPrev: the shadow map before the current one; the world
+// shader crossfades from it to the current one (params.z) so shadows move
+// smoothly as the sun does (DESIGN.md 4.8).
+struct CBData { Mat4 mvp; Mat4 lightViewProj; Mat4 lightViewProjPrev; float params[4]; float glowDrive[4]; float glowGrid[4]; };
 
 // UVs of block `id`'s cell in the icon strip.
 static inline void IconRect(BlockID id, float& u0, float& v0, float& u1, float& v1) {

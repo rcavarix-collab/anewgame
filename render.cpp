@@ -23,6 +23,7 @@
 #include <cstring>
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -80,9 +81,11 @@ static ID3D11ShaderResourceView* g_depthSRV = nullptr;
 static const int SHADOW_SIZE = 2048;
 // Two maps: the world samples the front one while the next is drawn into
 // the other a slice of chunks per frame, then they swap (no one-frame hitch).
-static ID3D11DepthStencilView* g_shadowDSV[2] = {};
-static ID3D11ShaderResourceView* g_shadowSRV[2] = {};
-static int g_shadowFront = 0;
+// Three maps (DESIGN.md 4.8): the current one, the one before it (the
+// world shader crossfades from it), and the one being drawn.
+static ID3D11DepthStencilView* g_shadowDSV[3] = {};
+static ID3D11ShaderResourceView* g_shadowSRV[3] = {};
+static int g_shadowFront = 0, g_shadowPrev = 0;
 static ID3D11SamplerState* g_shadowSampler = nullptr;
 static ID3D11RasterizerState* g_shadowRaster = nullptr;
 static ID3D11VertexShader* g_shadowVS = nullptr;
@@ -207,8 +210,10 @@ static const char* g_atmosphereSrc =
 // never cost the world.
 static const char* g_shaderSrc =
     "// uses atmosphere\n"
-    "cbuffer CB : register(b0) { row_major matrix mvp; row_major matrix lightViewProj; float4 params; float4 glowDrive; float4 glowGrid; };\n"
-    // params: x shadows on, y shadow half-texel.
+    "cbuffer CB : register(b0) { row_major matrix mvp; row_major matrix lightViewProj; row_major matrix lightViewProjPrev; float4 params; float4 glowDrive; float4 glowGrid; };\n"
+    // params: x shadows on, y shadow texel (uv), z how far the fade from the
+    // previous shadow map to the current one has gone (0..1), w the normal
+    // offset in blocks (1.5 shadow texels: no facet shadows itself).
     // glowDrive: x the music level now (music blocks follow it), yzw unused.
     // glowGrid: xyz the glow-light grid's world origin, w 1 when it holds any light (4.12).
     // chunkOrigin: the chunk's world position; chunkRel: the same minus the
@@ -284,7 +289,21 @@ static const char* g_shaderSrc =
     "}\n"
     "#ifndef NO_SHADOWS\n"
     "Texture2D<float> shadowMap : register(t1);\n"
+    "Texture2D<float> shadowPrev : register(t5);\n"
     "SamplerComparisonState shadowSamp : register(s1);\n"
+    // 3x3 hardware-filtered taps, 1.5 texels apart: a soft edge about four
+    // texels wide (half a block at full distance) instead of a hard line.
+    // 1 = lit; outside the map (and toward its edge) fades to lit.
+    "float ShadowLit(Texture2D<float> map, float4 lp) {\n"
+    "    float2 suv = float2(lp.x * 0.5f + 0.5f, 0.5f - lp.y * 0.5f);\n"
+    "    if (suv.x <= 0.0f || suv.x >= 1.0f || suv.y <= 0.0f || suv.y >= 1.0f || lp.z >= 1.0f) return 1.0f;\n"
+    "    float o = params.y * 1.5f, lit = 0.0f;\n"
+    "    [unroll] for (int y = -1; y <= 1; y++)\n"
+    "        [unroll] for (int x = -1; x <= 1; x++)\n"
+    "            lit += map.SampleCmpLevelZero(shadowSamp, suv + float2(x, y) * o, lp.z);\n"
+    "    float edge = saturate(min(min(suv.x, 1.0f - suv.x), min(suv.y, 1.0f - suv.y)) * 16.0f);\n"
+    "    return lerp(1.0f, lit / 9.0f, edge);\n"
+    "}\n"
     "#endif\n"
     "float4 PSMain(PSIn i) : SV_TARGET {\n"
     "    float3 v = i.wpos - fCamPos.xyz;\n"
@@ -325,7 +344,7 @@ static const char* g_shaderSrc =
     "    float farBlend = saturate((dist - 10.0f) / 22.0f);\n"
     "    float3 bump = m.bump - nGeo * dot(m.bump, nGeo);\n"
     "    float3 n = normalize(nGeo + bump * (1.0f - farBlend));\n"
-    "    float3 wpos = i.wpos + nGeo * 0.08f;\n"                         // normal offset (> 1 shadow texel): no acne
+    "    float3 wpos = i.wpos + nGeo * params.w;\n"                      // normal offset (1.5 shadow texels): no acne
     "    float ao = i.aoSky.x;\n"
     "    float shadow = 1.0f;\n"
     // Softened falloff (sqrt of N.L): a faked wrap so a low sun still
@@ -336,19 +355,13 @@ static const char* g_shaderSrc =
     "    float sunLit = sqrt(saturate(dot(n, fSunDir.xyz))) * facing;\n"
     "#ifndef NO_SHADOWS\n"
     "    if (params.x > 0.5f && sunLit > 0.0f) {\n"
-    "        float4 lp = mul(float4(wpos, 1.0f), lightViewProj);\n"
-    "        float2 suv = float2(lp.x * 0.5f + 0.5f, 0.5f - lp.y * 0.5f);\n"
-    "        if (suv.x > 0.0f && suv.x < 1.0f && suv.y > 0.0f && suv.y < 1.0f && lp.z < 1.0f) {\n"
-    "            float o = params.y;\n"                               // 2x2 taps of hardware PCF
-    "            float lit = 0.25f * (shadowMap.SampleCmpLevelZero(shadowSamp, suv + float2(-o, -o), lp.z)\n"
-    "                               + shadowMap.SampleCmpLevelZero(shadowSamp, suv + float2( o, -o), lp.z)\n"
-    "                               + shadowMap.SampleCmpLevelZero(shadowSamp, suv + float2(-o,  o), lp.z)\n"
-    "                               + shadowMap.SampleCmpLevelZero(shadowSamp, suv + float2( o,  o), lp.z));\n"
-    // Fade out toward the map's edge rather than stopping at a line.
-    "            float edge = saturate(min(min(suv.x, 1.0f - suv.x), min(suv.y, 1.0f - suv.y)) * 16.0f);\n"
-    "            shadow = lerp(1.0f, lit, edge);\n"
-    "            sunLit *= shadow;\n"
-    "        }\n"
+    "        shadow = ShadowLit(shadowMap, mul(float4(wpos, 1.0f), lightViewProj));\n"
+    // The tween: while the newest map fades in, the one before it fades
+    // out, so shadows glide with the sun instead of jumping a step at a
+    // time. Only while fading: the rest of the time it costs nothing.
+    "        [branch] if (params.z < 0.999f)\n"
+    "            shadow = lerp(ShadowLit(shadowPrev, mul(float4(wpos, 1.0f), lightViewProjPrev)), shadow, params.z);\n"
+    "        sunLit *= shadow;\n"
     "    }\n"
     "#endif\n"
     // Sky light (23.4): the sky's share of the ambient, so pits, overhangs
@@ -891,15 +904,22 @@ static void DrawTranslucent(World& w, const Frustum& frustum, Vec3 eye) {
 // re-rendered when it has actually gone stale: the sun moved a quarter
 // of a degree, the player moved a quarter of the covered area, or chunk
 // meshes changed. Most frames just reuse it.
-static Mat4 g_lightViewProj = {};
+static Mat4 g_lightViewProj = {}, g_lightViewProjPrev = {};
+// The crossfade from the previous map to the current one runs over about
+// the time between the last two redraws, so it has just finished when the
+// next map arrives: shadows move continuously (the owner's tween).
+static double g_shadowSwapAt = 0.0, g_shadowFadeSec = 1.0;
+static double ShadowClock() { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+static float ShadowFade() { return (float)std::min(1.0, std::max(0.0, (ShadowClock() - g_shadowSwapAt) / g_shadowFadeSec)); }
 static bool g_shadowValid = false;
 static Vec3 g_shadowSun = { 0, 1, 0 };
 static float g_shadowCenterX = 0, g_shadowCenterZ = 0, g_shadowExtent = 0;
 static uint32_t g_shadowMeshVersion = 0;
 
-// A stale map is redrawn into the back map a quarter of the chunks per
-// frame (SHADOW_SLICES), then swapped in: a re-render every few seconds
-// used to land in a single frame -- a regular hitch on a modest GPU. The
+// A stale map is redrawn into the spare map a quarter of the chunks per
+// frame (SHADOW_SLICES), then swapped in and crossfaded from the previous
+// one. While the sun moves, that's continuous: a new map every four frames.
+// (A whole map in one frame was once a regular hitch on a modest GPU.) The
 // very first map is drawn whole, so shadows are there from the start.
 static const int SHADOW_SLICES = 4;
 static int g_buildSlice = -1;           // -1: not building
@@ -910,11 +930,16 @@ static uint32_t g_buildMeshVersion = 0;
 
 static void UpdateShadowMap(World& w, Vec3 eye, Vec3 sun) {
     float extent = (float)std::min(std::max((g_loadRadius + 1) * CHUNK_SIZE, 48), 112); // half-width, blocks
-    int back = 1 - g_shadowFront;
+    int back = 3 - g_shadowFront - g_shadowPrev; // neither current nor previous
+    if (back < 0 || back > 2 || back == g_shadowFront || back == g_shadowPrev) back = (g_shadowFront + 1) % 3;
     int slicesNow = 1;
     if (g_buildSlice < 0) {
         bool stale = !g_shadowValid || extent != g_shadowExtent || g_meshVersion != g_shadowMeshVersion ||
-                     Dot(sun, g_shadowSun) < 0.99999f /* ~0.25 degrees */ ||
+                     // Any sun movement at all (about 0.005 degrees a frame at 60 fps):
+                     // while the sun moves a new map is always on its way, a quarter
+                     // a frame, and the crossfade covers the few frames between, so
+                     // shadows glide over the land (owner: a jump is unrealistic).
+                     sun.x != g_shadowSun.x || sun.y != g_shadowSun.y || sun.z != g_shadowSun.z ||
                      fabsf(eye.x - g_shadowCenterX) > extent * 0.25f || fabsf(eye.z - g_shadowCenterZ) > extent * 0.25f;
         if (!stale) return;
         // Start the next map in the back buffer.
@@ -928,6 +953,7 @@ static void UpdateShadowMap(World& w, Vec3 eye, Vec3 sun) {
 
     ID3D11ShaderResourceView* nullSRV = nullptr;
     g_context->PSSetShaderResources(1, 1, &nullSRV); // a map can't be read while it's a target
+    g_context->PSSetShaderResources(5, 1, &nullSRV); // (the one drawn now was last frame's previous map)
     g_context->OMSetRenderTargets(0, nullptr, g_shadowDSV[back]);
     D3D11_VIEWPORT vp = {}; vp.Width = vp.Height = (float)SHADOW_SIZE; vp.MaxDepth = 1.0f;
     g_context->RSSetViewports(1, &vp);
@@ -953,6 +979,16 @@ static void UpdateShadowMap(World& w, Vec3 eye, Vec3 sun) {
 
     // Complete: swap it in.
     g_buildSlice = -1;
+    {
+        double now = ShadowClock();
+        bool first = !g_shadowValid;
+        // Fade over the gap since the last swap, within reason: a jump in
+        // the view (a load, a teleport) fades quickly, a still sun slowly.
+        g_shadowFadeSec = first ? 1e-3 : std::min(3.0, std::max(0.25, now - g_shadowSwapAt));
+        g_shadowSwapAt = now;
+        g_shadowPrev = first ? back : g_shadowFront;
+        g_lightViewProjPrev = first ? g_buildViewProj : g_lightViewProj;
+    }
     g_shadowFront = back;
     g_lightViewProj = g_buildViewProj;
     g_shadowValid = true;
@@ -1214,10 +1250,12 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         // chunkRel), so the view drops its translation, as the sky's does.
         cb.mvp = MatMul(MatLookToLH({ 0, 0, 0 }, forward, up), proj);
         cb.lightViewProj = g_lightViewProj;
+        cb.lightViewProjPrev = g_lightViewProjPrev;
         cb.params[0] = shadows ? 1.0f : 0.0f;
-        cb.params[1] = 0.5f / SHADOW_SIZE;
-        cb.params[2] = 0.0f;
-        cb.params[3] = 0.0f;
+        cb.params[1] = 1.0f / SHADOW_SIZE;
+        cb.params[2] = ShadowFade();
+        // 1.5 texels of the map, in blocks: the map spans 2 x extent.
+        cb.params[3] = 1.5f * 2.0f * std::max(g_shadowExtent, 48.0f) / SHADOW_SIZE;
         cb.glowDrive[0] = CurrentMusicLevel(); cb.glowDrive[1] = cb.glowDrive[2] = cb.glowDrive[3] = 0.0f;
         cb.glowGrid[0] = (float)g_glowGrid.ox; cb.glowGrid[1] = (float)g_glowGrid.oy; cb.glowGrid[2] = (float)g_glowGrid.oz;
         cb.glowGrid[3] = g_glowLit && g_glowSRV ? 1.0f : 0.0f;
@@ -1231,8 +1269,9 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         g_context->PSSetConstantBuffers(0, 1, &g_cbuffer);
         ID3D11SamplerState* samplers[4] = { g_sampler, g_shadowSampler, g_glowSampler, g_softSampler };
         g_context->PSSetSamplers(0, 4, samplers);
-        ID3D11ShaderResourceView* srvs[5] = { g_blockTexSRV, shadows ? g_shadowSRV[g_shadowFront] : nullptr, g_glowSRV, g_surfaceSRV, g_heightSRV };
-        g_context->PSSetShaderResources(0, 5, srvs);
+        ID3D11ShaderResourceView* srvs[6] = { g_blockTexSRV, shadows ? g_shadowSRV[g_shadowFront] : nullptr, g_glowSRV, g_surfaceSRV, g_heightSRV,
+                                              shadows ? g_shadowSRV[g_shadowPrev] : nullptr };
+        g_context->PSSetShaderResources(0, 6, srvs);
         g_context->PSSetConstantBuffers(3, 1, &g_matCB);
         Frustum frustum = ExtractFrustum(viewProj);
         // Back faces aren't drawn: facetmesh winds every triangle so
@@ -1832,7 +1871,7 @@ bool InitD3D(HWND hwnd) {
         sd.Width = SHADOW_SIZE; sd.Height = SHADOW_SIZE; sd.MipLevels = 1; sd.ArraySize = 1;
         sd.Format = DXGI_FORMAT_R32_TYPELESS; sd.SampleDesc.Count = 1;
         sd.Usage = D3D11_USAGE_DEFAULT; sd.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
-        for (int m = 0; m < 2; m++) { // front and back (see UpdateShadowMap)
+        for (int m = 0; m < 3; m++) { // current, previous and the one being drawn (see UpdateShadowMap)
             ID3D11Texture2D* st = nullptr;
             if (SUCCEEDED(g_device->CreateTexture2D(&sd, nullptr, &st))) {
                 D3D11_DEPTH_STENCIL_VIEW_DESC dd = {}; dd.Format = DXGI_FORMAT_D32_FLOAT; dd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
@@ -1857,7 +1896,7 @@ bool InitD3D(HWND hwnd) {
         sb.Usage = D3D11_USAGE_DYNAMIC; sb.ByteWidth = sizeof(Mat4);
         sb.BindFlags = D3D11_BIND_CONSTANT_BUFFER; sb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         g_device->CreateBuffer(&sb, nullptr, &g_shadowCB);
-        g_shadowsAvailable = g_shadowVS && g_shadowDSV[0] && g_shadowSRV[0] && g_shadowDSV[1] && g_shadowSRV[1] && g_shadowSampler && g_shadowRaster && g_shadowCB;
+        g_shadowsAvailable = g_shadowVS && g_shadowDSV[0] && g_shadowSRV[0] && g_shadowDSV[1] && g_shadowSRV[1] && g_shadowDSV[2] && g_shadowSRV[2] && g_shadowSampler && g_shadowRaster && g_shadowCB;
     }
 
     // --- Post pass (Section 4.8): outlines and SSAO. Optional too.

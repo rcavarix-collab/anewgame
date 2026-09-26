@@ -61,6 +61,7 @@ Every feature gets a short card in the plan for its step. No card, no code.
 A step isn't finished until all of these are true:
 - every new or changed file has its header (what it is, what it costs, its layer, its DESIGN.md section);
 - names and notes follow `docs/CONVENTIONS.md`, and comments reference only files, sections and features that exist;
+- every new file has its line in `docs/MANIFEST.md` (ship, keep or retire);
 - `DESIGN.md` describes the system as built, not as planned;
 - `DECISIONS.md` has any decision the step made;
 - the scope sheet's Status is updated;

@@ -30,3 +30,5 @@ Each document has one job. If you're looking for something, this says where it i
 | `../reference/` | Old code and docs kept only for reference (the seed files: four prototypes and two texture generators; Voxistics' design, review and scope), each removed once nothing more is wanted from it. See its README | When something is taken from it, or it's retired |
 
 **How they connect.** A goal (GOALS) is reached through milestones (ROADMAP). Along the way, ideas are tested (THEORIES) and problems are watched for (FORECASTS). Every choice is logged (DECISIONS). Every build is measured (COST_LEDGER) and looked back on (REFLECTIONS). A reflection or a forecast that comes true usually produces a new decision or a new rule.
+
+**What ships, what stays and what retires:** `MANIFEST.md`. **Naming and notes:** `CONVENTIONS.md`.

@@ -7,7 +7,8 @@ single self-contained piece of text into a fresh chat and attaches
 nothing. The agent gets no whole files (owner, 2026-09-26): each task in
 AGENT_TASKS.md carries the facts it needs in plain words, plus a few lines
 where a format matters. The only file carried is the player's text
-(assets/text/en.txt) for T1 and T2, which work on those words.
+(assets/text/en.txt) for the translation tasks, which work on those words, and
+the first translation for its second pass.
 
 Cost: none in the game; a tool Claude reruns whenever AGENT_TASKS.md
 changes. Standard library only.
@@ -23,7 +24,18 @@ OUT = os.path.join(ROOT, 'docs', 'agent_packs')
 # isn't published); lower it if a paste is refused or cut short.
 MAX_CHARS = 12000
 # Tasks that work on the player's own words carry them.
-CARRY_TEXT = ('T1', 'T2')
+CARRY_TEXT = ('T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11')
+# Second passes carry half the keys each, in English and in the first
+# translation (incoming/grok/T1/): both whole files are too long for one paste.
+CARRY_FIRST = {'T12': ('de.txt', 0), 'T13': ('de.txt', 1), 'T14': ('es-MX.txt', 0),
+               'T15': ('es-MX.txt', 1), 'T16': ('fr.txt', 0), 'T17': ('fr.txt', 1)}
+
+def entries(path):
+    return [l for l in read(path).split('\n') if l.strip() and not l.startswith('#')]
+
+def half(lines, which):
+    mid = (len(lines) + 1) // 2
+    return lines[:mid] if which == 0 else lines[mid:]
 
 def read(path):
     with open(os.path.join(ROOT, path), encoding='utf-8') as f:
@@ -71,6 +83,12 @@ def make(tid, text, date):
     if tid in CARRY_TEXT:
         body = read('assets/text/en.txt').rstrip('\n')
         parts += ['## en.txt', '', '```text', body, '```', '']
+    if tid in CARRY_FIRST:
+        f, which = CARRY_FIRST[tid]
+        en = '\n'.join(half(entries('assets/text/en.txt'), which))
+        tr = '\n'.join(half(entries('incoming/grok/T1/' + f), which))
+        parts += ['## English (this half)', '', '```text', en, '```', '',
+                  '## ' + f + ', the first translation (this half)', '', '```text', tr, '```', '']
     parts += ['## End of task %s' % tid, '',
               'Do task %s now: the report under `=== FILE: REPORT.md ===` first, then each file under its `=== FILE:` line, and `END OF DELIVERY` at the very end.' % tid, '']
     return '\n'.join(parts)

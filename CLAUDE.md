@@ -38,7 +38,7 @@ The owner keeps scope with MoSCoW (Must / Should / Could / Won't) against the ho
   Fonts are the player's installed system fonts. When unsure, make it more original.
 - **Minimal text, any language (D26).** Show, don't tell; keep words few and plain. Every player-facing word goes through the string table (from M1's text step on), never written into code, so the game can be translated.
 - **Sound is synthesized, only (D25).** No recorded or sampled audio, ever: music and effects come from the synth (`synth_kit.h`, `music_synth.cpp`, `sfx_synth.cpp`).
-- **Research from reliable sources only (D66).** Agencies, standards bodies, peer-reviewed or society publications, recognised references; never forums or social sites. Like a college paper: independent sources agreeing, testable figures, every source listed, anything not read at the source marked. Be a considerate visitor: few requests, no bulk fetching, and a site that refuses access is respected, not worked around. Notes go in `docs/research/`.
+- **Research from reliable sources only (D66).** Agencies, standards bodies, peer-reviewed or society publications, recognised references; never forums or social sites. Like a college paper: independent sources agreeing, testable figures, every source listed, anything not read at the source marked. Be a considerate visitor: few requests, no bulk fetching, and a site that refuses access is respected, not worked around. Research is for theory and explanation; never copy anyone's code, art or text: we write our own from understanding. Notes go in `docs/research/`.
 - **No numbers in player-facing displays** where a band or feel will do. Keep debug UI minimal.
 
 ## Reference material: ideas only, kept separate, removed when spent

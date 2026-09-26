@@ -30,6 +30,8 @@ Checked against the code and against the papers we've read in full: Schuster 202
 
 Published sky models come with fitted coefficient tables: numbers in the papers themselves (Preetham's appendix; Hošek & Wilkie's data). Our rule says never copy anyone's data. Are published scientific constants (physical facts in a paper) allowed, like using the speed of light? Or should we keep fitting our own gradient to references? Until decided, we don't use them.
 
+**Answered (D68):** tables aren't copied. We describe what the data shows (its trends, shapes, ranges) and match that with our own numbers.
+
 ## What this round teaches about helpers
 
 The theory tasks work well: sound summaries with mostly real sources. They still need our own reading, because every note missed the one specific finding that mattered:

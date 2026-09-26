@@ -46,7 +46,7 @@ It works well for clear skies but can't make the aureole's sharp spike.
    These are per-frame constants and small shader changes: no per-pixel physics.
 2. **Turbidity becomes the weather's haze knob.** One number for weather (R2/G9) can set horizon brightness, the size of the sun's glow, sunset colour and the haze term together (clear T ≈ 2–3, hazy 6–10, fog far above). That's cleaner than many unrelated sliders, and physically grounded.
 3. **Twilight stays ours.** The model stops at sunset. Our twilight band and night need their own reference: S3 (sky colour through the day) and S24 (twilight at the equator), including the Earth's shadow and the pink band above it at dusk.
-4. **No tables, no code.** If we ever want the model's exact colours, the honest route is to write a small offline tool from the paper's physics, not to take their data.
+4. **No tables, no code (D68).** We write down what the model's data shows (the points above are that description) and tune our own curves to match it by eye against references. If more precision is wanted, extend the description from the paper's figures, never by copying its tables.
 
 ## 2. Textures that flow (Vlachos 2010)
 

@@ -53,11 +53,11 @@ From Grok's R4 (docs/grok_reviews/R4.md): for item D, near the player decide the
 
 ## Open questions for the owner (asked after the Grok review)
 
-1. **F, texture density.** Three choices:
+1. ~~**F, texture density.**~~ Decided (D65): 64 pixels per block. **Was:** Three choices:
    - 64 pixels per block: finer detail, repeats as often as now;
    - 64 pixels over 2 blocks: the same pixel size as now, repeating half as often;
    - 128 pixels over 2 blocks: both.
-2. **A, cloud speed.** Low clouds crossing the whole sky in a few minutes, high streaks slower: about right?
+2. **A, cloud speed.** Researched: `docs/research/CLOUDS.md`. Left for the owner: whether clouds run in real time or partly compressed with the fast day. **Was:** Low clouds crossing the whole sky in a few minutes, high streaks slower: about right?
 
 ## Parked: a building layer (owner's idea, W067)
 

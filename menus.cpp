@@ -26,7 +26,7 @@ void ResetGraphicsSettings() {
     g_lastPlayerChunkX = INT32_MIN; g_lastPlayerChunkZ = INT32_MIN; // force a rescan at the new radius
 }
 void ResetDisplaySettings() { g_showFPS = false; g_showProfiler = false; if (g_fullscreen) { g_fullscreen = false; ApplyFullscreen(false); } }
-void ResetAudioSettings() { g_masterVolume = 1.0f; g_musicVolume = 1.0f; g_worldVolume = 1.0f; ApplyAudioVolumes(); }
+void ResetAudioSettings() { g_masterVolume = 1.0f; g_musicVolume = 1.0f; g_worldVolume = 1.0f; g_footstepVolume = 1.0f; ApplyAudioVolumes(); }
 void ResetAccessibilitySettings() {
     g_fov = 45.0f;
     g_toggleMovement = false;
@@ -45,6 +45,7 @@ SliderRange GetSliderRange(int id) {
     case SLIDER_FINE_DETAIL: return { 0.0f, 3.0f };
     case SLIDER_FRAME_LIMIT: return { 30.0f, 200.0f };
     case SLIDER_MASTER_VOLUME: case SLIDER_MUSIC_VOLUME: case SLIDER_WORLD_VOLUME: return { 0.0f, 1.0f };
+    case SLIDER_FOOTSTEP_VOLUME: return { 0.0f, 2.0f };
     case SLIDER_FOV: return { 45.0f, 100.0f };
     case SLIDER_MUSIC_INTENSITY: return { 0.0f, 1.0f };
     default: return { 0.0f, 1.0f };
@@ -62,6 +63,7 @@ UIRect GetSliderRowRect(int id) {
     case SLIDER_MASTER_VOLUME: return SubmenuRowRect(AUDIO_LAYOUT, AROW_MASTER_VOLUME);
     case SLIDER_MUSIC_VOLUME: return SubmenuRowRect(AUDIO_LAYOUT, AROW_MUSIC_VOLUME);
     case SLIDER_WORLD_VOLUME: return SubmenuRowRect(AUDIO_LAYOUT, AROW_WORLD_VOLUME);
+    case SLIDER_FOOTSTEP_VOLUME: return SubmenuRowRect(AUDIO_LAYOUT, AROW_FOOTSTEP_VOLUME);
     case SLIDER_FOV: return SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_FOV);
     case SLIDER_MUSIC_INTENSITY: return SubmenuRowRect(ACCESSIBILITY_LAYOUT, ARROW_MUSIC_INTENSITY);
     default: return { 0, 0, 0, 0 };
@@ -77,6 +79,7 @@ float GetSliderValue(int id) {
     case SLIDER_MASTER_VOLUME: return g_masterVolume;
     case SLIDER_MUSIC_VOLUME: return g_musicVolume;
     case SLIDER_WORLD_VOLUME: return g_worldVolume;
+    case SLIDER_FOOTSTEP_VOLUME: return g_footstepVolume;
     case SLIDER_FOV: return g_fov;
     case SLIDER_MUSIC_INTENSITY: return g_musicIntensity;
     default: return 0.0f;
@@ -99,6 +102,7 @@ void SetSliderValue(int id, float v) {
     case SLIDER_MASTER_VOLUME: g_masterVolume = v; ApplyAudioVolumes(); break;
     case SLIDER_MUSIC_VOLUME: g_musicVolume = v; ApplyAudioVolumes(); break;
     case SLIDER_WORLD_VOLUME: g_worldVolume = v; ApplyAudioVolumes(); break;
+    case SLIDER_FOOTSTEP_VOLUME: g_footstepVolume = v; break; // reaches the palette with the next frame's state
     case SLIDER_FOV: g_fov = v; break;
     case SLIDER_MUSIC_INTENSITY: g_musicIntensity = v; break;
     }
@@ -115,6 +119,7 @@ std::string GetSliderLabel(int id) {
     case SLIDER_MASTER_VOLUME: return StrF("slider.master_volume", { pct(g_masterVolume) });
     case SLIDER_MUSIC_VOLUME: return StrF("slider.music_volume", { pct(g_musicVolume) });
     case SLIDER_WORLD_VOLUME: return StrF("slider.world_volume", { pct(g_worldVolume) });
+    case SLIDER_FOOTSTEP_VOLUME: return StrF("slider.footstep_volume", { pct(g_footstepVolume) });
     case SLIDER_FOV: return StrF("slider.fov", { std::to_string((int)(g_fov + 0.5f)) });
     case SLIDER_MUSIC_INTENSITY: return StrF("slider.music_intensity", { pct(g_musicIntensity) });
     default: return "";
@@ -208,6 +213,7 @@ void HandleAudioClick(int mx, int my) {
     if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(AUDIO_LAYOUT, AROW_MASTER_VOLUME)))) { BeginSliderDrag(SLIDER_MASTER_VOLUME, mx); return; }
     if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(AUDIO_LAYOUT, AROW_MUSIC_VOLUME)))) { BeginSliderDrag(SLIDER_MUSIC_VOLUME, mx); return; }
     if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(AUDIO_LAYOUT, AROW_WORLD_VOLUME)))) { BeginSliderDrag(SLIDER_WORLD_VOLUME, mx); return; }
+    if (PointInRect(mx, my, GetSliderHitRect(SubmenuRowRect(AUDIO_LAYOUT, AROW_FOOTSTEP_VOLUME)))) { BeginSliderDrag(SLIDER_FOOTSTEP_VOLUME, mx); return; }
     if (PointInRect(mx, my, SubmenuRowRect(AUDIO_LAYOUT, AROW_RESET))) { ResetAudioSettings(); SaveSettings(); return; }
     if (PointInRect(mx, my, SubmenuRowRect(AUDIO_LAYOUT, AROW_BACK))) { g_menuScreen = MenuScreen::OptionsHub; return; }
 }
@@ -352,7 +358,7 @@ bool PressActsImmediately(int mx, int my) {
     static const struct { int id; MenuScreen screen; } sliders[] = {
         { SLIDER_SENS_X, MenuScreen::LookSettings }, { SLIDER_SENS_Y, MenuScreen::LookSettings },
         { SLIDER_RENDER_DIST, MenuScreen::Graphics }, { SLIDER_FINE_DETAIL, MenuScreen::Graphics }, { SLIDER_FRAME_LIMIT, MenuScreen::Graphics }, { SLIDER_MASTER_VOLUME, MenuScreen::Audio },
-        { SLIDER_MUSIC_VOLUME, MenuScreen::Audio }, { SLIDER_WORLD_VOLUME, MenuScreen::Audio },
+        { SLIDER_MUSIC_VOLUME, MenuScreen::Audio }, { SLIDER_WORLD_VOLUME, MenuScreen::Audio }, { SLIDER_FOOTSTEP_VOLUME, MenuScreen::Audio },
         { SLIDER_FOV, MenuScreen::Accessibility }, { SLIDER_MUSIC_INTENSITY, MenuScreen::Accessibility },
     };
     for (const auto& s : sliders)

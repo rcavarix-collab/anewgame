@@ -36,6 +36,7 @@ int g_fineDetail = 2;
 float g_masterVolume = 1.0f;
 float g_musicVolume = 1.0f;
 float g_worldVolume = 1.0f;
+float g_footstepVolume = 1.0f;
 float g_fov = 45.0f;
 std::string g_language = "en";
 bool g_toggleMovement = false;
@@ -88,6 +89,7 @@ bool SaveSettings() {
     ss << "masterVolume=" << g_masterVolume << "\n";
     ss << "musicVolume=" << g_musicVolume << "\n";
     ss << "worldVolume=" << g_worldVolume << "\n";
+    ss << "footstepVolume=" << g_footstepVolume << "\n";
     ss << "fov=" << g_fov << "\n";
     ss << "toggleMovement=" << (g_toggleMovement ? 1 : 0) << "\n";
     ss << "highContrastUI=" << (g_highContrastUI ? 1 : 0) << "\n";
@@ -115,6 +117,7 @@ void ClampSettingsToValidRanges() {
     g_masterVolume = ClampF(g_masterVolume, 0.0f, 1.0f);
     g_musicVolume = ClampF(g_musicVolume, 0.0f, 1.0f);
     g_worldVolume = ClampF(g_worldVolume, 0.0f, 1.0f);
+    g_footstepVolume = ClampF(g_footstepVolume, 0.0f, 2.0f);
     g_fov = ClampF(g_fov, 45.0f, 100.0f);
     g_musicIntensity = ClampF(g_musicIntensity, 0.0f, 1.0f);
 }
@@ -157,6 +160,7 @@ void LoadSettings() {
     g_masterVolume = getF("masterVolume", g_masterVolume);
     g_musicVolume = getF("musicVolume", g_musicVolume);
     g_worldVolume = getF("worldVolume", g_worldVolume);
+    g_footstepVolume = getF("footstepVolume", g_footstepVolume);
     g_fov = getF("fov", g_fov);
     g_toggleMovement = getB("toggleMovement", g_toggleMovement);
     g_highContrastUI = getB("highContrastUI", g_highContrastUI);

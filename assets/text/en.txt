@@ -87,6 +87,7 @@ slider.frame_limit = FRAME LIMIT (VSYNC OFF): {0} FPS
 slider.master_volume = MASTER VOLUME: {0}%
 slider.music_volume = MUSIC VOLUME: {0}%
 slider.world_volume = WORLD SOUNDS: {0}%
+slider.footstep_volume = FOOTSTEPS: {0}%
 slider.fov = FIELD OF VIEW: {0} DEG
 slider.music_intensity = MUSIC INTENSITY: {0}%
 

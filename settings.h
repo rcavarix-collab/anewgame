@@ -37,6 +37,7 @@ extern int g_fineDetail;
 extern float g_masterVolume;
 extern float g_musicVolume;
 extern float g_worldVolume; // the world sound palette (sfx_synth.h), under Master
+extern float g_footstepVolume; // footsteps within it, 0..2 (1: their designed level, D48)
 extern float g_fov; // degrees, vertical
 // Accessibility (Section 11): press-to-toggle instead of hold-to-move for WASD.
 extern bool g_toggleMovement;

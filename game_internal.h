@@ -114,8 +114,8 @@ enum DisplayRow { DROW_SHOW_FPS = 0, DROW_SHOW_PROFILER = 1, DROW_FULLSCREEN = 2
 // (Section 10) playing the procedural ambient track. Separate channels
 // now even though Music is the only one with anything to play yet, so a
 // future SFX channel is one more slider, not a remix of this one.
-static const SubmenuLayout AUDIO_LAYOUT    = { 380.0f, 56.0f, 12.0f, 70.0f, 20.0f, 5 };
-enum AudioRow { AROW_MASTER_VOLUME = 0, AROW_MUSIC_VOLUME = 1, AROW_WORLD_VOLUME = 2, AROW_RESET = 3, AROW_BACK = 4 };
+static const SubmenuLayout AUDIO_LAYOUT    = { 380.0f, 56.0f, 12.0f, 70.0f, 20.0f, 6 };
+enum AudioRow { AROW_MASTER_VOLUME = 0, AROW_MUSIC_VOLUME = 1, AROW_WORLD_VOLUME = 2, AROW_FOOTSTEP_VOLUME = 3, AROW_RESET = 4, AROW_BACK = 5 };
 
 // Accessibility: a real, working slice rather than every idea discussed
 // -- a field-of-view slider (motion/vestibular comfort: neither wider
@@ -159,7 +159,7 @@ static const int g_defaultBindings[ACT_COUNT] = {
 // A handful of settings are sliders rather than toggles/buttons. One
 // small generic slider system (value/range/row-rect all looked up by
 // ID) instead of one-off X-sensitivity-shaped code repeated per slider.
-enum SliderId { SLIDER_NONE = -1, SLIDER_SENS_X = 0, SLIDER_SENS_Y = 1, SLIDER_RENDER_DIST = 2, SLIDER_MASTER_VOLUME = 3, SLIDER_MUSIC_VOLUME = 4, SLIDER_FOV = 5, SLIDER_MUSIC_INTENSITY = 6, SLIDER_WORLD_VOLUME = 7, SLIDER_FRAME_LIMIT = 8, SLIDER_FINE_DETAIL = 9 };
+enum SliderId { SLIDER_NONE = -1, SLIDER_SENS_X = 0, SLIDER_SENS_Y = 1, SLIDER_RENDER_DIST = 2, SLIDER_MASTER_VOLUME = 3, SLIDER_MUSIC_VOLUME = 4, SLIDER_FOV = 5, SLIDER_MUSIC_INTENSITY = 6, SLIDER_WORLD_VOLUME = 7, SLIDER_FRAME_LIMIT = 8, SLIDER_FINE_DETAIL = 9, SLIDER_FOOTSTEP_VOLUME = 10 };
 
 struct SliderRange { float minV, maxV; };
 

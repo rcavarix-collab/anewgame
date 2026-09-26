@@ -887,9 +887,10 @@ static void TestSoundPalette() {
     const double chordT[4] = { FindChordTime(MUSIC_DM9, 1200), FindChordTime(MUSIC_G7SUS4, 1200),
                                FindChordTime(MUSIC_EM7, 1200), FindChordTime(MUSIC_A7SUS4, 1200) };
     // Every sound, under every chord, at the axis extremes: every pitch in
-    // the chord's safe set, never above the -21 dB ceiling.
+    // the chord's safe set, never above the -21 dB ceiling (footsteps: their
+    // own, -8 dB, D48).
     int unsafe = 0, loud = 0, silentTonal = 0;
-    const double ceiling = pow(10.0, (-21.0 + 0.5) / 20.0);
+    const double ceiling = pow(10.0, (-21.0 + 0.5) / 20.0), stepCeiling = pow(10.0, (-8.0 + 0.5) / 20.0);
     for (int id = 0; id < SND_COUNT; id++)
         for (int c = 0; c < 4; c++)
             for (int corner = 0; corner < 4; corner++) {
@@ -907,7 +908,7 @@ static void TestSoundPalette() {
                 MusicHarmony h; MusicHarmonyAt(chordT[c], &h);
                 double scale = h.masterGain * 0.78, peak = 0;
                 for (float v : out) peak = std::max(peak, (double)fabs(v) / scale);
-                if (peak > ceiling) { loud++; printf("  loud: %s %.1f dB\n", SoundName((SoundId)id), 20 * log10(peak)); }
+                if (peak > (id == SND_FOOTFALL ? stepCeiling : ceiling)) { loud++; printf("  loud: %s %.1f dB\n", SoundName((SoundId)id), 20 * log10(peak)); }
                 SoundPalette::NoteLog log[64];
                 int n = p.RecentNotes(log, 64);
                 for (int i = 0; i < n; i++)
@@ -1358,6 +1359,7 @@ static void TestFacetCollision() {
     // when stopped. Never below the ground, never lifted out of it (no
     // entombing), never a jump of the view.
     int sank = 0, lifted = 0, jumpsOfView = 0, stuck = 0;
+    int walkTicks = 0, offGround = 0, airUnderFeet = 0, noGroundFound = 0; // footsteps need both (worldsound.cpp)
     float walked = 0;
     for (int k = 0; k < 16; k++) {
         Player p; p.x = 8.5f; p.z = 8.5f; p.y = (float)TerrainHeight(8, 8) + 1.5f; p.yaw = k * 0.3927f;
@@ -1375,6 +1377,17 @@ static void TestFacetCollision() {
             if (!go.jump && wasOnGround && p.onGround && fabsf(eye - prevEye) > 0.25f) jumpsOfView++;
             prevEye = eye;
             if (p.y - py > 0.9f && !go.jump) lifted++;
+            if (!go.jump && still == 0 && i > 20) {
+                walkTicks++;
+                if (!p.onGround) offGround++;
+                else if (w.Get((int)floorf(p.x), (int)floorf(p.y - 0.05f), (int)floorf(p.z)) == BLOCK_AIR) {
+                    airUnderFeet++;
+                    // worldsound.cpp's look further down finds the ground.
+                    bool found = false;
+                    for (int d = 1; d < 3; d++) found = found || w.Get((int)floorf(p.x), (int)floorf(p.y - 0.05f) - d, (int)floorf(p.z)) != BLOCK_AIR;
+                    if (!found) noGroundFound++;
+                }
+            }
             still = (fabsf(p.x - px) + fabsf(p.z - pz) < 1e-4f) ? still + 1 : 0;
             if (p.onGround) {
                 int x = (int)floorf(p.x), y = (int)floorf(p.y), z = (int)floorf(p.z);
@@ -1387,6 +1400,9 @@ static void TestFacetCollision() {
         walked += sqrtf((p.x - sx) * (p.x - sx) + (p.z - sz) * (p.z - sz));
     }
     printf("  16 walks: %.0f blocks in all; sank %d, lifted %d, view jumps %d, stuck at the end %d\n", walked, sank, lifted, jumpsOfView, stuck);
+    printf("  walking ticks %d: off the ground %d, air in the cell under the feet %d (worldsound.cpp looks two cells further)\n", walkTicks, offGround, airUnderFeet);
+    CHECK(offGround * 10 < walkTicks); // footsteps need the ground under them most of the time
+    CHECK(noGroundFound == 0);         // and always know what it is
     CHECK(sank == 0 && lifted == 0 && jumpsOfView == 0);
     CHECK(walked > 16 * 12.0f);
     // Picking at many angles: the hit is a solid cell, the place cell is

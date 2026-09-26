@@ -133,6 +133,7 @@ struct WorldState {
     SoundAxes axes; AmbientScene scene;
     float intensity = 1.0f, listener[4] = {};
     bool mono = false, ambient = false;
+    float stepGain = 1.0f;
     int gait = SoundPalette::GAIT_NONE; SoundMaterial ground = MAT_NONE;
 };
 static std::mutex g_worldLock;                  // guards the mailbox and the flags below
@@ -451,6 +452,7 @@ static void WorldWorker() {
             g_palette->SetIntensity(st.intensity);
             g_palette->SetListener(st.listener[0], st.listener[1], st.listener[2], st.listener[3]);
             g_palette->SetMono(st.mono);
+            g_palette->SetFootstepGain(st.stepGain);
             g_palette->SetAmbientEnabled(st.ambient);
             g_palette->SetGait(st.gait, st.ground);
             if (st.ambient) g_worldIdle = false; // the scheduler may place something this bar
@@ -518,7 +520,7 @@ void UpdateWorldSound(const SoundAxes& axes, const AmbientScene& scene, bool pla
         urgent = live != w.ambient || g_monoAudio != w.mono; // play starting or stopping is heard at once
         w.axes = axes; w.scene = scene; w.intensity = g_musicIntensity;
         for (int i = 0; i < 4; i++) w.listener[i] = listener[i];
-        w.mono = g_monoAudio; w.ambient = live;
+        w.mono = g_monoAudio; w.ambient = live; w.stepGain = g_footstepVolume;
         g_worldStateNew = true;
         if (urgent) g_worldUrgent = true;
     }

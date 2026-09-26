@@ -230,7 +230,8 @@ struct SoundPalette::Impl {
     AmbientScene scene;
     float intensity = 1;
     bool ambientOn = false;
-    double stepCeilingDb = kCeilingDb; // SetFootstepCeiling
+    double stepCeilingDb = 0.0; // SetFootstepCeiling: footsteps are exempt from the -21 dB limit (D48)
+    float stepGain = 1.0f;      // SetFootstepGain: the Footsteps volume setting
     double CeilingFor(SoundId id) const { return id == SND_FOOTFALL ? stepCeilingDb : kCeilingDb; }
     MusicHarmony h = {};
     bool haveH = false;
@@ -1019,6 +1020,8 @@ void SoundPalette::Impl::Footfall(const SoundCue& c) {
     // was lost; -13 is the owner's pick from mixed clips (D29).
     double lvl = -13 + 3 * hard - ((c.key & 1) ? 2 : 0) + 20 * std::log10(std::max(0.2f, c.strength));
     if (c.material == MAT_SAND) lvl -= 2.5; // its bright hiss reads louder than its level; kept even with grass
+    lvl += 20 * std::log10(std::max(1e-4f, stepGain)); // the Footsteps volume setting
+    if (stepGain <= 0.0f) return;
     // The scuff: soft ground dull, low and long; hard ground crisp and short.
     // Soft ground starts at 1100 Hz, not 700: below that the scuff sat
     // inside the music's pads and vanished (D29).
@@ -1912,6 +1915,7 @@ void SoundPalette::Render(float* out, int n, double musicTime, bool running) {
 void SoundPalette::SetListener(float x, float y, float z, float yaw) { m->lx = x; m->ly = y; m->lz = z; m->lyaw = yaw; }
 void SoundPalette::SetMono(bool mono) { m->mono = mono; }
 void SoundPalette::SetFootstepCeiling(double db) { m->stepCeilingDb = db; }
+void SoundPalette::SetFootstepGain(float gain) { m->stepGain = gain < 0 ? 0 : gain > 2 ? 2 : gain; }
 void SoundPalette::SetGait(int gait, SoundMaterial ground) {
     if (gait != m->gait) m->nextStepBeat = -1; // a new gait starts on its own next grid line
     m->gait = gait; m->gaitGround = ground;

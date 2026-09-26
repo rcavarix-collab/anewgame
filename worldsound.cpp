@@ -18,8 +18,15 @@ static float g_speed = 0.0f;           // smoothed horizontal speed
 
 static SoundMaterial MaterialUnderFeet() {
     const Player& p = g_player;
-    BlockID id = g_world.Get((int)floorf(p.x), (int)floorf(p.y - 0.05f), (int)floorf(p.z));
-    return BlockSoundMaterial(id);
+    // Faceted ground sits up to half a block off the cell grid (DESIGN.md
+    // 23.1), so the feet are often in the air cell above the one they stand
+    // on (61% of walking ticks in the tests): look down to two cells for it.
+    int x = (int)floorf(p.x), z = (int)floorf(p.z), y = (int)floorf(p.y - 0.05f);
+    for (int k = 0; k < 3; k++) {
+        BlockID id = g_world.Get(x, y - k, z);
+        if (id != BLOCK_AIR) return BlockSoundMaterial(id);
+    }
+    return MAT_NONE;
 }
 
 void WorldSoundReset() {

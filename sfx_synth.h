@@ -101,10 +101,12 @@ public:
     // as world.h's Player: forward = (sin yaw, cos yaw) on the ground).
     void SetListener(float x, float y, float z, float yaw);
     void SetMono(bool mono);               // Accessibility: everything centred
-    // The footsteps' own ceiling, dB (DESIGN 10.4 holds every sound to
-    // -21; whether footsteps may pass it is the owner's call, D29/D31).
-    // Default -21: the rule as it stands. Clips for the choice use others.
+    // The footsteps' own ceiling, dB. Footsteps are exempt from the
+    // palette's -21 dB limit (D48): the default is 0 dB, clipping only.
+    // (The clips for the choice used -21, -16 and -11.)
     void SetFootstepCeiling(double db);
+    // The Footsteps volume setting, 0..2 (1: their designed level, D29).
+    void SetFootstepGain(float gain);
     // Footsteps on the beat (5.4 R1): 0 still / airborne / sliding, 1 crouch
     // (every other beat), 2 walk (every beat), 3 sprint (8ths), on `ground`.
     enum Gait { GAIT_NONE, GAIT_CROUCH, GAIT_WALK, GAIT_SPRINT };

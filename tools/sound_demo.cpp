@@ -4,7 +4,8 @@
 // (docs/SOUND_PALETTE.md), native, no Windows needed:
 //
 //   tools/sound_demo.sh analyze        every sound x chord x axis corner:
-//                                      level vs the -21 dB ceiling, energy
+//                                      level vs the -21 dB ceiling (footsteps
+//                                      exempt, D48: theirs is -8), energy
 //                                      above 4.2 kHz, clicks, pitch safety
 //   tools/sound_demo.sh demo OUTDIR    WAV files: each category played over
 //                                      the day-cycle music, at contrasting
@@ -171,7 +172,9 @@ static int Analyze() {
                 sumPeak += m.peakDb; cnt++;
                 safe = safe && m.safe;
             }
-        bool loud = worstPeak > -21.0 + 0.5;
+        // Footsteps are exempt from the -21 dB limit (D48): theirs is to stay
+        // clear of clipping over the music (which peaks near -2.5 dBFS).
+        bool loud = worstPeak > (id == SND_FOOTFALL ? -8.0 : -21.0) + 0.5;
         bool bright = worstHf > -20.0, clicky = worstClick > -40.0;
         printf("%-14s %8.1f %8.1f %8.1f %8.1f%s%s%s%s\n", SoundName((SoundId)id), cnt ? sumPeak / cnt : -120.0, worstPeak, worstHf, worstClick,
                loud ? "  LOUD" : "", safe ? "" : "  UNSAFE", bright ? "  BRIGHT" : "", clicky ? "  CLICK" : "");

@@ -448,6 +448,7 @@ void RenderUIPass() {
         drawSliderRow(SubmenuRowRect(AUDIO_LAYOUT, AROW_MASTER_VOLUME), SLIDER_MASTER_VOLUME);
         drawSliderRow(SubmenuRowRect(AUDIO_LAYOUT, AROW_MUSIC_VOLUME), SLIDER_MUSIC_VOLUME);
         drawSliderRow(SubmenuRowRect(AUDIO_LAYOUT, AROW_WORLD_VOLUME), SLIDER_WORLD_VOLUME);
+        drawSliderRow(SubmenuRowRect(AUDIO_LAYOUT, AROW_FOOTSTEP_VOLUME), SLIDER_FOOTSTEP_VOLUME);
         drawRowButton(SubmenuRowRect(AUDIO_LAYOUT, AROW_RESET), Str("common.reset"));
         drawRowButton(SubmenuRowRect(AUDIO_LAYOUT, AROW_BACK), Str("common.back"));
     } else if (g_menuScreen == MenuScreen::Accessibility) {

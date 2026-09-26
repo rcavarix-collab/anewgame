@@ -6,6 +6,7 @@ Each document has one job. If you're looking for something, this says where it i
 |---|---|---|
 | `PROJECT_NOTES.md` | Everything in one place for a newcomer (owner, Claude or another agent): what walkgrid is, what's built, the code map, how to add things, what bit us, what's next | With every step that changes any of those |
 | `AGENT_TASKS.md` | Work a helper agent can do between Claude sessions: rules, what's off limits, the task list, a report template, a log | When tasks are done or added, at each milestone |
+| `agent_packs/` | One ready-to-paste text per helper task (Brief, task, excerpts), made by `tools/make_agent_packs.py` | Rerun the tool whenever `AGENT_TASKS.md` or the excerpted code changes, at each milestone |
 | `../CLAUDE.md` | How we work: the rules every session follows | Rarely; changes are logged in DECISIONS |
 | `../DESIGN.md` | How each system works, as built | Every step that changes a system |
 | `GOALS.md` | What we're aiming for, as checkable goals | When the owner sets or changes a goal |

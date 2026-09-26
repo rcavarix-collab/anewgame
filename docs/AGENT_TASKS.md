@@ -778,6 +778,102 @@ Done when: the same keys as `en.txt`, in the same order, slots matching line by 
 - Hand back: `fr_part2.txt` (your half, `key = text` lines, same order) and `changes.md`.
 - Done when: the same keys as the English half, in order, with slots matching.
 
+**T18. Japanese, `ja.txt` (M)**
+- Facts for East Asian scripts: no capitals, so write normally; keep texts short (these scripts are compact); set the `font` line to a monospace Windows font that has your script, and say in the report how sure you are it ships with Windows. Candidates to check: MS Gothic (Japanese), NSimSun (Simplified Chinese), MingLiU (Traditional Chinese), GulimChe (Korean). Keep `{0}` slots where the sentence needs them; they may move.
+- Do: translate.
+- Hand back: `ja.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T19. Simplified Chinese, `zh-Hans.txt` (M)**
+- Facts for East Asian scripts: no capitals, so write normally; keep texts short (these scripts are compact); set the `font` line to a monospace Windows font that has your script, and say in the report how sure you are it ships with Windows. Candidates to check: MS Gothic (Japanese), NSimSun (Simplified Chinese), MingLiU (Traditional Chinese), GulimChe (Korean). Keep `{0}` slots where the sentence needs them; they may move.
+- Do: translate.
+- Hand back: `zh-Hans.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T20. Traditional Chinese, `zh-Hant.txt` (M)**
+- Facts for East Asian scripts: no capitals, so write normally; keep texts short (these scripts are compact); set the `font` line to a monospace Windows font that has your script, and say in the report how sure you are it ships with Windows. Candidates to check: MS Gothic (Japanese), NSimSun (Simplified Chinese), MingLiU (Traditional Chinese), GulimChe (Korean). Keep `{0}` slots where the sentence needs them; they may move.
+- Do: translate.
+- Hand back: `zh-Hant.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T21. Korean, `ko.txt` (M)**
+- Facts for East Asian scripts: no capitals, so write normally; keep texts short (these scripts are compact); set the `font` line to a monospace Windows font that has your script, and say in the report how sure you are it ships with Windows. Candidates to check: MS Gothic (Japanese), NSimSun (Simplified Chinese), MingLiU (Traditional Chinese), GulimChe (Korean). Keep `{0}` slots where the sentence needs them; they may move. Use Hangul syllables (precomposed), not separate jamo.
+- Do: translate.
+- Hand back: `ko.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T22. Vietnamese, `vi.txt` (M)**
+- Facts: Latin letters with tone marks; use precomposed characters (one code point per accented letter). Capitals as usual. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `vi.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T23. Indonesian, `id.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `id.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T24. Filipino, `fil.txt` (M)**
+- Facts: Latin letters; use the words a Filipino game would use, including common English loan words where players expect them. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `fil.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T25. Malay, `ms.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `ms.txt`.
+- Done when: as for the group, plus the `font` line explained in the report.
+
+**T26. Swahili, `sw.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list in the report any character you used beyond basic Latin, so Claude can check the font has it.
+- Do: translate.
+- Hand back: `sw.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
+**T27. Hausa, `ha.txt` (M)**
+- Facts: Latin letters including the hooked letters (ɓ, ɗ, ƙ and their capitals) and ʼy. Keep `font = Consolas`, and list in the report any character you used beyond basic Latin, so Claude can check the font has it.
+- Do: translate.
+- Hand back: `ha.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
+**T28. Yoruba, `yo.txt` (M)**
+- Facts: Latin letters with dots below (ẹ, ọ, ṣ) and tone marks. The game draws one code point at a time and can't stack combining marks: use precomposed characters (one code point per accented letter) wherever they exist, and list every place you needed a combining mark. Keep `font = Consolas`, and list in the report any character you used beyond basic Latin, so Claude can check the font has it.
+- Do: translate.
+- Hand back: `yo.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
+**T29. Zulu, `zu.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list in the report any character you used beyond basic Latin, so Claude can check the font has it.
+- Do: translate.
+- Hand back: `zu.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
+**T30. Xhosa, `xh.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list in the report any character you used beyond basic Latin, so Claude can check the font has it.
+- Do: translate.
+- Hand back: `xh.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
+**T31. Afrikaans, `af.txt` (M)**
+- Facts: Latin letters with ê, ë, ô and the like. Keep `font = Consolas`, and list in the report any character you used beyond basic Latin, so Claude can check the font has it.
+- Do: translate.
+- Hand back: `af.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
+**T32. Somali, `so.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list in the report any character you used beyond basic Latin, so Claude can check the font has it.
+- Do: translate.
+- Hand back: `so.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
+**T33. Amharic, `am.txt` (M)**
+- Facts: Ethiopic (Ge'ez) script: syllables are single code points, so no joining is needed, but it has no capitals (write normally) and needs a font that has the script. Set the `font` line to a Windows font with Ethiopic and say how sure you are it ships with Windows (a candidate to check: Ebrima). Say whether its characters are wider than Latin letters.
+- Do: translate.
+- Hand back: `am.txt`.
+- Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
+
 ### H. Writing
 
 Facts for every H task: few words; plain; no numbers where a feel will do; everything the player reads goes into the text table by key (lowercase, dotted, like `hint.dig`).

@@ -24,7 +24,9 @@ OUT = os.path.join(ROOT, 'docs', 'agent_packs')
 # isn't published); lower it if a paste is refused or cut short.
 MAX_CHARS = 12000
 # Tasks that work on the player's own words carry them.
-CARRY_TEXT = ('T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11')
+CARRY_TEXT = ('T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11',
+              'T18', 'T19', 'T20', 'T21', 'T22', 'T23', 'T24', 'T25',
+              'T26', 'T27', 'T28', 'T29', 'T30', 'T31', 'T32', 'T33')
 # Second passes carry half the keys each, in English and in the first
 # translation (incoming/grok/T1/): both whole files are too long for one paste.
 CARRY_FIRST = {'T12': ('de.txt', 0), 'T13': ('de.txt', 1), 'T14': ('es-MX.txt', 0),

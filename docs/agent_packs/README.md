@@ -91,6 +91,22 @@ One paste per task, into a **new private chat** each time: open the file, press 
 | [T15](T15.md) | Mexican Spanish, second pass, part 2 of 2 (S) |
 | [T16](T16.md) | French, second pass, part 1 of 2 (S) |
 | [T17](T17.md) | French, second pass, part 2 of 2 (S) |
+| [T18](T18.md) | Japanese, `ja.txt` (M) |
+| [T19](T19.md) | Simplified Chinese, `zh-Hans.txt` (M) |
+| [T20](T20.md) | Traditional Chinese, `zh-Hant.txt` (M) |
+| [T21](T21.md) | Korean, `ko.txt` (M) |
+| [T22](T22.md) | Vietnamese, `vi.txt` (M) |
+| [T23](T23.md) | Indonesian, `id.txt` (M) |
+| [T24](T24.md) | Filipino, `fil.txt` (M) |
+| [T25](T25.md) | Malay, `ms.txt` (M) |
+| [T26](T26.md) | Swahili, `sw.txt` (M) |
+| [T27](T27.md) | Hausa, `ha.txt` (M) |
+| [T28](T28.md) | Yoruba, `yo.txt` (M) |
+| [T29](T29.md) | Zulu, `zu.txt` (M) |
+| [T30](T30.md) | Xhosa, `xh.txt` (M) |
+| [T31](T31.md) | Afrikaans, `af.txt` (M) |
+| [T32](T32.md) | Somali, `so.txt` (M) |
+| [T33](T33.md) | Amharic, `am.txt` (M) |
 | [H1](H1.md) | Wordless-first hints (S) |
 | [H2](H2.md) | Glossary of the project's words (S) |
 | [H3](H3.md) | Settings names, plainer (S) |

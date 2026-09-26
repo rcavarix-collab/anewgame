@@ -36,6 +36,8 @@ Decided by what the debug views show: a longer baked sky view (16–24 blocks), 
 
 ## Ideas on the table (thrown at the wall, not scheduled)
 
+- **East Asian text (W068):** the UI font atlas and text layout assume every character is one cell wide; Chinese, Japanese and Korean characters are two. A step gives wide characters double-width cells, in the atlas (`GenerateUIAtlas`) and in layout (`UIDrawText`, `UITextWidth`). Grok's T18–T21 translations wait on it. Scripts that need shaping (Devanagari, Thai, Arabic's right-to-left joining) need a shaping step beyond a glyph atlas: parked (W069). African languages (T26–T33): the Latin-script ones work now (the atlas takes any code point the font has); Yoruba's stacked tone marks need precomposed characters or combining-mark support; Amharic's Ethiopic script needs its font and may need wide cells like W068.
+
 - Sky settings (cloud amount, cloud speed), now or with weather.
 - A faint wind bed in the world sound that rises when the low clouds move faster.
 - Start planning the building layer (W067) if it becomes M2, with Grok researching alongside.

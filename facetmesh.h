@@ -62,6 +62,13 @@ struct FacetShape {
     float smooth = 0.5f;        // one smoothing pass toward neighbouring corners, 0..1 (softens terrace corners)
     float jitter = 0.16f;       // how far a corner is nudged in or out along its normal, blocks (seeded per corner)
     float jitterSide = 0.04f;   // and sideways: little, or steps' risers lean out over themselves
+    // Gentle slopes roll instead of terracing (D62): an upward corner eases
+    // this far (0..1) toward the mean ground height of the 4 x 4 columns
+    // around it, where they span 2 cells or less. Cliffs, digs and builds
+    // keep their sharp steps. 0: the look before. Off (0) until the owner
+    // decides how one-cell edits should behave (they'd soften too: the
+    // mesher can't tell a built step from a natural one).
+    float terrace = 0.0f;
     float bumpScale = 1.0f;     // scales every material's bump
     float bumpFreq = 1.6f;      // lumps per block
     float bumpFine = 0.04f;     // a material this lumpy is cut to its band's finest (4x4 near)

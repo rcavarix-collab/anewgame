@@ -45,6 +45,8 @@ static inline float Frac(float x) { return x - floorf(x); }
 // How far each facet's lighting normal leans to the smooth one (render.cpp:
 // 0.55, D46); 0 draws the look before.
 static float g_soften = 0.55f;
+// How far gentle slopes roll instead of terracing (facetmesh.h FacetShape::terrace, D62).
+static float g_terrace = 0.0f; // the game's default (off, pending the owner)
 
 // ---------------------------------------------------------------------
 // Textures: the authored .vtex art, as linear colour and height with mips
@@ -471,6 +473,7 @@ static void Render(const View& v, const std::string& outDir, FILE* stats, int W 
     const int RW = W * SS, RH = H * SS;
     g_cubeLook = v.cubes;
     FacetShape shape;
+    shape.terrace = g_terrace;
     Scene sc;
     sc.mesh = BuildMesh(v.eye, v.selective, v.detail && !v.cubes, shape);
     const FacetMesh& m = sc.mesh;
@@ -846,7 +849,8 @@ int main(int argc, char** argv) {
     std::string texDir = TEXDIR;
     if (!LoadTextures(texDir)) return 1;
     if (only == "sheets") return Sheets(out);
-    if (argc > 4) g_soften = (float)atof(argv[4]); // hills SEED SOFTEN: 0 = the look before D46
+    if (argc > 4) g_soften = (float)atof(argv[4]); // hills SEED SOFTEN [TERRACE]: 0 = the look before D46
+    if (argc > 5) g_terrace = (float)atof(argv[5]); // 0 = the terraces before D62
     if (only == "hills") return Hills(out, argc > 3 ? strtoull(argv[3], nullptr, 10) : 1);
     for (int i = 1; i < M_COUNT; i++)
         if (!SetMaterial(i, kMats[i].name, kMats[i].top, kMats[i].side, kMats[i].bump)) return 1;

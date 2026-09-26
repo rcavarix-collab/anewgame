@@ -137,6 +137,25 @@ bool CornerPos(const FacetGrid& g, const FacetShape& s, int cx, int cy, int cz, 
         }
         if (k > 0) off = off + (sum * (1.0f / k) - off) * s.smooth;
     }
+    // Gentle ground rolls (D62): where the 4 x 4 columns around an upward
+    // corner span 2 cells or less, the corner eases toward their mean
+    // ground height, so a slope of one-cell steps becomes a slope instead
+    // of treads and risers. Only cells within 2 of the corner are read
+    // (the grid's margin), so neighbouring boxes agree exactly.
+    if (s.terrace > 0 && n.y > 0.5f) {
+        float sum = 0; int k = 0, lo = 1 << 30, hi = -(1 << 30);
+        for (int dz = -2; dz <= 1; dz++)
+            for (int dx = -2; dx <= 1; dx++)
+                for (int y = cy; y >= cy - 2; y--) { // the column's ground: a solid cell with open air above
+                    if (!g.Solid(cx + dx, y, cz + dz)) continue;
+                    if (!g.Solid(cx + dx, y + 1, cz + dz)) { sum += (float)(y + 1); k++; lo = std::min(lo, y + 1); hi = std::max(hi, y + 1); }
+                    break;
+                }
+        if (k >= 12 && hi - lo <= 2) {
+            float target = sum / k - (float)cy;
+            off.y += (target - off.y) * s.terrace;
+        }
+    }
     // The seeded nudge that makes facets vary: mostly in or out along the
     // corner's normal. A sideways nudge shears a step's riser until its top
     // leans out over its bottom -- a dark, downward pocket (M1.2 pictures) --

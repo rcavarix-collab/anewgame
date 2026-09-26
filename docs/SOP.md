@@ -23,6 +23,7 @@ Every feature gets a short card in the plan for its step. No card, no code.
 |---|---|
 | **What does the player get?** | One sentence, from the player's side. "It's cool" or "it might be useful" isn't an answer. |
 | **Scope row** | Its row in `docs/SCOPE_MOSCOW.xlsx`. Only the owner sets Must; new ideas enter as Could or Won't. |
+| **What the theory says** | The published methods for this kind of system (D67): what others do well, the options, and why ours is chosen. A line and a pointer to `docs/research/` for a small feature; a research note for a new system. Theory only, never anyone's code (D66). |
 | **Layer and files** | Which layer it lives in, and every file it touches: kept, changed or new. |
 | **What it costs** | Per frame and per tick when idle, and when busy. Memory. What its cost grows with. It must grow with what's on screen or what changed, never with world size or play time. |
 | **Which budget pays** | Which line in FOUNDATIONS.md 4 it comes out of, and how much of it. If nothing has room, something else gives, or the feature waits. |
@@ -52,6 +53,7 @@ Every feature gets a short card in the plan for its step. No card, no code.
 - **Review the ledger.** Anything costing more than it gives, or that nobody uses, is proposed for parking or removal. That's the same move as taking The Line and pulse off in M0.
 - **Parked means out of the build**, not switched off in place. Its code stays in the repository history; its art goes to a `parked` folder (as `assets/textures/parked/` does now).
 - **Settle the performance baseline.** A Ctrl+F3 report on the reference machine is kept per milestone, and the next milestone is compared with it.
+- **Refresh the research overview (D67).** Update `docs/research/OVERVIEW.md` for every system that changed, add any new system, and check the leads it raised: taken, parked or dropped, with why.
 - **Look back and look ahead.** Write the milestone's entry in `REFLECTIONS.md`, review every open item in `FORECASTS.md` (did any warning sign appear?), update theory statuses in `THEORIES.md`, and bring `ROADMAP.md` up to date.
 
 ## 5. Documentation is part of done

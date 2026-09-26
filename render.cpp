@@ -195,7 +195,10 @@ static const char* g_atmosphereSrc =
     "    float cover = 1.0f - fClouds.y;\n"                     // cover 0.28: only the tops of the noise
     "    return smoothstep(cover * 0.78f + 0.12f, cover * 0.78f + 0.24f, n);\n"
     "}\n"
-    "float3 SkyColor(float3 d) {\n"
+    // `glow`: how much of the bright haze around the sun to include. The
+    // ground's fog takes little of it: the full glow turned distant hills
+    // toward the sun white (owner).
+    "float3 SkyColorGlow(float3 d, float glow) {\n"
     "    float h = saturate(d.y);\n"
     "    float3 col = lerp(fHorizon.rgb, fZenith.rgb, pow(h, 0.5f));\n"
     "    col *= 1.0f - 0.25f * saturate(-d.y * 4.0f);\n"
@@ -204,12 +207,14 @@ static const char* g_atmosphereSrc =
     "    float band = fZenith.w * pow(saturate(1.0f - abs(d.y) * 2.0f), 2.5f) * (0.25f + 0.75f * toward * toward * toward);\n"
     "    col = lerp(col, fTwilight.rgb, saturate(band * 1.3f));\n"
     "    float s = saturate(mu);\n"
-    "    col += fSunColor.rgb * (0.10f * pow(s, 8.0f) + 0.25f * pow(s, 64.0f));\n"
+    "    col += fSunColor.rgb * (0.10f * pow(s, 8.0f) + 0.25f * pow(s, 64.0f)) * glow;\n"
     "    return col;\n"
     "}\n"
+    "float3 SkyColor(float3 d) { return SkyColorGlow(d, 1.0f); }\n"
     // Distance fog: a faint aerial haze at a fixed scale (so depth reads
     // the same at any render distance), and the loaded world's edge fading
-    // fully into the sky over its last 30%. The haze once scaled with the
+    // fully into the sky over its last fifth (D64; it was 30%, and before
+    // that half). The haze once scaled with the
     // render distance and the fade began halfway out, so at distance 5 a
     // cliff 60 blocks off came out a pale, textureless wall (owner).
     "float FogAmount(float dist) {\n"
@@ -457,7 +462,7 @@ static const char* g_shaderSrc =
     "    }\n"
     // The texture's own glow map (4.13): what lights up by itself, and blooms.
     "    col += albedo * m.glow * 2.5f;\n"
-    "    col = lerp(col, SkyColor(view), FogAmount(dist));\n"
+    "    col = lerp(col, SkyColorGlow(view, 0.25f), FogAmount(dist));\n"
     "    return float4(ToDisplay(col), saturate(m.glow));\n"
     "}\n";
 
@@ -1324,7 +1329,7 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
             lowX += wx * 2.5 / 60.0 * ticks; lowZ += wz * 2.5 / 60.0 * ticks;
             f.clouds[0] = CIRRUS_COVER; f.clouds[1] = CUMULUS_COVER; f.clouds[2] = (float)lowX; f.clouds[3] = (float)lowZ; // unwrapped: a wrap would jump the clouds
         }
-        f.fog[0] = fogEnd * 0.7f; f.fog[1] = fogEnd; f.fog[2] = atm.exposure; f.fog[3] = CLOUD_COVER;
+        f.fog[0] = fogEnd * 0.8f; f.fog[1] = fogEnd; f.fog[2] = atm.exposure; f.fog[3] = CLOUD_COVER; // the edge fades over its last fifth (D64)
         D3D11_MAPPED_SUBRESOURCE mapped;
         g_context->Map(g_frameCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         memcpy(mapped.pData, &f, sizeof(f));

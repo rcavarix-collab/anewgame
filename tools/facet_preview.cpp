@@ -351,7 +351,7 @@ struct Scene {
     std::vector<Vec3> flatN; // per triangle, out of the ground
 };
 
-static Vec3 SkyColorAt(const Atmosphere& a, Vec3 sun, Vec3 d) {
+static Vec3 SkyColorAt(const Atmosphere& a, Vec3 sun, Vec3 d, float glow = 1.0f) {
     float h = Sat(d.y);
     Vec3 col = LerpV(a.horizon, a.zenith, powf(h, 0.5f));
     col = col * (1.0f - 0.25f * Sat(-d.y * 4.0f));
@@ -360,7 +360,7 @@ static Vec3 SkyColorAt(const Atmosphere& a, Vec3 sun, Vec3 d) {
     float band = a.twilightAmount * powf(Sat(1.0f - fabsf(d.y) * 2.0f), 2.5f) * (0.25f + 0.75f * toward * toward * toward);
     col = LerpV(col, a.twilight, Sat(band * 1.3f));
     float s = Sat(mu);
-    col = col + a.sunColor * (0.10f * powf(s, 8.0f) + 0.25f * powf(s, 64.0f));
+    col = col + a.sunColor * ((0.10f * powf(s, 8.0f) + 0.25f * powf(s, 64.0f)) * glow);
     return col;
 }
 static float FogAmount(float dist, float fogStart, float fogEnd) {
@@ -554,7 +554,7 @@ static void Render(const View& v, const std::string& outDir, FILE* stats, int W 
     }
 
     // ---- shading ----
-    float fogEnd = 6 * 16.0f, fogStart = fogEnd * 0.7f; // render distance 6
+    float fogEnd = 6 * 16.0f, fogStart = fogEnd * 0.8f; // render distance 6; the edge's last fifth (D64)
     std::vector<Vec3> hdr((size_t)RW * RH);
     std::atomic<int> nextRow{ 0 };
     auto worker = [&]() {
@@ -621,7 +621,7 @@ static void Render(const View& v, const std::string& outDir, FILE* stats, int W 
                 ambient = LerpV(ambient, Vec3{ lum, lum, lum }, 0.25f * g_fill) * (ao * skyAmb);
                 Vec3 direct = atm.sunColor * (sunLit * (0.55f + 0.45f * ao)) + atm.moonColor * (Sat(Dot(n, sky.moonDir)) * ao);
                 Vec3 col = Mul(albedo, ambient + direct);
-                col = LerpV(col, SkyColorAt(atm, sun, dir), FogAmount(dist, fogStart, fogEnd));
+                col = LerpV(col, SkyColorAt(atm, sun, dir, 0.25f), FogAmount(dist, fogStart, fogEnd)); // little of the sun's glow (D64)
                 hdr[(size_t)y * RW + x] = col;
             }
         }

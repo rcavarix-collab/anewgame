@@ -1520,3 +1520,4 @@ At the next session, for each `incoming/grok/<task>.md` (or pasted answer):
 | 2026-09-26 | P1 | Delivered. Appraised: good; ran correctly on a real save. |
 | 2026-09-26 | X2 | Delivered. Appraised: good; one C++ escape bug. |
 | 2026-09-26 | X1 | Delivered. Appraised: fair; two checks wrong, one from the task's own wording. |
+| 2026-09-26 | E4–E9 | Delivered (Grok and ChatGPT). Appraised: good overall, E4 weak (no real citations). `docs/grok_reviews/round2_E.md` |

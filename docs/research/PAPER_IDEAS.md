@@ -6,7 +6,8 @@ A background idea from the owner (2026-09-26): if we wrote a paper like the ones
 
 ## Candidates, strongest evidence first
 
-### 1. Appraising AI research assistants: a case study
+### 1. Appraising AI research assistants: a case study (dropped by the owner, 2026-09-26)
+- **Dropped:** an AI checking another AI's work has no independent judge ("police policing the police"); findings wouldn't be credible without a human-scored comparison. Kept here only as a record. The per-review tallies below aren't needed for it.
 - **What:** every delivery from Grok and ChatGPT has been checked against the code and the sources, and the results written down (`docs/grok_reviews/`). That's an unusual record: dated, per task, with the errors categorised.
 - **What we could measure:**
   - citations with wrong authors, years or venues;
@@ -50,4 +51,4 @@ A background idea from the owner (2026-09-26): if we wrote a paper like the ones
 5. **Honest limits:** one machine, one game, and no player study unless we run one.
 
 ## First small habit (costs nothing)
-Keep per-review tallies in `docs/grok_reviews/`, and date every before-and-after picture folder. Both help candidate 1 and every other candidate at once.
+Date every before-and-after picture folder, and keep F3 reports with the change they measured. That serves candidates 2 to 5.

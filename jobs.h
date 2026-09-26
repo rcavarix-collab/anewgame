@@ -25,7 +25,9 @@
 
 #include <functional>
 
-enum JobChannel { JOB_TERRAIN = 0, JOB_MESH, JOB_CHANNEL_COUNT };
+// JOB_FILES: slow local file writes the main thread shouldn't wait on
+// (the F2 screenshot's PNG encode, tens of milliseconds).
+enum JobChannel { JOB_TERRAIN = 0, JOB_MESH, JOB_FILES, JOB_CHANNEL_COUNT };
 
 void JobsStart();
 void JobsStop();

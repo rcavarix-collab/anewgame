@@ -116,8 +116,9 @@ extern "C" bool GenerateUIAtlas(
 }
 
 // Writes a w x h BGRA image (row 0 at the top, alpha ignored) to `path`
-// as a PNG. Screenshots only (F2): a few tens of milliseconds, on the
-// frame the key was pressed, never otherwise.
+// as a PNG. Screenshots only (F2): a few tens of milliseconds, on a job
+// thread (game.cpp), never otherwise. Thread-safe: GDI+ is started and
+// shut down around each call.
 extern "C" bool SavePngBGRA(const wchar_t* path, const uint8_t* bgra, int w, int h)
 {
     if (!path || !bgra || w <= 0 || h <= 0) return false;

@@ -9,6 +9,8 @@
 
 #include "game_internal.h"
 #include "collide.h" // picking on facets (DESIGN.md 23.5)
+#include "jobs.h"    // the screenshot encode (JOB_FILES)
+#include <memory>
 
 // =======================================================================
 // Menu/game state
@@ -174,22 +176,31 @@ std::string PerfReportHeader() {
 // Asked for by the key, taken once the frame is fully drawn (main.cpp calls
 // TakeScreenshotIfRequested after the UI pass), so the shot is exactly what
 // was on screen. The toast is drawn from the next frame on, so it never
-// appears in the shot it announces.
+// appears in the shot it announces. Only the read-back happens on this
+// frame; the PNG encode (tens of milliseconds, a visible hitch when it ran
+// here) goes to a job thread, and the toast follows when it's on disk.
 bool g_screenshotRequested = false;
 extern "C" bool SavePngBGRA(const wchar_t* path, const uint8_t* bgra, int w, int h); // textures.cpp (GDI+)
 
 void TakeScreenshotIfRequested() {
+    JobsApply(JOB_FILES, 4); // toasts for shots finished since last frame
     if (!g_screenshotRequested) return;
     g_screenshotRequested = false;
-    static std::vector<uint8_t> pixels;
+    auto pixels = std::make_shared<std::vector<uint8_t>>();
     int w = 0, h = 0;
     std::filesystem::path path = NextScreenshotPath();
-    bool ok = !path.empty() && ReadBackbuffer(pixels, w, h) && SavePngBGRA(path.c_str(), pixels.data(), w, h);
-    std::error_code ec;
-    ok = ok && std::filesystem::exists(path, ec); // only claim what's really on disk
-    // Where it went, in full, so it can be found (the folder's path shown,
-    // as the performance report does).
-    ShowToast(ok ? StrF("toast.screenshot", { WideToUtf8(path.wstring()) }) : Str("toast.screenshot_failed"), ok ? 5.0f : 2.0f);
+    if (path.empty() || !ReadBackbuffer(*pixels, w, h)) { ShowToast(Str("toast.screenshot_failed"), 2.0f); return; }
+    auto ok = std::make_shared<bool>(false);
+    JobsSubmit(JOB_FILES,
+        [pixels, path, w, h, ok] {
+            std::error_code ec;
+            *ok = SavePngBGRA(path.c_str(), pixels->data(), w, h) && std::filesystem::exists(path, ec); // only claim what's really on disk
+        },
+        [path, ok] {
+            // Where it went, in full, so it can be found (the folder's path
+            // shown, as the performance report does).
+            ShowToast(*ok ? StrF("toast.screenshot", { WideToUtf8(path.wstring()) }) : Str("toast.screenshot_failed"), *ok ? 5.0f : 2.0f);
+        });
 }
 
 // ---- The game's settings.cfg keys (settings.h hooks) ----

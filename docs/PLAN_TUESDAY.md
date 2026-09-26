@@ -19,7 +19,7 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 
 | # | Step | Owner checks |
 |---|---|---|
-| 5 | Low clouds that live (A + C): the pattern evolves as it drifts (advected along the wind in two crossfaded phases, the flow-map idea, plus slow noise evolution; docs/research/OVERVIEW.md), soft edges, lit rims, no hard outlines | a few minutes of sky |
+| 5 | Low clouds that live (A + C): the pattern evolves as it drifts (flowed along the wind in two half-cycle-apart phases with per-pixel noise on the timing, distortion −f..+f around rest, Vlachos 2010; plus slow noise evolution; docs/research/SKY_AND_FLOW.md), soft edges, lit rims, no hard outlines | a few minutes of sky |
 | 6 | High streaks (B): shorter wisps, with gaps and heads moving along them, about half the low clouds' angular speed, turned from the low wind, no rays near the sun | facing the sun at dusk |
 
 ## Batch 3: the ground's look (one test build)
@@ -32,7 +32,7 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 
 ## Batch 4, if time allows
 
-Decided by what the debug views show: a longer baked sky view (16–24 blocks), and a pass on the day's colours (R1).
+Decided by what the debug views show: a longer baked sky view (16–24 blocks), and a pass on the day's colours (R1), shaped by Hošek & Wilkie's findings: the low sun's glow spreading sideways more than up, bright ground brightening the low sky, sunsets as a gradient (docs/research/SKY_AND_FLOW.md). Turbidity becomes the one haze knob weather will drive.
 
 ## Ideas on the table (thrown at the wall, not scheduled)
 

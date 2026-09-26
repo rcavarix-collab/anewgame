@@ -1,4 +1,4 @@
-// terrain.cpp -- walkgrid-hills v1; see terrain.h (DESIGN.md 23.2).
+// terrain.cpp -- walkgrid-hills v1 and v2; see terrain.h (DESIGN.md 23.2).
 //
 // Layer 3. Everything here is a pure function of the seed and the
 // coordinates: 64-bit integer hashing into double-precision value noise

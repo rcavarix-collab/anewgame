@@ -4,6 +4,7 @@ Each document has one job. If you're looking for something, this says where it i
 
 | Document | Its one job | Updated when |
 |---|---|---|
+| `PROJECT_NOTES.md` | Everything in one place for a newcomer (owner, Claude or another agent): what walkgrid is, what's built, the code map, how to add things, what bit us, what's next | With every step that changes any of those |
 | `../CLAUDE.md` | How we work: the rules every session follows | Rarely; changes are logged in DECISIONS |
 | `../DESIGN.md` | How each system works, as built | Every step that changes a system |
 | `GOALS.md` | What we're aiming for, as checkable goals | When the owner sets or changes a goal |
@@ -21,6 +22,6 @@ Each document has one job. If you're looking for something, this says where it i
 | `M1_PLAN.md` | The step-by-step plan for M1, with what you'll see after each step | Until M1 is done |
 | `ENGINE_REVIEW.md` | What the Voxistics engine offered (September 2026) | Fixed: a snapshot |
 | `SOUND_PALETTE.md` | The sound palette's rules (carried over) | When the palette changes |
-| `../reference/` | Old code and docs kept only for reference (the four seed prototypes; Voxistics' design, review and scope), each removed once nothing more is wanted from it. See its README | When something is taken from it, or it's retired |
+| `../reference/` | Old code and docs kept only for reference (the seed files: four prototypes and two texture generators; Voxistics' design, review and scope), each removed once nothing more is wanted from it. See its README | When something is taken from it, or it's retired |
 
 **How they connect.** A goal (GOALS) is reached through milestones (ROADMAP). Along the way, ideas are tested (THEORIES) and problems are watched for (FORECASTS). Every choice is logged (DECISIONS). Every build is measured (COST_LEDGER) and looked back on (REFLECTIONS). A reflection or a forecast that comes true usually produces a new decision or a new rule.

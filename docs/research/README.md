@@ -24,9 +24,13 @@ Our own research: theory and explanation from reliable sources (D66), a regular 
 | [GAME_DESIGN.md](GAME_DESIGN.md) | Why people play; walkgrid held against the theory; how to see our own blind spots | Hunicke et al., Ryan et al., Sweetser & Wyeth, Pinelle et al. [s] |
 | [MUSIC.md](MUSIC.md) | Consonance by register, voice leading, timbre, reverb, expectation; nine things to try in our music and world sound | Plomp & Levelt, Huron, Grey, McAdams et al., Schroeder, Salimpoor et al., Chowning [s] |
 | [SOUND_DESIGN.md](SOUND_DESIGN.md) | World sounds as events: materials by decay, modal and granular synthesis, footsteps, distance, sync, what sounds tell the player | Gaver, Klatzky et al., van den Doel et al., Cook, Turchet et al., Zahorik et al., Chion, Jørgensen, Schafer [s] |
+| [LANDFORMS_AND_GENERATION.md](LANDFORMS_AND_GENERATION.md) | Slopes, scree, valleys, caprock and buttes; measuring a generator by expressive range | Carson, Horton, Strahler, Hack, Smith & Whitehead, Shaker et al. [s] |
+| [ACCESSIBILITY.md](ACCESSIBILITY.md) | Colour vision, flashing, motion comfort, hearing; our gaps | Yuan et al., Machado et al., WCAG 2.3.1, Kennedy et al. [s] |
+| [PLAYERS_AND_PLACES.md](PLAYERS_AND_PLACES.md) | Teaching without words, respecting players' time, places people build | Gibson, Norman, Andersen et al., Zagal et al., Alexander et al. [s] |
+| [COLOUR.md](COLOUR.md) | Perceptual colour spaces and harmony for the palette | ISO/CIE 11664, Schloss & Palmer [s] |
 | [PAPER_IDEAS.md](PAPER_IDEAS.md) | Papers we might write from the project (background) | none yet |
 
-## Research steps proposed next (2026-09-26; the owner chooses)
+## Research steps proposed (2026-09-26): all seven done the same day, from search results; full texts wanted are listed in WANTED.md
 
 Ranked by how directly each serves the plans in hand:
 1. **Landforms (geomorphology):** how real land takes its shape (drainage, erosion, talus, the angle of repose, plateaus and mesas), from agencies and textbooks. Feeds terrain v2 directly, so the land reads as plausible.

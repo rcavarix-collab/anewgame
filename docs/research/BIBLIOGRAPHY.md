@@ -165,6 +165,45 @@ Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) an
 121. Jørgensen, K. 2008. Audio and Gameplay: An Analysis of PvP Battlegrounds in World of Warcraft. *Game Studies* 8(2). gamestudies.org. [s] ~
 122. Schafer, R. M. 1977. *The Tuning of the World*. Knopf (reissued 1994 as *The Soundscape: Our Sonic Environment and the Tuning of the World*, Destiny Books). [s] ~
 
+## Landforms and generation (LANDFORMS_AND_GENERATION.md; search results consulted 2026-09-26)
+
+123. Carson, M. A. 1977. Angles of Repose, Angles of Shearing Resistance and Angles of Talus Slopes. *Earth Surface Processes* 2(4), 363–380. DOI 10.1002/esp.3290020408. [s] ~ (pages ?)
+124. Horton, R. E. 1945. Erosional Development of Streams and Their Drainage Basins. *Geological Society of America Bulletin* 56(3), 275–370. [k] ?
+125. Strahler, A. N. 1957. Quantitative Analysis of Watershed Geomorphology. *Transactions, American Geophysical Union* 38(6), 913–920. [k] ?
+126. Hack, J. T. 1957. Studies of Longitudinal Stream Profiles in Virginia and Maryland. US Geological Survey Professional Paper 294-B. [k] ?
+127. Smith, G. and Whitehead, J. 2010. Analyzing the Expressive Range of a Level Generator. In *Proceedings of the 2010 Workshop on Procedural Content Generation in Games (PCGames '10)*, ACM. DOI 10.1145/1814256.1814260. Authors' copy at UC Santa Cruz (blocked from this environment). [s] ~
+128. Shaker, N., Togelius, J. and Nelson, M. J. 2016. *Procedural Content Generation in Games: A Textbook and an Overview of Current Research*. Springer. ISBN 978-3-319-42714-0. [s] ~
+
+## Accessibility (ACCESSIBILITY.md)
+
+129. Yuan, B., Folmer, E. and Harris, F. C. 2011. Game Accessibility: A Survey. *Universal Access in the Information Society* 10, 81–100. DOI 10.1007/s10209-010-0189-5. [s] ~
+130. Game Accessibility Guidelines. gameaccessibilityguidelines.com (since 2012). [p]
+131. Machado, G. M., Oliveira, M. M. and Fernandes, L. A. F. 2009. A Physiologically-Based Model for Simulation of Color Vision Deficiency. *IEEE Transactions on Visualization and Computer Graphics* 15(6), 1291–1298. DOI 10.1109/TVCG.2009.113. Authors' page at UFRGS. [s] ~
+132. W3C. *Web Content Accessibility Guidelines (WCAG) 2.2*, Success Criterion 2.3.1, Three Flashes or Below Threshold, and its Understanding document. w3.org (blocked from this environment). [s]
+133. ITU-R BT.1702. Guidance for the Reduction of Photosensitive Epileptic Seizures Caused by Television. International Telecommunication Union. [k] ?
+134. Kennedy, R. S., Lane, N. E., Berbaum, K. S. and Lilienthal, M. G. 1993. Simulator Sickness Questionnaire: An Enhanced Method for Quantifying Simulator Sickness. *International Journal of Aviation Psychology* 3(3), 203–220. [s] ~
+135. Reason, J. T. and Brand, J. J. 1975. *Motion Sickness*. Academic Press. [k] ?
+136. Colour-vision prevalence: Birch, J. 2012. Worldwide Prevalence of Red-Green Color Deficiency. *Journal of the Optical Society of America A* 29(3), 313–320. [k] ? (the pooled figures in ACCESSIBILITY.md came through search summaries; this is the likely primary source, to check)
+137. (reserved)
+
+## Players and places (PLAYERS_AND_PLACES.md)
+
+138. Gibson, J. J. 1979. *The Ecological Approach to Visual Perception*. Houghton Mifflin. [s] ~
+139. Norman, D. A. 2013. *The Design of Everyday Things*, revised and expanded edition. Basic Books (first edition 1988). [s] ~
+140. Andersen, E., O'Rourke, E., Liu, Y.-E., Snider, R., Lowdermilk, J., Truong, D., Cooper, S. and Popović, Z. 2012. The Impact of Tutorials on Games of Varying Complexity. In *Proceedings of CHI 2012*, ACM. DOI 10.1145/2207676.2207687. [s] ~ (the full author list is ?)
+141. Zagal, J. P., Björk, S. and Lewis, C. 2013. Dark Patterns in the Design of Games. In *Proceedings of the 8th International Conference on the Foundations of Digital Games (FDG 2013)*. [s] ~
+142. (Authors ?) 2020. Against "Dark Game Design Patterns". In *Proceedings of DiGRA 2020*. White Rose eprints 156460. [s] ? (authors to check)
+143. Alexander, C., Ishikawa, S. and Silverstein, M. 1977. *A Pattern Language: Towns, Buildings, Construction*. Oxford University Press. [s] ~
+144. Habraken, N. J. 1972. *Supports: An Alternative to Mass Housing*. Architectural Press (Dutch original 1961). [k] ?
+145. (reserved)
+
+## Colour (COLOUR.md)
+
+146. ISO/CIE 11664-4:2019. Colorimetry, Part 4: CIE 1976 L\*a\*b\* Colour Space. ISO and CIE. [s] ~
+147. ISO/CIE 11664-6. Colorimetry, Part 6: CIEDE2000 Colour-Difference Formula. ISO and CIE. [s] ~
+148. Schloss, K. B. and Palmer, S. E. 2011. Aesthetic Response to Color Combinations: Preference, Harmony, and Similarity. *Attention, Perception, & Psychophysics* 73(2), 551–571. DOI 10.3758/s13414-010-0027-0. [s] ~ (pages ?)
+149. (reserved)
+
 ## Verifying the "?" entries
 
 A helper task, or the owner with Unpaywall or the DOI links, can confirm each "?" against the paper's first page. When one is confirmed, change it to ✓ here.

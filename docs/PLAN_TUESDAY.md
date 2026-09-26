@@ -27,7 +27,7 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 | # | Step | Owner checks |
 |---|---|---|
 | 7 | Clean material edges (D): score each material by weight × height (max-blending with a small grace band, Schuster et al. 2020), not weight + height, so a material can't poke through far from its own ground; near the player decided per texel, a crisp mosaic (docs/research/TEXTURE_BLENDING.md) | the sand–stone edge |
-| 8 | Less repetition (E): near the player, one randomly offset and turned copy per irregular texel-aligned region (no blending, so the pixel art stays crisp); further away, three offset copies with histogram-preserving blending (Heitz & Neyret 2018; read Burley 2019 first) for stochastic materials, shifts along the layers only for structured ones (sandstone, slate); plus large-scale colour patches (docs/research/TEXTURE_BLENDING.md) | a big flat area from a height |
+| 8 | Less repetition (E): near the player, one randomly offset and turned copy per irregular texel-aligned region (no blending, so the pixel art stays crisp); further away, three offset copies with histogram-preserving blending as Burley 2019 makes practical (1-D tables built on load, luminance only, truncated Gaussian with soft clipping, weights raised to γ ≈ 4) for stochastic materials, shifts along the layers only for structured ones (sandstone, slate); plus large-scale colour patches (docs/research/TEXTURE_BLENDING.md) | a big flat area from a height |
 | 9 | 64-pixel art (F + H): the generators redraw the 12 materials at 64, each in its own style of marks (Grok's A-series briefs), slate lighter | every material, close up |
 
 ## Batch 4, if time allows

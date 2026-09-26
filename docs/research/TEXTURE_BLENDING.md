@@ -51,9 +51,39 @@ It also shifts part of the art fix (A15): no tall thin features will matter less
 |---|---|
 | sand, gravel, moss, loam, dirt, clay, snow, dry turf, meadow grass (blades are near-stochastic at 64 px) | sandstone (layered side), slate, stone if its cracks form a pattern |
 
+## Burley 2019: the practical version (read in full)
+
+**Read at the source [r]:** Brent Burley (Walt Disney Animation Studios), "On Histogram-preserving Blending for Randomized Texture Tiling", *Journal of Computer Graphics Techniques* 8(4), 2019, pp. 31–53 (open access; CC BY-ND). Supplied by the owner.
+
+**How the method works** (it also confirms Heitz & Neyret's method at the source's level of detail):
+- Tile the plane with a triangle lattice, pick a random tile at each lattice point, and blend the three nearest with barycentric weights.
+- Blending independent samples convolves their histograms. Blended Gaussians stay Gaussian with a smaller variance, which a linear stretch around the mean restores.
+- So the texture is first made Gaussian, blended, stretched back by 1/W, where W = √(Σ wᵢ²), and finally un-Gaussianized.
+
+**What Burley changes:**
+- **1-D lookup tables per channel, built on load.** Heitz & Neyret needed a 3-D optimal-transport step (minutes for a 256² texture). Burley builds each table from the texture's histogram at load time: trivial. The Gaussian's width is σ = 1/6.
+- **No clipping:**
+  - With 8-bit textures and table lookups, the infinite Gaussian clips: about 0.3% of texels on load, and up to 8.2% of blended pixels where features align.
+  - A **truncated Gaussian** plus a **soft-clipping contrast operator** removes this while keeping fixed-point textures and table lookups.
+- **Colour shifts:** only a minority of textures show them. Blending in a luminance–chroma space (YCbCr) and preserving the histogram of **luminance only** avoids them, at the cost of some colour contrast.
+- **Ghosting:** **raise the three weights to a power γ and renormalise** before blending.
+  - At γ ≤ 2 ghosting shows; at γ ≥ 8 the tile structure shows; **γ = 4 kept structure well** in their example.
+  - This also helps structured textures, which Heitz & Neyret handled poorly.
+
+**What it means for walkgrid (step 8, far zone):**
+- It's buildable within our rules: the lookup tables are built when textures load (64 × 64 textures, so microseconds, with nothing slow at boot), and there's no offline preprocessing.
+- **Use luminance-only preservation.** Our materials are mostly one hue family each, and it's the safer choice against colour shifts.
+- **Exponentiated weights, γ ≈ 4 to start.** This may let layered materials (sandstone, slate) use it too, as long as offsets stay along the layers; test.
+- **Truncated Gaussian with soft clipping.** Our textures are 8-bit.
+- **Not near the player.** Our textures are pixel art with 8–16 colours. Blending three copies makes colours that aren't in the palette, and Gaussianizing a few discrete values is coarse. Near the player stays "one copy per region, no blend", as planned.
+- **Cost, to measure:**
+  - Per projection: three colour reads plus the inverse-table reads.
+  - Up to three projections, but the sharpened projection weights mean one usually dominates, so the others can be skipped below a threshold, as the shader already does.
+  - Only in the single-material far path.
+  - Budget check with F3 before and after.
+
 ## To read next (legal copies)
 
-- Burley, "On Histogram-Preserving Blending for Randomized Texture Tiling", *JCGT* 8(4), 2019. JCGT is open access (jcgt.org).
 - Deliot & Heitz, "Procedural Stochastic Textures by Tiling and Blending", *GPU Zen 2*, 2019.
 - Heitz & Neyret 2018 itself (Inria's open repository HAL, hal-01824773).
 
@@ -61,4 +91,5 @@ It also shifts part of the art fix (A15): no tall thin features will matter less
 
 - [r] Schuster et al. 2020, above, sections 1, 3.4, 3.5, 4 and 6, and references.
 - [s] Heitz & Neyret, "High-Performance By-Example Noise using a Histogram-Preserving Blending Operator", *PACM CGIT* 1(2), 2018, https://dl.acm.org/doi/10.1145/3233304 (as described by Schuster et al. and its abstract).
-- [k] Burley 2019 and Deliot & Heitz 2019, as cited by Schuster et al. (not yet read).
+- [r] Burley 2019, above, sections 1–7 and algorithms 1–2.
+- [k] Deliot & Heitz 2019, as cited by Schuster et al. and Burley (not yet read).

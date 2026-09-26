@@ -66,6 +66,7 @@ Nothing needs replacing. The published work points to six improvements, four of 
 ## Sources
 
 Read in full [r]:
+- Burley, "On histogram-preserving blending for randomized texture tiling", JCGT 8(4), 2019 (notes: `TEXTURE_BLENDING.md`)
 - Hošek & Wilkie, "An analytic model for full spectral sky-dome radiance", ACM TOG 31(4), 2012, the authors' preprint (notes: `SKY_AND_FLOW.md`)
 - Vlachos, "Water flow in Portal 2", SIGGRAPH 2010 course slides (notes: `SKY_AND_FLOW.md`)
 - Gibson, "Constrained elastic surface nets", MICCAI 1998, pp. 888–898 (notes: `SURFACE_NETS.md`)

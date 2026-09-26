@@ -92,6 +92,7 @@ void ProfBeginFrame() {
     g_counters[PCOUNT_TRIANGLES_DRAWN] = 0;
     g_counters[PCOUNT_MESHES_BUILT] = 0;
     g_counters[PCOUNT_SHADOW_RENDERS] = 0;
+    g_counters[PCOUNT_CHUNKS_HIDDEN] = 0; // per frame, like CHUNKS DRAWN (it once added up across frames)
 }
 
 void ProfAdd(ProfSection s, int64_t ticks) { g_current[s] += ticks; }

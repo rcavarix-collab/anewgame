@@ -164,7 +164,7 @@ The review page (pictures re-rendered with every M1 change, the clips, the saved
 | T9 | `sound_demo.sh analyze` | Clean except "works", which was already bright before M1 | Listen |
 | T10 | Music code unchanged since M0 | — | Listen |
 | T11 | Save round trip; every word in the string table | Pass | Every menu and setting |
-| T12 | — | — | F3 and a Ctrl+F3 report |
+| T12 | Your Ctrl+F3 report, 2026-09-26 (Release, 1280×720, render distance 5, vsync off): 199 fps average, worst work 3.3 ms, no hitches; GPU WORLD 0.96 ms median, 2.3 worst; 158,000 triangles at peak; start-up 0.54 s | Passes at render distance 5 | Try the default distance and 1080p |
 | T13 | — | — | Smoothness above 60 fps |
 
 ---

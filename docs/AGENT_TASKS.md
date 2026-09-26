@@ -199,6 +199,83 @@ Done when: every hex colour is listed, every size is in pixels at 64, and nothin
 - Hand back: `borders.md`.
 - Done when: every pair has a winner, a reason, and no tall thin features.
 
+**A16. Dressed stone blocks (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for squared stone in courses.
+- Hand back: `dressed_stone.md`.
+- Done when: as for the group.
+
+**A17. Rough fieldstone wall (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for uncut stones fitted together.
+- Hand back: `fieldstone.md`.
+- Done when: as for the group.
+
+**A18. Timber planks (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for sawn boards, with grain and nail marks.
+- Hand back: `planks.md`.
+- Done when: as for the group.
+
+**A19. Log and beam timber (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for squared beams, end grain on the cut faces.
+- Hand back: `beams.md`.
+- Done when: as for the group.
+
+**A20. Clay brick (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for fired bricks in a running bond.
+- Hand back: `brick.md`.
+- Done when: as for the group.
+
+**A21. Adobe and plaster (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for smoothed earth walls, cracked and patched.
+- Hand back: `adobe.md`.
+- Done when: as for the group.
+
+**A22. Thatch (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for bundled straw roofing.
+- Hand back: `thatch.md`.
+- Done when: as for the group.
+
+**A23. Roof tiles (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for overlapping fired tiles.
+- Hand back: `roof_tile.md`.
+- Done when: as for the group.
+
+**A24. Worked slate slabs (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for split slate as floor or roof.
+- Hand back: `slate_slab.md`.
+- Done when: as for the group.
+
+**A25. Woven reed panels (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for woven screens.
+- Hand back: `reed.md`.
+- Done when: as for the group.
+
+**A26. Rammed earth (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for layered compacted earth walls.
+- Hand back: `rammed_earth.md`.
+- Done when: as for the group.
+
+**A27. Cobble paving (S)**
+- Facts: a material for built pieces (the future building layer), not ground: worked by hand, with joints or courses visible, readable at 64 pixels per block, clearly ours.
+- Do: the brief, as for the group, for a paved path, irregular stones set in soil.
+- Hand back: `cobble.md`.
+- Done when: as for the group.
+
+**A28. Built against natural: telling them apart (S)**
+- Do: rules that keep built materials distinct from the 12 ground materials at a glance: regularity, edges, colour ranges.
+- Hand back: `built_vs_natural.md`.
+- Done when: at least six rules, each with an example pair.
+
 ### S. Research from reliable sources (D66)
 
 Facts for every S task:
@@ -315,6 +392,81 @@ Done when: every number has at least one listed source, the main ones two, and n
 - Do: the kinds of caves (dissolution, lava tubes, sea caves, talus), their shapes, sizes and entrances; which fit sandstone and slate country.
 - Hand back: `caves_real.md`.
 - Done when: each kind with typical dimensions, with sources.
+
+**S19. Other cloud kinds (S)**
+- Do: stratus, stratocumulus, altocumulus, altostratus, cirrostratus, nimbostratus, cumulonimbus: heights, look, movement, and which weather each goes with.
+- Hand back: `cloud_kinds.md`.
+- Done when: a table of kinds, with heights and sources.
+
+**S20. Halos, sun dogs and rainbows (S)**
+- Do: the optics of the 22° halo, sun dogs, circumzenithal arcs, rainbows and glories: when each appears, their angles and colours, and how often.
+- Hand back: `sky_optics.md`.
+- Done when: the angles and conditions, with sources.
+
+**S21. Crepuscular rays and the Earth's shadow (S)**
+- Do: why sunbeams fan out through gaps in clouds, why they seem to meet at the sun and opposite it, and when they're seen.
+- Hand back: `sun_rays.md`.
+- Done when: conditions and geometry, with sources.
+
+**S22. The night sky seen by eye (S)**
+- Do: how many stars the eye sees in a dark sky, their brightness spread and colours, the Milky Way's look, and how moonlight washes them out.
+- Hand back: `night_sky.md`.
+- Done when: counts and magnitudes, with sources.
+
+**S23. The Moon's face (S)**
+- Do: how the Moon's brightness changes with phase, earthshine on the dark part, its colour near the horizon, and its apparent size.
+- Hand back: `moon_face.md`.
+- Done when: figures with sources.
+
+**S24. Twilight at the equator (S)**
+- Do: how long civil, nautical and astronomical twilight last at the equator, and how the sky's brightness falls through them.
+- Hand back: `twilight.md`.
+- Done when: durations with sources.
+
+**S25. Wind near the ground (S)**
+- Do: typical wind speeds at 2 m and 10 m, gusts and lulls, how wind changes over a day, and how it moves grass.
+- Hand back: `ground_wind.md`.
+- Done when: figures with sources.
+
+**S26. Soil colours (S)**
+- Do: the colours of common soils (humus-rich, clay, sandy, iron-rich) in a standard colour system, wet against dry.
+- Hand back: `soil_colours.md`.
+- Done when: colour ranges with sources.
+
+**S27. Rock colours and textures (S)**
+- Do: the look of sandstone, slate, granite, limestone and basalt: colours, grain, fracture, weathering.
+- Hand back: `rock_look.md`.
+- Done when: each rock described, with sources.
+
+**S28. Plant colonisation of bare ground (S)**
+- Do: which plants arrive first on bare soil, sand, rock and dug ground, and how fast the ground greens over.
+- Hand back: `succession.md`.
+- Done when: timescales with sources.
+
+**S29. Grasses and wildflowers of open land (S)**
+- Do: the forms of grasses, sedges, low shrubs and wildflowers on open plains and plateaus, and their heights and colours.
+- Hand back: `open_plants.md`.
+- Done when: forms and heights with sources.
+
+**S30. Water on land (S)**
+- Do: how springs, streams and ponds form in hills and mesas, their sizes, and how they look (colour, reflections, banks).
+- Hand back: `water_land.md`.
+- Done when: sizes with sources.
+
+**S31. Sound travelling outdoors (S)**
+- Do: how sound fades with distance, how ground, wind and temperature bend it, and echoes from cliffs.
+- Hand back: `sound_outdoors.md`.
+- Done when: the rules and figures, with sources.
+
+**S32. Colour perception in games and art (S)**
+- Do: how people judge colour contrast and legibility, colour-blindness types and how common they are, and contrast guidelines.
+- Hand back: `colour_perception.md`.
+- Done when: figures with sources and the guideline names.
+
+**S33. Motion sickness in first-person views (S)**
+- Do: what causes it (field of view, head bob, acceleration, frame rate) and what published studies say reduces it.
+- Hand back: `motion_sickness.md`.
+- Done when: findings with sources.
 
 ### G. Game design research (documents only)
 
@@ -480,6 +632,117 @@ Done when: each option covers those points.
 - Hand back: `sound_of_place.md`.
 - Done when: each place with its sound changes, all synthesisable.
 
+**G21. Water in a faceted world (M)**
+- Do: how water could look and behave on faceted ground: still ponds, streams following slopes, what happens when the player digs near water; cheap tricks only.
+- Hand back: `water_design.md`.
+- Done when: each option with cost and look.
+
+**G22. Quiet life: small creatures (M)**
+- Do: ambient creatures that make the world feel alive without combat or words (birds at dawn, insects in grass): how few are enough, how cheap each is, how they react to the player.
+- Hand back: `creatures.md`.
+- Done when: at least six creatures, each with a cost note.
+
+**G23. Music that answers the player (M)**
+- Facts: Facts: the music is one hour long, following the day in six sections, synthesised, with an intensity setting.
+- Do: ways the music could respond to what the player does and where they are, without breaking its form: building, exploring, height, night.
+- Hand back: `music_response.md`.
+- Done when: each idea says what changes in the music.
+
+**G24. A map without numbers (S)**
+- Do: ways to show where the player has been and where things are, without numbers or words: a drawn map, landmarks, the sky.
+- Hand back: `map_ideas.md`.
+- Done when: at least five ideas.
+
+**G25. Finding your way (S)**
+- Facts: Facts: the sun rises due east and sets due west; the moon and stars move on their own clocks.
+- Do: wayfinding from the sky and land: using the sun, stars, wind and landmarks, and how the game can make them readable.
+- Hand back: `wayfinding.md`.
+- Done when: each idea with what the player sees.
+
+**G26. Photo mode (S)**
+- Do: a photo mode that fits a game with almost no interface: what it hides, what it offers (time of day, framing), and its cost.
+- Hand back: `photo_mode.md`.
+- Done when: a feature list with costs.
+
+**G27. Controllers (M)**
+- Facts: Facts: the game is keyboard and mouse today; every action is rebindable.
+- Do: what supporting a gamepad would take: layout, look sensitivity, placing precisely, menus; published guidance on controller accessibility.
+- Hand back: `controllers.md`.
+- Done when: a proposed layout and the open problems.
+
+**G28. Saving and slots, from the player's side (S)**
+- Facts: Facts: there are several world slots, quick save and load keys, an autosave, and crash-safe writes.
+- Do: how saving should feel: when to autosave, what a slot shows (without numbers), how to never lose work.
+- Hand back: `saving_ux.md`.
+- Done when: each suggestion with its reason.
+
+**G29. Options menus that stay small (S)**
+- Facts: Facts: the settings list is in G17.
+- Do: how to organise the settings so the menus stay short and plain, including presets.
+- Hand back: `options_layout.md`.
+- Done when: a proposed menu tree.
+
+**G30. The title screen (S)**
+- Do: what the title screen could show (the world, the sky, the day) so it feels like walkgrid, with almost no words.
+- Hand back: `title_screen.md`.
+- Done when: at least three concepts.
+
+**G31. Seasons, maybe (M)**
+- Facts: Facts: the world is on its equator with no seasons today.
+- Do: whether a year could exist (wet and dry seasons fit an equator), what would change, and what it would cost.
+- Hand back: `seasons.md`.
+- Done when: options with costs and a recommendation.
+
+**G32. Landmarks (M)**
+- Do: rare terrain features that give places identity (arches, spires, sinkholes, lone trees, springs) and how a generator could place them deterministically.
+- Hand back: `landmarks.md`.
+- Done when: at least eight, each with its rarity and a placement rule.
+
+**G33. Biomes for a later terrain (M)**
+- Facts: Facts: today one terrain type covers the world: rolling hills, mesas, 12 materials.
+- Do: 3–5 regions that could share the world (for example dry mesa country, wet meadows, high slate moors), with their materials, plants and sounds.
+- Hand back: `biomes.md`.
+- Done when: each region's materials drawn from the 12 or marked as new.
+
+**G34. Digging that feels good (S)**
+- Facts: Facts: digging removes one ground cell at a time; the ground reshapes and a footstep-like sound plays.
+- Do: what makes digging satisfying (sound, particles, timing, feedback) and cheap ways to add it.
+- Hand back: `dig_feel.md`.
+- Done when: each idea with its cost.
+
+**G35. Placing that feels good (S)**
+- Do: the same for placing ground cells: previews, snapping, sound.
+- Hand back: `place_feel.md`.
+- Done when: each idea with its cost.
+
+**G36. Undo and mistakes (S)**
+- Do: how a player recovers from a mistaken dig or placement without menus: undo, time, tools.
+- Hand back: `undo.md`.
+- Done when: options with costs.
+
+**G37. Sharing without a network (S)**
+- Facts: Facts: the game never uses the network (a hard rule).
+- Do: ways a player can share a world or a view with others by their own hand: save files, screenshots, seeds.
+- Hand back: `sharing.md`.
+- Done when: every idea works with no network use by the game.
+
+**G38. Mod-friendliness (M)**
+- Facts: Facts: materials, texts and textures are plain text files already; code is C++.
+- Do: what could be opened to players safely as data (materials, weather kinds, plants, music sections), and what shouldn't.
+- Hand back: `modding.md`.
+- Done when: a list with risks.
+
+**G39. Performance settings players understand (S)**
+- Do: how to explain graphics settings in plain words, and which few settings matter most on a weak computer.
+- Hand back: `perf_settings.md`.
+- Done when: each setting with its plain explanation.
+
+**G40. A second terrain style (M)**
+- Facts: Facts: terrain versions are frozen once released; a new style is a new version.
+- Do: one alternative landscape (for example canyons, rolling dunes, terraced hills), how its height function would work in words, and what materials suit it.
+- Hand back: `terrain_style.md`.
+- Done when: the height function described step by step.
+
 ### K. Data specs (text tables the game could load)
 
 Facts for every K task:
@@ -515,6 +778,32 @@ Done when: every column is explained, and every row is complete.
   - which materials it can be made of (G4).
 - Hand back: `pieces.txt`.
 - Done when: every piece has every column.
+
+**K4. Material sound classes (S)**
+- Facts: Facts: footsteps and digging sounds are synthesised per material family.
+- Do: a table: each of the 12 materials, its sound family (soft, gritty, hard, crunchy, snowy), and how it should differ from its family.
+- Hand back: `material_sounds.txt`.
+- Done when: every material has a family and a difference.
+
+**K5. Sky events table (S)**
+- Do: G19's events as a table: name, conditions (sun height, cloud cover, moon phase), rarity, duration.
+- Hand back: `sky_events.txt`.
+- Done when: every event has conditions and a rarity.
+
+**K6. Landmark table (S)**
+- Do: G32's landmarks as a table: name, footprint in blocks, materials, rarity per square kilometre, placement rule.
+- Hand back: `landmarks.txt`.
+- Done when: every landmark has every column.
+
+**K7. Creature table (S)**
+- Do: G22's creatures as a table: name, where, when (time of day), group size, sound family.
+- Hand back: `creatures.txt`.
+- Done when: every creature has every column.
+
+**K8. Biome table (S)**
+- Do: G33's regions as a table: name, materials by depth, plants, sounds, rarity.
+- Hand back: `biomes.txt`.
+- Done when: every region has every column.
 
 ### P. Standalone tools (Python 3.9+, standard library only)
 
@@ -613,6 +902,66 @@ Done when: every rule above holds, and the task's own points.
 - Hand back: `cloud_motion.py`.
 - Done when: the formulas are derived in a comment.
 
+**P10. `vtex_upscale.py`: 32 to 64 (S)**
+- Facts: Facts: as P2.
+- Do: read a `.vtex`, write a copy with every texture's maps doubled in size (each pixel becomes 2 × 2), `size` updated, palettes unchanged.
+- Hand back: `vtex_upscale.py`.
+- Done when: the output passes P3's rules.
+
+**P11. `vtex_recolour.py`: shift a palette (S)**
+- Facts: Facts: as P2.
+- Do: change one texture's palette by a brightness, saturation and hue shift given on the command line, writing a new file; pixels unchanged.
+- Hand back: `vtex_recolour.py`.
+- Done when: colours stay valid hex, and the maths is in a comment.
+
+**P12. `relief_png.py`: height maps as shaded relief (S)**
+- Facts: Facts: as P2.
+- Do: render each texture's height map as a lit relief (light from the upper left), tiled 3 × 3 so seams show, as PNG.
+- Hand back: `relief_png.py`.
+- Done when: textures without height are skipped with a note.
+
+**P13. `png_stats.py`: screenshot brightness (M)**
+- Facts: Facts: screenshots are PNG, 8-bit RGB or RGBA, from the game.
+- Do: decode a PNG with `zlib` and `struct` only (all five filter types) and print mean luminance, a 16-bin histogram, and the share of near-black and near-white pixels.
+- Hand back: `png_stats.py`.
+- Done when: all five PNG filter types are decoded.
+
+**P14. `scope_export.py`: the scope sheet as text (M)**
+- Facts: Facts: `docs/SCOPE_MOSCOW.xlsx` is an Excel file (a zip of XML). Its sheet `Scope` has columns ID, Area, Item, Priority, Status, Notes / boundary, Design ref, Decided by.
+- Do: read it with `zipfile` and `xml.etree` only (shared strings included) and print it as a Markdown table, optionally filtered by Priority or Status.
+- Hand back: `scope_export.py`.
+- Done when: shared strings and empty cells are handled.
+
+**P15. `decisions_lint.py`: the decision log (S)**
+- Facts: Facts: `docs/DECISIONS.md` is a Markdown table, one row per decision, `| D<number> | <date YYYY-MM-DD> | <decision> | <by> | <where> |`.
+- Do: check numbers are unique and increasing, dates are valid and never go backwards, every row has five cells.
+- Hand back: `decisions_lint.py`.
+- Done when: each problem is reported with its line.
+
+**P16. `strings_used.py`: text keys in the code (S)**
+- Facts: Facts: C++ code asks for words with `Str("key")` and `StrF("key", {...})`; keys are lowercase words joined by dots; materials use `material.<name>`. English is `assets/text/en.txt`.
+- Do: scan the `.cpp` and `.h` files at the repository root for keys, and list keys used but not defined, and defined but not used.
+- Hand back: `strings_used.py`.
+- Done when: keys built in code (not a literal) are reported as unknown rather than guessed.
+
+**P17. `perf_to_svg.py`: a report as a chart (S)**
+- Facts: Facts: as P6.
+- Do: draw one report's systems as horizontal bars (median, with a mark at p95) into an SVG file, written by hand as XML text.
+- Hand back: `perf_to_svg.py`.
+- Done when: it opens in a browser, and long names fit.
+
+**P18. `day_table.py`: the sky over a day (M)**
+- Facts: Facts: sun direction: angle a = π × t / 3000 for t in 0..3000 seconds (day), then the sun sets; direction = (cos a toward east, sin a up). The day is 3600 s long.
+- Do: print sun height in degrees every 5 game minutes, and the times it passes 5°, 15°, 45°.
+- Hand back: `day_table.py`.
+- Done when: the formula is in a comment.
+
+**P19. `texture_sheet_html.py`: a review page (M)**
+- Facts: Facts: as P2 and P10.
+- Do: write one HTML page that shows every texture in every `.vtex` file in a folder, tiled 3 × 3, at 1× and 4×, with its name, as embedded PNG (base64). No scripts from outside.
+- Hand back: `texture_sheet_html.py`.
+- Done when: the page works offline.
+
 ### X. Tests to an exact spec (C++17; Claude compiles and runs them)
 
 Facts for every X task:
@@ -701,6 +1050,24 @@ Done when: it uses only the names given, and every loop is bounded.
   - the covered area is the same whichever disc is "1" (r1² × DiscCover(r1, r2, d) ≈ r2² × DiscCover(r2, r1, d), relative tolerance 1e-3);
   - equal discs at d = 0 give 1.
 - Hand back: `TestDiscCoverProperties.cpp`.
+- Done when: as for the group.
+
+**X9. UTF-8 round trips (S)**
+- Facts: Facts (header `strtable.h`): `uint32_t DecodeUtf8(const std::string& s, size_t& i)` reads one code point and advances (invalid bytes give 0xFFFD and advance by one); `void AppendUtf8(std::string& out, uint32_t cp)`.
+- Do: `TestUtf8RoundTrips()`: every code point at the edges of each UTF-8 length (0x7F, 0x80, 0x7FF, 0x800, 0xFFFF, 0x10000, 0x10FFFF) and a sample in between round-trips; overlong and truncated sequences give 0xFFFD.
+- Hand back: `TestUtf8RoundTrips.cpp`.
+- Done when: as for the group.
+
+**X10. Sky smoothing helpers (S)**
+- Facts: Facts (header `sky.h`): `float SkySmooth(float e0, float e1, float x)` is a smoothstep (0 below e0, 1 above e1, smooth between); `float SkyAngle(Vec3 a, Vec3 b)` is the angle between unit vectors, safe for rounding past ±1.
+- Do: `TestSkyHelpers()`: SkySmooth at and beyond both ends and its midpoint; SkyAngle of equal, opposite and perpendicular vectors, and of vectors whose dot product rounds just past 1.
+- Hand back: `TestSkyHelpers.cpp`.
+- Done when: as for the group.
+
+**X11. Jet stream bounds (S)**
+- Facts: Facts (header `sky.h`): `float JetStreamAngle(double T)`, T in days; it wanders over hours and swings every few days, up to about 60° (about 1.05 rad) plus a wander of up to 0.35 rad.
+- Do: `TestJetStreamBounds()`: over 200 days sampled every 10 game minutes, the angle stays within ±1.45 rad, it changes by less than 0.01 rad between samples 10 game minutes apart, and it spends time on both sides of zero.
+- Hand back: `TestJetStreamBounds.cpp`.
 - Done when: as for the group.
 
 ### T. Translations (carry the player's words)
@@ -874,6 +1241,78 @@ Done when: the same keys as `en.txt`, in the same order, slots matching line by 
 - Hand back: `am.txt`.
 - Done when: as for the group, plus the report's list of characters beyond basic Latin (or the font line explained).
 
+**T34. Spanish (Spain), `es-ES.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report.
+- Do: translate.
+- Hand back: `es-ES.txt`.
+- Done when: as for the group.
+
+**T35. European Portuguese, `pt-PT.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report.
+- Do: translate.
+- Hand back: `pt-PT.txt`.
+- Done when: as for the group.
+
+**T36. Ukrainian, `uk.txt` (M)**
+- Facts: Cyrillic letters, which Consolas has. Capitals as usual. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `uk.txt`.
+- Done when: as for the group.
+
+**T37. Russian, `ru.txt` (M)**
+- Facts: Cyrillic letters, which Consolas has. Capitals as usual. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `ru.txt`.
+- Done when: as for the group.
+
+**T38. Bulgarian, `bg.txt` (M)**
+- Facts: Cyrillic letters, which Consolas has. Capitals as usual. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `bg.txt`.
+- Done when: as for the group.
+
+**T39. Greek, `el.txt` (M)**
+- Facts: Greek letters, which Consolas has. In capitals Greek drops accents: follow the usual rule. Keep `font = Consolas`.
+- Do: translate.
+- Hand back: `el.txt`.
+- Done when: as for the group.
+
+**T40. Turkish, `tr.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report. Mind the dotted and dotless I in capitals (İ and I).
+- Do: translate.
+- Hand back: `tr.txt`.
+- Done when: as for the group.
+
+**T41. Hungarian, `hu.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report.
+- Do: translate.
+- Hand back: `hu.txt`.
+- Done when: as for the group.
+
+**T42. Romanian, `ro.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report. Use the comma-below letters (Ș, Ț), not cedillas.
+- Do: translate.
+- Hand back: `ro.txt`.
+- Done when: as for the group.
+
+**T43. Serbian in Latin letters, `sr-Latn.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report.
+- Do: translate.
+- Hand back: `sr-Latn.txt`.
+- Done when: as for the group.
+
+**T44. Slovak, `sk.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report.
+- Do: translate.
+- Hand back: `sk.txt`.
+- Done when: as for the group.
+
+**T45. Croatian, `hr.txt` (M)**
+- Facts: Latin letters. Keep `font = Consolas`, and list any character beyond basic Latin in the report.
+- Do: translate.
+- Hand back: `hr.txt`.
+- Done when: as for the group.
+
 ### H. Writing
 
 Facts for every H task: few words; plain; no numbers where a feel will do; everything the player reads goes into the text table by key (lowercase, dotted, like `hint.dig`).
@@ -901,6 +1340,155 @@ Facts for every H task: few words; plain; no numbers where a feel will do; every
 - Do: for each setting, the plainest short name a player understands without knowing graphics jargon (for example crevice shading, not screen-space ambient occlusion). At most three words each.
 - Hand back: `setting_names.md`: current name, suggested name, reason.
 - Done when: every setting is covered.
+
+**H4. Material names, second look (S)**
+- Facts: Facts: the materials are meadow grass, dry turf, moss, dirt, loam, clay, sand, gravel, stone, slate, sandstone, snow.
+- Do: check each name is plain, distinct and translatable; suggest better where one could confuse (for example dirt against loam).
+- Hand back: `material_names.md`.
+- Done when: each name with a keep or change and a reason.
+
+**H5. The about screen (S)**
+- Facts: Facts: everything in walkgrid is original: synthesised sound, generated textures, the player's own fonts; it never uses the network.
+- Do: a short about text (at most 40 words) and a longer one (at most 120), plain, no boasting, keys proposed.
+- Hand back: `about.txt`.
+- Done when: within the word limits.
+
+**H6. A one-page guide for new helpers (M)**
+- Facts: Facts: helpers get tasks as single pastes, answer with a report and files, never see the code, and every claim they make is checked.
+- Do: a one-page guide in plain words: how to succeed at these tasks, what's been learned from round 1 (inventions get caught; exact specs work; assumptions must be labelled).
+- Hand back: `helper_guide.md`.
+- Done when: under 600 words.
+
+**H7. Error messages, kinder (S)**
+- Facts: Facts: messages today include save failed, load failed (damaged save?), texture problems, graphics card too old.
+- Do: rewrite each so a player knows what happened and what to do, in at most ten words, keeping any slot.
+- Hand back: `errors.md`.
+- Done when: each message with its slots unchanged.
+
+### E. Theory behind our systems (explanations only, never code)
+
+Facts for every E task:
+- The owner wants to understand the published theory behind each part of walkgrid: how others have solved the same problem well, what options exist, and how ours compares.
+- This is theory and explanation: papers, textbooks, conference talks, standards. Never copy code; describe methods in words and, at most, maths.
+- Research standard (D66): reliable sources, more than one where possible, every source listed, considerate fetching.
+- Our budgets: 60 fps on a six-year-old PC (GTX 1060 class); the world takes about 2–3 ms of the graphics card per frame; background threads build terrain and meshes.
+
+Hand back for each E task: `<topic>.md`, 1,000–2,500 words:
+- **Ours:** from the task's facts.
+- **The theory:** the main published methods, explained plainly, with their sources.
+- **Comparison:** a table of cost, quality and complexity against ours.
+- **What we might try:** ordered by value.
+- **Sources.**
+
+Done when: every method has a source, and nothing is code.
+
+**E1. Surfaces from a grid of cells (M)**
+- Facts: Ours: a facet mesher: corners where cells meet, eased halfway toward a smooth surface, jittered from a seed, then small lumps where the ground is calm; neighbouring chunks agree exactly.
+- Do: compare marching cubes, dual contouring, surface nets and other cell-to-surface methods with ours.
+- Hand back: `cells_to_surface.md`.
+- Done when: as for the group.
+
+**E2. Projecting textures onto terrain (M)**
+- Facts: Ours: each material's texture is projected from the world along three axes, weighted by the smooth normal to the fourth power.
+- Do: explain triplanar mapping and its alternatives (UV unwrapping, biplanar, stochastic triplanar) and their costs.
+- Hand back: `projection.md`.
+- Done when: as for the group.
+
+**E3. Hiding texture repetition (M)**
+- Facts: Ours: textures repeat every block; a slow world-space brightness and warmth drift is the only variation.
+- Do: explain texture bombing, stochastic tiling (histogram-preserving blending), detail textures, macro variation and Wang tiles.
+- Hand back: `repetition.md`.
+- Done when: as for the group.
+
+**E4. Blending materials where they meet (M)**
+- Facts: Ours: per-pixel height-based blending: each material's weight lifted by its height map, the tallest wins within a narrow band, nudged by world noise.
+- Do: explain height-based blending and alternatives (splat maps, weight sharpening, dithering) and how others avoid thin streaks.
+- Hand back: `blending.md`.
+- Done when: as for the group.
+
+**E5. Sun shadows over large terrain (M)**
+- Facts: Ours: one 2048² shadow map over ±48–112 blocks, redrawn over four frames while the sun moves and crossfaded; 9-tap filtering; a normal offset against acne.
+- Do: explain cascaded shadow maps, filtering (PCF, PCSS, variance and exponential maps), and ways to handle a moving sun.
+- Hand back: `shadows.md`.
+- Done when: as for the group.
+
+**E6. Ambient light and occlusion (M)**
+- Facts: Ours: per-corner openness and an 8-direction sky view baked at meshing; a hemisphere ambient; optional screen-space AO (off: it dimpled lumpy ground).
+- Do: explain baked ambient occlusion, horizon-based and bent-normal methods, and screen-space variants, with their artefacts.
+- Hand back: `ambient.md`.
+- Done when: as for the group.
+
+**E7. Sky colour models (M)**
+- Facts: Ours: a hand-tuned gradient from horizon to zenith, a twilight band toward the sun, a glow around it.
+- Do: explain the physical basis (Rayleigh and Mie scattering) and published analytic sky models, and what a cheap one needs.
+- Hand back: `sky_models.md`.
+- Done when: as for the group.
+
+**E8. Clouds in real time (M)**
+- Facts: Ours: two layers drawn per sky pixel from value noise on a plane (high streaks stretched along the wind; low soft clouds), drifting with the jet stream; no volumes.
+- Do: explain 2-D and 2.5-D cloud techniques, flow-map and domain-warp animation, and how shapes can evolve cheaply.
+- Hand back: `cloud_rendering.md`.
+- Done when: as for the group.
+
+**E9. Fog and aerial perspective (M)**
+- Facts: Ours: distant ground fades into the sky colour over the loaded world's last fifth; a faint exponential haze.
+- Do: explain exponential height fog, aerial perspective models, and how games hide the loaded world's edge.
+- Hand back: `fog.md`.
+- Done when: as for the group.
+
+**E10. Noise functions (M)**
+- Facts: Ours: value noise with smooth interpolation, in shaders and generators; integer hashing for terrain.
+- Do: explain value, gradient (Perlin), simplex and cellular (Worley) noise, domain warping, and their costs and looks.
+- Hand back: `noise.md`.
+- Done when: as for the group.
+
+**E11. Seeing far: terrain level of detail (M)**
+- Facts: Ours: detail bands per chunk by distance (fine near the player); the world ends at the render distance, hidden by fog.
+- Do: explain geomipmapping, clipmaps, quadtree terrain, and far-terrain impostors, and how voxel games show land beyond their loaded world.
+- Hand back: `far_terrain.md`.
+- Done when: as for the group.
+
+**E12. Visibility in chunked worlds (M)**
+- Facts: Ours: each chunk records which faces connect through open cells; a walk from the camera's chunk skips chunks it can't see into; frustum culling.
+- Do: explain cave-culling flood fills, portal systems, occlusion queries and hierarchical Z, and their costs.
+- Hand back: `visibility.md`.
+- Done when: as for the group.
+
+**E13. Job systems and threads in games (M)**
+- Facts: Ours: a fixed pool of 2–4 threads; work on copies; results applied on the main thread with version stamps; stale ones dropped.
+- Do: explain job systems, work stealing, fibres, and how games keep world data safe across threads.
+- Hand back: `jobs.md`.
+- Done when: as for the group.
+
+**E14. Procedural audio: synthesis for games (M)**
+- Facts: Ours: music and effects synthesised (additive and subtractive), every pitch from the music's harmony, three slow axes shaping every sound.
+- Do: explain procedural audio for games: synthesis methods, physically informed models for footsteps and weather, and how to keep sounds musical.
+- Hand back: `procedural_audio.md`.
+- Done when: as for the group.
+
+**E15. Saving worlds (M)**
+- Facts: Ours: only chunks that differ from the generator are saved, run-length encoded, with a checksum, written crash-safely (temporary file, backup, swap).
+- Do: explain save formats for large worlds (region files, compression choices, checksums, versioning, crash safety).
+- Hand back: `saves.md`.
+- Done when: as for the group.
+
+**E16. Frame pacing and smooth motion (M)**
+- Facts: Ours: a fixed simulation step; drawing between the last two ticks; vsync or a frame cap.
+- Do: explain fixed-step loops, interpolation, frame pacing and what causes judder.
+- Hand back: `frame_pacing.md`.
+- Done when: as for the group.
+
+**E17. Text for every language (M)**
+- Facts: Ours: a key-to-text table per language; a font atlas built from the characters used; one character at a time.
+- Do: explain how games handle Unicode text: shaping, bidirectional layout, fonts and fallbacks, and the minimum a small game needs.
+- Hand back: `text_i18n.md`.
+- Done when: as for the group.
+
+**E18. Walking on uneven ground (M)**
+- Facts: Ours: the player's box collides with the facet floor; steps up to half a block climb on their own.
+- Do: explain character controllers on terrain: step-up, slopes, ground snapping, and what makes walking feel good.
+- Hand back: `walking.md`.
+- Done when: as for the group.
 
 ## Off limits, even when asked
 

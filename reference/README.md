@@ -10,7 +10,7 @@ Nothing in this folder is compiled, included or loaded by walkgrid. It's here so
 
 ---
 
-## seeds/: the owner's four hand-tested prototypes
+## seeds/: the owner's hand-tested prototypes and texture generators
 
 | File | Lines | Still worth taking | Taken so far |
 |---|---|---|---|
@@ -18,6 +18,8 @@ Nothing in this folder is compiled, included or loaded by walkgrid. It's here so
 | `drillder.cpp` (GDI+ slice viewer) | 882 | Per-voxel durability (mining, machine progress); a three-slice view as a debug overlay for looking inside terrain | Integer block facing (the state byte) |
 | `LG2.cpp` (2D cellular automaton) | 1,003 | Block behaviours as budgeted per-tick rules: grass spreading, tree growth, fire, water, desert creep, lifespans | Budgeted work per tick; deferred mutation (the scheduled-update queue) |
 | `cc_2_2_2.cpp` (2D sandbox, 145 texture generators) | 5,759 | The texture technique library: ground, weaves, geometry, tech panels (index in `voxistics/DESIGN.md` 8.4) | Bake-once procedural textures; the natural set's techniques |
+| `newpatterns.cpp` (GDI+ texture generators, added 2026-09-26) | 1,604 | 100 natural stone and soil patterns on a 32 × 32 tiling grid: granite, strata, basalt columns and cracks, mud cracks, gravel, loam, moss and root mats, crystals, lava crusts. Ideas for new materials and for re-authoring the twelve (TEXTURE_BRIEF.md) | Nothing yet |
+| `bitmappattern.cpp` (GDI+ pattern viewer, added 2026-09-26) | 1,979 | 42 geometric patterns (checkerboard, plaid, herringbone, chevrons, gears, honeycomb, halftones) and a viewer: ideas for built pieces and UI, not ground | Nothing yet |
 
 **Likely first to go:** `Prismative.cpp`, once the facet world replaces the cube shapes in M1 and nothing else is wanted from it. The owner decides.
 

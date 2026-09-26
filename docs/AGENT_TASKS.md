@@ -183,7 +183,7 @@ End with a recommendation and the open questions for the owner. Short illustrati
 **R5. Graphics presets (S)**
 - Facts, the graphics settings that exist:
   - render distance, in chunks of 16 blocks;
-  - fine detail near the player, levels 0–4 (4 is the default, and doubles the ground triangles close by);
+  - fine detail, levels 0–4 (4, the default, is fine detail everywhere; lower levels keep it closer to the player);
   - sun shadows on/off;
   - SSAO on/off (off by default);
   - bloom on/off;
@@ -355,3 +355,7 @@ At the next session, for each `incoming/grok/<task>.md` (or pasted answer):
 |---|---|---|
 | 2026-09-26 | R1 | Stopped. The owner pasted R1's three parts correctly, as a first chat; the agent still quoted R2's inputs, which no R1 pack ever contained (checked in every commit), and the Brief then told it to stop when something was missing. Rewritten: one self-contained paste per task, facts in plain words, assume and label instead of stopping, private chats. |
 | 2026-09-26 | R1 | Delivered (second attempt). Appraised: fair. Keep a longer sky-view reach, a colour-curve tuning pass, height-aware haze for later; three options dropped (already exist, or rest on things that don't). `docs/grok_reviews/R1.md` |
+| 2026-09-26 | R2 | Delivered (sections 1–2 missing from the paste). Appraised: good skeleton, wrong details (fog knob, overcast light, sound not free, no saving). `docs/grok_reviews/R2.md` |
+| 2026-09-26 | R3 | Delivered. Appraised: fair; keep the edited-cell flag, drop the rest. `docs/grok_reviews/R3.md` |
+| 2026-09-26 | R4 | Delivered. Appraised: weak to fair; mostly existing or against the owner's direction; keep the texture mark language and per-texel mosaic edges. `docs/grok_reviews/R4.md` |
+| 2026-09-26 | R5 | Delivered (the first-run rule missing from the paste). Appraised: fair; the reference preset must equal the defaults, no SSAO. `docs/grok_reviews/R5.md` |

@@ -49,6 +49,8 @@ What this is: the owner's third play-test (2026-09-26, 1080p, render distance 3)
 - A tuning pass on the day's colours in `ComputeAtmosphere`.
 - Height-aware haze, once we can see further.
 
+From Grok's R4 (docs/grok_reviews/R4.md): for item D, near the player decide the blend **per texel**, so material edges are a crisp mosaic of whole texels rather than a sub-texel fringe; for item F, redraw each material in its own angular mark language (blades, chips, bands), distinct at a glance. And try the existing outlines setting on facets before building any edge effect.
+
 ## Open questions for the owner (asked after the Grok review)
 
 1. **F, texture density.** Three choices:

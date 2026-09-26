@@ -11,7 +11,7 @@ The next building session. Every step is one system and one commit (FOUNDATIONS 
 | 1 | Grok's save reader into `tools/dump_save.py`; its text tests (one escape fixed) and the good parts of its sky tests into `tests/tests.cpp` | nothing in game |
 | 2 | Text: T2's five English edits, then the German, Spanish and French files with their word fixes and T2's changes carried through | menus in each language |
 | 3 | Screenshots: read the picture back a frame later (the remaining ~26 ms goes to near zero) | Ctrl+F3 while pressing F2 |
-| 4 | Debug views (PLAN_LOOK G): one developer key cycles baked darkening only, shadows only, materials only; costs nothing unless pressed; stays in the game | what the noon patches are |
+| 4 | Debug views (PLAN_LOOK G): one developer key cycles baked darkening only, shadows only, materials only; costs nothing unless pressed; stays in the game. Likely finding: triangle wedges from per-corner darkening split along the bright diagonal (docs/research/VERTEX_DARKENING.md) | what the noon patches are |
 
 ## Batch 2: the sky (one test build)
 
@@ -26,7 +26,7 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 
 | # | Step | Owner checks |
 |---|---|---|
-| 7 | Clean material edges (D): score each material by weight × height (max-blending with a small grace band, Schuster et al. 2020), not weight + height, so a material can't poke through far from its own ground; near the player decided per texel, a crisp mosaic (docs/research/TEXTURE_BLENDING.md) | the sand–stone edge |
+| 7 | Clean material edges (D): a blue-noise threshold per texel makes the crisp border even, not speckled (docs/research/DITHERING.md); score each material by weight × height (max-blending with a small grace band, Schuster et al. 2020), not weight + height, so a material can't poke through far from its own ground; near the player decided per texel, a crisp mosaic (docs/research/TEXTURE_BLENDING.md) | the sand–stone edge |
 | 8 | Less repetition (E): near the player, one randomly offset and turned copy per irregular texel-aligned region (no blending, so the pixel art stays crisp); further away, three offset copies with histogram-preserving blending as Burley 2019 makes practical (1-D tables built on load, luminance only, truncated Gaussian with soft clipping, weights raised to γ ≈ 4) for stochastic materials, shifts along the layers only for structured ones (sandstone, slate); plus large-scale colour patches (docs/research/TEXTURE_BLENDING.md) | a big flat area from a height |
 | 9 | 64-pixel art (F + H): the generators redraw the 12 materials at 64, each in its own style of marks (Grok's A-series briefs), slate lighter | every material, close up |
 
@@ -35,6 +35,8 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 Decided by what the debug views show: a longer baked sky view (16–24 blocks), and a pass on the day's colours (R1), shaped by Hošek & Wilkie's findings: the low sun's glow spreading sideways more than up, bright ground brightening the low sky, sunsets as a gradient (docs/research/SKY_AND_FLOW.md). Turbidity becomes the one haze knob weather will drive.
 
 ## Ideas on the table (thrown at the wall, not scheduled)
+
+- **Our own tone curve (D60):** ACES per channel is many engines' default and bleaches bright colours; a luminance-based curve of our own keeps grass green in strong sun (docs/research/TONE_MAPPING.md). A look decision: side-by-side renders for the owner.
 
 - **From the research overview (docs/research/OVERVIEW.md):** far terrain as a coarse clipmap-style ring drawn from the height function (the biggest unplanned look upgrade); constrained surface nets as the principled answer to terracing (W055, read in full: `docs/research/SURFACE_NETS.md`), best as the terrain's continuous height clamped into each cube, seam-safe with no iterations, edited cells pinned; bent-normal ambient from the sky-view bake; Hosek–Wilkie as a colour reference for the sky and light.
 

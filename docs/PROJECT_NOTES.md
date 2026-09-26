@@ -2,7 +2,7 @@
 
 This file brings anyone up to speed: the owner, Claude, or another agent (the owner may use one for small tasks between Claude sessions). It covers what walkgrid is, how we work, what's built, how the code is laid out, how to add to it, and what's next. It's a maintained document: update it when something here changes, as part of the step that changed it. Last full update: 2026-09-26, after M1 and two rounds of fixes from the owner's play-tests (decisions up to D62).
 
-**If you are an agent starting here:** read this file, then `CLAUDE.md` (the working rules; they bind every agent, not only Claude), then the part of `DESIGN.md` for the system you'll touch. Don't start writing code until the owner has approved a plan that names the files you'll change (rule 1 below).
+**If you are an agent starting here:** read this file, then `docs/AGENT_TASKS.md` for what to work on, then `CLAUDE.md` (the working rules; they bind every agent, not only Claude), then the part of `DESIGN.md` for the system you'll touch. Don't start writing code until the owner has approved a plan that names the files you'll change (rule 1 below).
 
 ---
 
@@ -146,6 +146,8 @@ These are the places where content goes in as data or small, local code. Each ne
 - confirm the provisional decisions (D53 onward).
 
 **Heavy work for Claude sessions** (structure, engine, anything risky): weather as a system (see below), caves and a terrain v3 if wanted, the M2 plan with the owner, anything in shaders or threads, and anything touching the save format.
+
+**The full helper-agent list is `docs/AGENT_TASKS.md`** (30 tasks with sizes, rules, what's off limits, and a report template). A short version:
 
 **Small tasks a helper agent could do** (each still needs the owner's OK, the checks, and a report that says what was and wasn't verified):
 1. **Translations:** a second language file (the owner picks the language), checked with `check_strings.py`.

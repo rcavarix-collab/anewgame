@@ -155,4 +155,4 @@ These are the places where content goes in as data or small, local code. Each ne
 5. **Test coverage:** add native tests for pure functions that have few (e.g. `sky.h` atmosphere colours at eclipse, `strtable.cpp` edge cases, `ChooseGameFolder` paths).
 6. **Sound palette clips:** offline renders (`sound_demo.sh`) of existing sounds for the owner to review. Recipes change only with a decision.
 
-**Open design goals:** our own look (D60); sand's own footstep sound (waiting on the owner hearing it); the terracing the owner mentioned (to judge after the softer look); weather.
+**Open design goals:** our own look (D60); realistic lighting at no frame cost, without heavy post-processing (owner, 2026-09-26: prefer light baked into the ground when chunks are built over screen-space effects); sand's own footstep sound (waiting on the owner hearing it); terracing on gentle slopes (parked, D62: a smoothing pass exists but is off because it softens one-cell edits); weather.

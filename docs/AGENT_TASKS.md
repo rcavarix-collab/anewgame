@@ -1521,3 +1521,4 @@ At the next session, for each `incoming/grok/<task>.md` (or pasted answer):
 | 2026-09-26 | X2 | Delivered. Appraised: good; one C++ escape bug. |
 | 2026-09-26 | X1 | Delivered. Appraised: fair; two checks wrong, one from the task's own wording. |
 | 2026-09-26 | E4–E9 | Delivered (Grok and ChatGPT). Appraised: good overall, E4 weak (no real citations). `docs/grok_reviews/round2_E.md` |
+| 2026-09-26 | E14–E16 | Delivered (ChatGPT, pasted). Appraised: good; E15 found that saves aren't flushed and the backup is never loaded (W070). `docs/grok_reviews/round2_E_part2.md` |

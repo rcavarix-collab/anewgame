@@ -11,6 +11,7 @@ The next building session. Every step is one system and one commit (FOUNDATIONS 
 | 1 | Grok's save reader into `tools/dump_save.py`; its text tests (one escape fixed) and the good parts of its sky tests into `tests/tests.cpp` | nothing in game |
 | 2 | Text: T2's five English edits, then the German, Spanish and French files with their word fixes and T2's changes carried through | menus in each language |
 | 3 | Screenshots: read the picture back a frame later (the remaining ~26 ms goes to near zero) | Ctrl+F3 while pressing F2 |
+| 3b | Durable saves (W070): flush the new save to disk before swapping it in, and load the `.bak` when the main save is missing or damaged; a test for each interruption point | nothing in game, unless a save is ever damaged |
 | 4 | Debug views (PLAN_LOOK G): one developer key cycles baked darkening only, shadows only, materials only; costs nothing unless pressed; stays in the game. Likely finding: triangle wedges from per-corner darkening split along the bright diagonal (docs/research/VERTEX_DARKENING.md) | what the noon patches are |
 
 ## Batch 2: the sky (one test build)
@@ -35,6 +36,8 @@ Decide first: clouds in real time, or partly sped up with the fast day (`docs/re
 Decided by what the debug views show: a longer baked sky view (16–24 blocks), and a pass on the day's colours (R1), shaped by Hošek & Wilkie's findings: the low sun's glow spreading sideways more than up, bright ground brightening the low sky, sunsets as a gradient (docs/research/SKY_AND_FLOW.md). Turbidity becomes the one haze knob weather will drive. Also a candidate: sky-lit ambient from a few spherical-harmonic numbers per frame, in place of the two-colour hemisphere (round2_E).
 
 ## Ideas on the table (thrown at the wall, not scheduled)
+
+- **Footsteps on the stride or on the beat?** Ours play on the music's beat grid; published footstep synthesis drives each step from the foot's contact. A beat-locked step can't match the stride, which may be why they feel detached. Options: stride, beat, or stride quantised to the nearest subdivision within a small window. Owner's call (round2_E_part2).
 
 - **Our own tone curve (D60):** ACES per channel is many engines' default and bleaches bright colours; a luminance-based curve of our own keeps grass green in strong sun (docs/research/TONE_MAPPING.md). A look decision: side-by-side renders for the owner.
 

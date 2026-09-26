@@ -16,6 +16,7 @@ Every claim Grok makes about walkgrid is checked against the code before anythin
 | [P1 save reader](code_and_text.md) | Good | Works on a real save; goes to tools/ |
 | [X2 text tests](code_and_text.md) | Good, one bug | Fix one C++ escape, then all pass |
 | [E4–E9 theory](round2_E.md) | Good (E4 weak) | Near shadow cascade later; sky-lit ambient from spherical harmonics; per-octave cloud speeds and a moving threshold; turbidity-style look controls |
+| [E14–E16 audio, saves, pacing](round2_E_part2.md) | Good | Durable saves (W070); footsteps on stride or beat (owner's call); modal dig and place sounds; event-population rain |
 | [X1 sky tests](code_and_text.md) | Fair | Disc and moon-phase checks; two checks were wrong (one from Claude's own instruction) |
 
 **What Grok is good for, so far:** comparing a few approaches on fixed points, laying out a design skeleton, translation, and small self-contained code written to an exact spec (the save reader worked first time). **Not good for:** anything that depends on how our code actually works (it fills gaps with plausible inventions), and exact numbers.

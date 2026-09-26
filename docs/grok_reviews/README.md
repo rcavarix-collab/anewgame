@@ -18,5 +18,9 @@ Every claim Grok makes about walkgrid is checked against the code before anythin
 | [E4–E9 theory](round2_E.md) | Good (E4 weak) | Near shadow cascade later; sky-lit ambient from spherical harmonics; per-octave cloud speeds and a moving threshold; turbidity-style look controls |
 | [E14–E16 audio, saves, pacing](round2_E_part2.md) | Good | Durable saves (W070); footsteps on stride or beat (owner's call); modal dig and place sounds; event-population rain |
 | [X1 sky tests](code_and_text.md) | Fair | Disc and moon-phase checks; two checks were wrong (one from Claude's own instruction) |
+| [E1, E10–E13 surfaces, noise, far terrain, visibility, jobs](round2_E_part4.md) | Fair to good | The far-terrain ring from `TerrainHeight`; terrain-noise changes bundled into the next generator version; cellular noise for the art; job-wait timing in F3; tests for stale results and for openings never falsely closed. E1 wrongly assumed a height field (our mesher is already a surface net) |
+| [E17, E18, E2, E3 text, walking, projection, repetition](round2_E_part3.md) | Fair to good | E18's walking test course; UAX #11 for W068; Wang tiles as a note. Two wrong citations in E2 and E3; E17's bundled fonts and shaping library go against our rules |
+
+**Group E is complete** (E1–E18). The helpers' theory is usually right; their citations and their guesses about our code are the weak points. Where the facts were thin, they assumed a simpler walkgrid than the real one.
 
 **What Grok is good for, so far:** comparing a few approaches on fixed points, laying out a design skeleton, translation, and small self-contained code written to an exact spec (the save reader worked first time). **Not good for:** anything that depends on how our code actually works (it fills gaps with plausible inventions), and exact numbers.

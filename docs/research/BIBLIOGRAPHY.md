@@ -7,6 +7,7 @@ Full citations, so that anyone can find each source later. The style is:
 Each entry ends with:
 - where a legal copy can be read;
 - its status in our notes: [r] read in full, [s] confirmed by search, [k] from knowledge;
+- [h] named by a helper delivery, not yet checked by us;
 - whether the **citation details** were checked: ✓ against the paper itself, ~ from search results, ? from knowledge, still to verify.
 
 Nothing is stored in the repository (D66). Web pages give the date they were consulted.
@@ -56,6 +57,33 @@ Nothing is stored in the repository (D66). Web pages give the date they were con
 32. Encyclopaedia Britannica. Climate: upper-level winds. britannica.com/science/climate-meteorology/Upper-level-winds. [s]
 33. NOAA JetStream. *Life cycle of a thunderstorm*. noaa.gov/jetstream/thunderstorms/life-cycle-of-thunderstorm. [s]
 34. Atlas, D., Wang, Z. and Duda, D. P. 2006. Contrails to Cirrus: Morphology, Microphysics, and Radiative Properties. *Journal of Applied Meteorology and Climatology* 45(1). Via NASA Langley. [s] ~ (the author list and issue are ?)
+
+## Named by helper deliveries, not yet checked (group E, 2026-09-26)
+
+Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) and not yet read or confirmed by us, with its details "?". Corrections we already know are noted.
+
+35. Blumofe, R. D. and Leiserson, C. E. 1999. Scheduling Multithreaded Computations by Work Stealing. *Journal of the ACM* 46(5), 720–748. DOI 10.1145/324133.324234. [h] ?
+36. Chase, D. and Lev, Y. 2005. Dynamic Circular Work-Stealing Deque. In *Proceedings of the 17th ACM Symposium on Parallelism in Algorithms and Architectures (SPAA '05)*. (The helper gave the wrong venue.) [h] ?
+37. Gyrling, C. 2015. Parallelizing the Naughty Dog Engine Using Fibers. Game Developers Conference 2015, talk; GDC Vault. [h] ?
+38. Greene, N., Kass, M. and Miller, G. 1993. Hierarchical Z-Buffer Visibility. In *Proceedings of SIGGRAPH 93*. [h] ?
+39. Zhang, H., Manocha, D., Hudson, T. and Hoff, K. E. 1997. Visibility Culling Using Hierarchical Occlusion Maps. In *Proceedings of SIGGRAPH 97*, 77–88. DOI 10.1145/258734.258781. [h] ?
+40. Bittner, J., Wimmer, M., Piringer, H. and Purgathofer, W. 2004. Coherent Hierarchical Culling: Hardware Occlusion Queries Made Useful. *Computer Graphics Forum* 23(3), 615–624. [h] ?
+41. Luebke, D. and Georges, C. 1995. Portals and Mirrors: Simple, Fast Evaluation of Potentially Visible Sets. In *Proceedings of the 1995 Symposium on Interactive 3D Graphics*. (The helper's link pointed elsewhere.) [h] ?
+42. Wonka, P., Wimmer, M. and Schmalstieg, D. 2000. Visibility Preprocessing with Occluder Fusion for Urban Walkthroughs. In *Rendering Techniques 2000* (Eurographics Workshop on Rendering), 71–82. [h] ?
+43. de Boer, W. H. 2000. Fast Terrain Rendering Using Geometrical MipMapping. Unpublished article (web). [h] ?
+44. Lindstrom, P., Koller, D., Ribarsky, W., Hodges, L. F., Faust, N. and Turner, G. A. 1996. Real-Time, Continuous Level of Detail Rendering of Height Fields. In *Proceedings of SIGGRAPH 96*, 109–118. [h] ?
+45. Duchaineau, M., Wolinsky, M., Sigeti, D. E., Miller, M. C., Aldrich, C. and Mineev-Weinstein, M. B. 1997. ROAMing Terrain: Real-time Optimally Adapting Meshes. In *Proceedings of IEEE Visualization '97*, 81–88. [h] ?
+46. Schaufler, G. Dynamically Generated Impostors. (The year and venue are to check.) [h] ?
+47. Lagae, A., Lefebvre, S., Cook, R., DeRose, T., Drettakis, G., Ebert, D. S., Lewis, J. P., Perlin, K. and Zwicker, M. 2010. A Survey of Procedural Noise Functions. *Computer Graphics Forum* 29(8). [h] ?
+48. Perlin, K. 1985. An Image Synthesizer. In *Proceedings of SIGGRAPH 85*, 287–296. [h] ?
+49. Perlin, K. 2002. Improving Noise. In *Proceedings of SIGGRAPH 2002*, 681–682. [h] ?
+50. Gustavson, S. 2005. Simplex Noise Demystified. Technical report, Linköping University. [h] ?
+51. Worley, S. 1996. A Cellular Texture Basis Function. In *Proceedings of SIGGRAPH 96*, 291–294. [h] ?
+52. Ebert, D. S., Musgrave, F. K., Peachey, D., Perlin, K. and Worley, S. 2002. *Texturing and Modeling: A Procedural Approach*, 3rd edition. Morgan Kaufmann. [h] ?
+53. Chan, S. L. and Purisima, E. O. 1998. A New Tetrahedral Tessellation Scheme for Isosurface Generation. *Computers & Graphics* 22(1), 83–90. [h] ?
+54. Cohen, M. F., Shade, J., Hiller, S. and Deussen, O. 2003. Wang Tiles for Image and Texture Generation. *ACM Transactions on Graphics* 22(3) (SIGGRAPH 2003). [h] ?
+55. The Unicode Consortium. Unicode Standard Annexes: #9 (Bidirectional Algorithm), #11 (East Asian Width), #14 (Line Breaking), #29 (Text Segmentation). unicode.org/reports. [h] ?
+56. Catto, E. 2014. Understanding Constraints. Game Developers Conference 2014, talk. (The helper gave only "Catto GDC 2014"; the title is to check.) [h] ?
 
 ## Verifying the "?" entries
 

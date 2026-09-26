@@ -45,6 +45,22 @@ Decided by what the debug views show: a longer baked sky view (16–24 blocks), 
 
 - **East Asian text (W068):** the UI font atlas and text layout assume every character is one cell wide; Chinese, Japanese and Korean characters are two. A step gives wide characters double-width cells, in the atlas (`GenerateUIAtlas`) and in layout (`UIDrawText`, `UITextWidth`). Grok's T18–T21 translations wait on it. Scripts that need shaping (Devanagari, Thai, Arabic's right-to-left joining) need a shaping step beyond a glyph atlas: parked (W069). African languages (T26–T33): the Latin-script ones work now (the atlas takes any code point the font has); Yoruba's stacked tone marks need precomposed characters or combining-mark support; Amharic's Ethiopic script needs its font and may need wide cells like W068.
 
+- **A walking test course** (E18, round2_E_part3): a small built area to walk after any change to terrain shape or movement, with:
+  - steps and drops either side of `CLIMB` and `STICK`;
+  - slopes either side of `WALK_UP`;
+  - a crawlspace, a ledge and a narrow passage.
+
+  Most useful before surface nets (W055).
+- **The next terrain-generator version (group E, round2_E_part4):** changing terrain noise moves every hill in every save, so bundle these into one new generator version, with the old one kept for existing worlds:
+  - the quintic fade;
+  - each layer's lattice turned a little;
+  - mild warping of the region and plateau edges;
+  - caves (R6).
+- **Tests from group E:**
+  - a stale mesh result arriving after its chunk changed;
+  - chunk openings never recorded as closed when cells connect;
+  - facet seams identical whichever neighbour is built first.
+- **F3: how long the oldest job has waited,** per channel (E13); only counts exist today.
 - Sky settings (cloud amount, cloud speed), now or with weather.
 - A faint wind bed in the world sound that rises when the low clouds move faster.
 - Start planning the building layer (W067) if it becomes M2, with Grok researching alongside.

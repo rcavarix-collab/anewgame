@@ -807,6 +807,18 @@ static void TestSky() {
         for (uint32_t d = 0; d < 400 && best.solarEclipse < 0.999f; d++)
             for (float t = 0; t < 3000; t += 20) { SkyState st = ComputeSky(t, d); if (st.sunDir.y > 0.3f && st.solarEclipse > best.solarEclipse) best = st; }
         CHECK(best.solarEclipse > 0.99f && best.daylight < NIGHT_LIGHT + 0.1f && best.starsVisible > 0.8f);
+        // The jet stream blows mostly west to east, wanders, and now and
+        // then swings well off course -- smoothly (D58).
+        int eastish = 0, far = 0; float maxStep = 0, prevAng = JetStreamAngle(0);
+        for (int i = 1; i <= 4000; i++) {
+            float ang = JetStreamAngle(i * 0.05); // 200 days, every 72 game minutes
+            eastish += cosf(ang) > 0.7f; far += fabsf(ang) > 0.8f;
+            maxStep = std::max(maxStep, fabsf(ang - prevAng)); prevAng = ang;
+        }
+        printf("  jet stream: within 45 degrees of east %d%% of the time, more than 45 degrees off %d%%\n", eastish / 40, far / 40);
+        CHECK(eastish > 2400 && far > 40 && maxStep < 0.2f);
+        // A partial solar eclipse dims the direct sun in proportion.
+        CHECK(fabsf(best.sunLight - SkySmooth(0.0f, 0.10f, best.sunDir.y) * (1.0f - best.solarEclipse)) < 1e-5f);
         // Lens overlap: none apart, all when inside, half-ish when centres meet the rim.
         CHECK(DiscCover(1, 1, 2.5f) == 0 && DiscCover(1, 2, 0.5f) == 1 && fabsf(DiscCover(1, 1, 0) - 1) < 1e-6f);
         float half = DiscCover(1, 1, 0.8079f); CHECK(fabsf(half - 0.5f) < 0.01f);

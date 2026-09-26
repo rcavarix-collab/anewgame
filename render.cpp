@@ -70,6 +70,7 @@ struct FrameCBData {
     float sunDir[4], sunColor[4], moonDir[4], moonColor[4];
     float zenith[4], horizon[4], twilight[4], ambientUp[4], ambientDown[4];
     float camPos[4], fog[4];
+    float wind[4]; // xy the jet stream's direction (east, north), zw the clouds' drift so far (sky.h JetStreamAngle)
 };
 static const float CLOUD_COVER = 0.50f; // noise threshold: higher = clearer skies
 
@@ -168,6 +169,7 @@ static const char* g_atmosphereSrc =
     "    float4 fAmbientDown; // bounce light onto down-facing surfaces\n"
     "    float4 fCamPos;      // xyz eye; w = time in seconds (clouds)\n"
     "    float4 fFog;         // x fog start, y fog end (blocks), z exposure, w cloud cover\n"
+    "    float4 fWind;        // xy the high wind's direction (east, north), zw the clouds' drift\n"
     "};\n"
     "float3 SkyColor(float3 d) {\n"
     "    float h = saturate(d.y);\n"
@@ -595,8 +597,12 @@ static const char* g_skyShaderSrc =
     "}\n"
     "float CloudNoise(float3 d) {\n"
     "    float2 base = d.xz / (d.y + 0.06f) * 0.45f;\n"                                   // a high sheet: flat, far away
-    "    float2 p = float2(dot(base, float2(0.8f, 0.6f)), dot(base, float2(-0.6f, 0.8f)));\n" // into the wind's frame
-    "    p = p * float2(0.6f, 3.2f) + float2(fCamPos.w * 0.004f, 0.0f);\n"                    // long along the wind, thin across; drifting
+    // The sheet drifts with the jet stream (fWind.zw, summed over time so
+    // a turn of the wind never jumps it), its streaks stretched along the
+    // wind's current direction.
+    "    base -= fWind.zw;\n"
+    "    float2 p = float2(dot(base, fWind.xy), dot(base, float2(-fWind.y, fWind.x)));\n" // into the wind's frame
+    "    p = p * float2(0.6f, 3.2f);\n"                                                     // long along the wind, thin across
     "    p.y += (Noise2(p * float2(0.7f, 0.25f) + 5.2f) - 0.5f) * 2.4f;\n"                     // warp the streaks into wisps
     "    return 0.5f * Noise2(p) + 0.25f * Noise2(p * 2.07f + 17.1f) + 0.15f * Noise2(p * float2(4.3f, 3.1f) + 5.3f) + 0.1f * Noise2(p * float2(9.1f, 6.7f) + 9.7f);\n"
     "}\n"
@@ -1228,6 +1234,21 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         v4(f.ambientUp, atm.ambientUp, 0);
         v4(f.ambientDown, atm.ambientDown, 0);
         v4(f.camPos, eye, (float)(g_worldTick / 60.0));
+        {
+            // The clouds ride the jet stream (sky.h): the drift is summed
+            // tick by tick, so it's continuous whatever the wind does; world
+            // time only (paused menus hold it, a load doesn't jump it).
+            static uint64_t lastTick = 0; static bool started = false;
+            static double driftX = 0.0, driftZ = 0.0; // double: exact over any length of play
+            double T = g_dayCount + (double)dayTime / DAY_LENGTH_SECONDS;
+            float ang = JetStreamAngle(T), wx = cosf(ang), wz = sinf(ang);
+            uint64_t ticks = started && g_worldTick >= lastTick ? g_worldTick - lastTick : 0;
+            if (ticks > 600) ticks = 0; // a load or a long stall: carry on from here
+            started = true; lastTick = g_worldTick;
+            const float speed = 0.0067f / 60.0f; // cloud-sheet units a tick: the old drift's pace
+            driftX += wx * speed * ticks; driftZ += wz * speed * ticks;
+            f.wind[0] = wx; f.wind[1] = wz; f.wind[2] = (float)driftX; f.wind[3] = (float)driftZ;
+        }
         f.fog[0] = fogEnd * 0.7f; f.fog[1] = fogEnd; f.fog[2] = atm.exposure; f.fog[3] = CLOUD_COVER;
         D3D11_MAPPED_SUBRESOURCE mapped;
         g_context->Map(g_frameCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);

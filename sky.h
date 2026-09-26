@@ -58,6 +58,28 @@ static inline float DiscCover(float r1, float r2, float d) {
     float lens = r1 * r1 * (a1 - 0.5f * sinf(2 * a1)) + r2 * r2 * (a2 - 0.5f * sinf(2 * a2));
     return lens / (3.14159265f * r1 * r1);
 }
+// The high wind that carries the clouds (D58): a jet stream blowing from
+// west to east most of the time, its direction wandering over hours and
+// now and then swinging well off course (up to ~60 degrees) before
+// settling back. Returns the angle it blows toward, radians from east
+// (+x) toward north (+z), from `T` days since the world began. Smooth in
+// T; the clouds' drift is the sum of this wind over time (render.cpp), so
+// a change of direction never jumps them.
+static inline float SkyWiggle(double x, uint32_t salt) {
+    // Smooth value noise in one dimension, -1..1.
+    double f = floor(x); float u = (float)(x - f);
+    auto h = [&](int64_t i) { uint64_t z = (uint64_t)i * 0x9E3779B97F4A7C15ull ^ ((uint64_t)salt << 32); z ^= z >> 31; z *= 0xBF58476D1CE4E5B9ull; z ^= z >> 29; return (float)((z >> 11) * (1.0 / 9007199254740992.0)) * 2.0f - 1.0f; };
+    float a = h((int64_t)f), b = h((int64_t)f + 1);
+    u = u * u * (3 - 2 * u);
+    return a + (b - a) * u;
+}
+static inline float JetStreamAngle(double T) {
+    float wander = 0.35f * SkyWiggle(T * 3.0, 1);                      // over a few game hours
+    float swing = SkyWiggle(T / 2.5, 2);                               // every few game days...
+    swing = swing * swing * swing * 1.05f;                             // ...rarely far: up to ~60 degrees
+    return wander + swing;
+}
+
 static inline float SkyAngle(Vec3 a, Vec3 b) { float c = Dot(a, b); return acosf(c > 1 ? 1 : c < -1 ? -1 : c); }
 
 static inline float SkySmooth(float e0, float e1, float x) {
@@ -101,14 +123,17 @@ static inline SkyState ComputeSky(float dayTime, uint32_t day = 0) {
     s.lunarPenumbra = DiscCover(MOON_DISC_RADIUS, PENUMBRA_RADIUS, dShadow);
     // A solar eclipse barely dims the day until the sun is nearly gone,
     // then the day falls toward night in the last moments of cover.
-    float dim = 1.0f - 0.93f * SkySmooth(0.55f, 1.0f, s.solarEclipse);
+    // The land's light follows the eclipse: direct sun as the share of
+    // the disc still showing (so shadows fade with it), and the whole
+    // day's light falling toward night as the last of the sun goes.
+    float dim = 1.0f - 0.93f * SkySmooth(0.30f, 1.0f, s.solarEclipse);
     float up = SkySmooth(-0.12f, 0.25f, s.sunDir.y) * dim;
     s.daylight = NIGHT_LIGHT + (1.0f - NIGHT_LIGHT) * up;
     // Direct sun arrives within a minute or two of sunrise (low, orange,
     // long shadows) rather than after the sun has climbed ~9 degrees. It
     // ends exactly at the horizon: below it the sun moves 5x faster (the
     // night is short), which would turn the last of the fade into a snap.
-    s.sunLight = SkySmooth(0.0f, 0.10f, s.sunDir.y) * dim;
+    s.sunLight = SkySmooth(0.0f, 0.10f, s.sunDir.y) * (1.0f - s.solarEclipse);
     s.starsVisible = 1.0f - SkySmooth(-0.20f, 0.05f, s.sunDir.y) * dim;
     // The stars turn with the sky (the sun's angle: slow through the day,
     // quick through the short night) and gain a turn a year on the sun.

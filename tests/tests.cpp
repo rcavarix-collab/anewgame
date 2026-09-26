@@ -764,7 +764,7 @@ static void TestSky() {
               strcmp(CompassPoint(0.785f), "NORTH-EAST") == 0);
     }
     CHECK(fabsf(dusk.sunDir.y) < 1e-3f && dusk.sunDir.x < -0.99f);    // sets in the west
-    CHECK(night.sunDir.y < -0.8f && night.moonDir.y > 0.3f);          // moon up at night
+    CHECK(night.sunDir.y < -0.8f);
     {   // ...and still up in the west at dawn (a new world's first sunrise), setting early in the morning
         SkyState d0 = ComputeSky(0.0f), d15 = ComputeSky(900.0f), late = ComputeSky(2700.0f);
         CHECK(d0.moonDir.y > 0.3f && d0.moonDir.x < 0 && d15.moonDir.y < 0 && late.moonDir.y < 0);
@@ -772,6 +772,45 @@ static void TestSky() {
     CHECK(noon.daylight == 1.0f && fabsf(night.daylight - NIGHT_LIGHT) < 1e-5f);
     CHECK(night.starsVisible == 1.0f && noon.starsVisible == 0.0f);
     CHECK(night.sunLight == 0.0f && noon.sunLight == 1.0f);
+    // The moon and stars on their own clocks (D57). Phases: over a month,
+    // from new (lit 0, near the sun) to full (lit 1, opposite it).
+    {
+        float minLit = 1, maxLit = 0;
+        for (uint32_t d = 0; d < 8; d++)
+            for (float t = 0; t < 3600; t += 300) { SkyState st = ComputeSky(t, d); minLit = std::min(minLit, st.moonLit); maxLit = std::max(maxLit, st.moonLit); }
+        CHECK(minLit < 0.05f && maxLit > 0.95f);
+        // A full moon is up at midnight; the day after, it rises later.
+        bool fullUpAtNight = false;
+        for (uint32_t d = 0; d < 8; d++) { SkyState st = ComputeSky(3300, d); if (st.moonLit > 0.9f && st.moonDir.y > 0.2f) fullUpAtNight = true; }
+        CHECK(fullUpAtNight);
+        // Stars: about a degree a day against the sun, at the same hour.
+        float drift = ComputeSky(1500, 11).starAngle - ComputeSky(1500, 10).starAngle;
+        CHECK(fabsf(drift - 2 * 3.14159265f / STAR_YEAR_DAYS) < 1e-3f);
+        // Eclipses, both kinds, over 160 days (every 36 s of each day):
+        // the geometry decides, day or night. Totals too.
+        int solar = 0, lunar = 0, solarTotal = 0, lunarTotal = 0;
+        bool inS = false, inL = false;
+        for (uint32_t d = 0; d < 160; d++)
+            for (float t = 0; t < 3600; t += 36) {
+                SkyState st = ComputeSky(t, d);
+                bool s1 = st.solarEclipse > 0.05f, l1 = st.lunarUmbra > 0.05f;
+                if (s1 && !inS) solar++;
+                if (l1 && !inL) lunar++;
+                if (st.solarEclipse > 0.99f) solarTotal++;
+                if (st.lunarUmbra > 0.99f) lunarTotal++;
+                inS = s1; inL = l1;
+            }
+        printf("  in 160 days: %d solar eclipses, %d lunar (moments of totality: %d, %d)\n", solar, lunar, solarTotal, lunarTotal);
+        CHECK(solar >= 2 && lunar >= 3 && solar + lunar <= 20 && lunarTotal > 0);
+        // A total solar eclipse darkens the day, and the stars come out.
+        SkyState best = ComputeSky(0, 0);
+        for (uint32_t d = 0; d < 400 && best.solarEclipse < 0.999f; d++)
+            for (float t = 0; t < 3000; t += 20) { SkyState st = ComputeSky(t, d); if (st.sunDir.y > 0.3f && st.solarEclipse > best.solarEclipse) best = st; }
+        CHECK(best.solarEclipse > 0.99f && best.daylight < NIGHT_LIGHT + 0.1f && best.starsVisible > 0.8f);
+        // Lens overlap: none apart, all when inside, half-ish when centres meet the rim.
+        CHECK(DiscCover(1, 1, 2.5f) == 0 && DiscCover(1, 2, 0.5f) == 1 && fabsf(DiscCover(1, 1, 0) - 1) < 1e-6f);
+        float half = DiscCover(1, 1, 0.8079f); CHECK(fabsf(half - 0.5f) < 0.01f);
+    }
     SkyState wrap = ComputeSky(3600.0f);
     CHECK(fabsf(wrap.sunDir.x - dawn.sunDir.x) < 1e-4f && fabsf(wrap.sunDir.y - dawn.sunDir.y) < 1e-4f); // loops
 

@@ -32,6 +32,7 @@ int g_loadRadius = 3; // chunks, horizontal only (Section 2.4); a Graphics Setti
 World g_world;
 Player g_player;
 float g_dayTimeSeconds = 0.0f;
+uint32_t g_dayCount = 0;
 
 // =======================================================================
 // Part V - Scheduled block updates

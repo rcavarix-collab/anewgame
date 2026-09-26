@@ -488,6 +488,10 @@ bool Raycast(World& w, float ox, float oy, float oz, float dx, float dy, float d
 // (dawn) -- the character's first light in a land they've never seen.
 constexpr float DAY_LENGTH_SECONDS = 3600.0f; // one in-game day = one real hour, locked in
 extern float g_dayTimeSeconds;
+// Whole days since the world began (the moon's month and the stars' year
+// run on it, sky.h; saved with the world by the game layer). Advances
+// when the day clock wraps.
+extern uint32_t g_dayCount;
 
 // The live world/player -- defined in world.cpp, used everywhere.
 extern World g_world;

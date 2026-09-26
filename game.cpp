@@ -89,8 +89,8 @@ bool g_timeScrubbing = false;
 // D26: debug text (the F8 clock toast and the performance report are debug aids)
 std::string DayTimeLabel(float t) {
     const char* phase = t < 300 ? "DAWN" : t < 1200 ? "MORNING" : t < 1800 ? "NOON" : t < 2700 ? "AFTERNOON" : t < 3000 ? "DUSK" : "NIGHT";
-    char buf[48];
-    snprintf(buf, sizeof(buf), "TIME %02d:%02d  %s", (int)t / 60, (int)t % 60, phase);
+    char buf[64];
+    snprintf(buf, sizeof(buf), "DAY %u  TIME %02d:%02d  %s", g_dayCount + 1, (int)t / 60, (int)t % 60, phase);
     return buf;
 }
 // D26: end
@@ -102,7 +102,9 @@ bool DebugKeyFree(int vk) {
 
 void JumpToNextTimeOfDay() {
     float next = kTimePresets[0];
-    for (float p : kTimePresets) if (p > g_dayTimeSeconds + 1.0f) { next = p; break; }
+    bool wrapped = true;
+    for (float p : kTimePresets) if (p > g_dayTimeSeconds + 1.0f) { next = p; wrapped = false; break; }
+    if (wrapped) g_dayCount++; // the first preset is tomorrow's
     g_dayTimeSeconds = next;
     StartMusicPlayback(); // re-anchor to the new time
     ShowToast(DayTimeLabel(g_dayTimeSeconds), 2.0f);
@@ -114,8 +116,13 @@ void UpdateDebugTimeScrub(float frameSeconds) {
     int dir = (held(VK_OEM_6) || held(VK_PRIOR) ? 1 : 0) - (held(VK_OEM_4) || held(VK_NEXT) ? 1 : 0);
     if (playing && dir != 0) {
         if (!g_timeScrubbing) { StopMusicPlayback(); g_timeScrubbing = true; }
-        float t = fmodf(g_dayTimeSeconds + dir * DEBUG_SCRUB_RATE * frameSeconds, DAY_LENGTH_SECONDS);
-        g_dayTimeSeconds = t < 0 ? t + DAY_LENGTH_SECONDS : t;
+        // Shift held: eight times as fast (a day in two seconds), to find the
+        // moon's phases and eclipses (sky.h) without waiting days.
+        float rate = DEBUG_SCRUB_RATE * (g_keyDown[VK_SHIFT] ? 8.0f : 1.0f); // a modifier here, even if Shift is bound (sprint)
+        float t = g_dayTimeSeconds + dir * rate * frameSeconds;
+        while (t >= DAY_LENGTH_SECONDS) { t -= DAY_LENGTH_SECONDS; g_dayCount++; }
+        while (t < 0.0f) { t += DAY_LENGTH_SECONDS; if (g_dayCount > 0) g_dayCount--; }
+        g_dayTimeSeconds = t;
         ShowToast(DayTimeLabel(g_dayTimeSeconds), 1.5f);
     } else if (g_timeScrubbing) {
         g_timeScrubbing = false;
@@ -261,6 +268,7 @@ void ResetWorldForNewGame() {
             top = std::max(top, TerrainHeight((int)floorf(g_player.x + ox), (int)floorf(g_player.z + oz)));
     g_player.y = (float)(top + 1);
     g_dayTimeSeconds = 0.0f; // dawn -- first light in a land they've never seen (Section 13)
+    g_dayCount = 0;
     g_player.hotbarIndex = 0;
     ResetColumnStreaming();
     ClearScheduledUpdates();

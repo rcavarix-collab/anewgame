@@ -14,6 +14,7 @@
 #include "gamefiles.h"
 #include "library.h"
 #include <cstdio>
+#include <cstring>
 #include <cwchar> // swprintf, for building slotN.sav filenames (Section 7.2.4)
 #include <vector>
 
@@ -36,7 +37,10 @@ bool SlotExists(int slot) {
 
 bool SaveGame(World& w, Player& p, int slot) {
     std::vector<uint8_t> buf;
-    std::vector<uint8_t> game; // walkgrid's own section: nothing in it yet
+    // walkgrid's own section: tagged fields. "DAY1" + u32: the day count
+    // (sky.h). Older saves have none and start at day 0.
+    std::vector<uint8_t> game = { 'D', 'A', 'Y', '1' };
+    for (int i = 0; i < 4; i++) game.push_back((uint8_t)(g_dayCount >> (8 * i)));
     EncodeSave(p, g_dayTimeSeconds, g_worldGen, w, g_evictedChunks, SnapshotScheduledUpdates(), game, buf);
 
     // Crash-safe write sequence (Section 7.3): .tmp first, then the old
@@ -70,6 +74,9 @@ bool LoadGame(World& w, Player& p, int slot) {
     if (loaded.hotbarIndex < 0 || loaded.hotbarIndex >= g_placeableList.count) loaded.hotbarIndex = 0;
     p = loaded;
     g_dayTimeSeconds = d.dayTime;
+    g_dayCount = 0;
+    if (d.game.size() >= 8 && memcmp(d.game.data(), "DAY1", 4) == 0) // D26: not player text (a save tag)
+        g_dayCount = (uint32_t)d.game[4] | ((uint32_t)d.game[5] << 8) | ((uint32_t)d.game[6] << 16) | ((uint32_t)d.game[7] << 24);
     g_worldGen = d.gen;
 
     // Every saved chunk goes to the modified-chunk store; the normal

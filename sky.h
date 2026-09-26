@@ -14,6 +14,10 @@
 struct SkyState {
     Vec3 sunDir;      // unit vector toward the sun (below the horizon at night)
     Vec3 moonDir;     // unit vector toward the moon
+    float moonLit;    // 0 new .. 1 full: how much of the moon's face the sun lights
+    float solarEclipse; // 0..1: how much of the sun's disc the moon covers
+    float lunarUmbra; // 0..1: how much of the moon's disc is in the world's full shadow
+    float lunarPenumbra; // 0..1: ... in its outer, partial shadow
     float daylight;   // world light multiplier: NIGHT_LIGHT at night .. 1 in full day
     float sunLight;   // 0..1: how much direct sun there is (drives shadows; 0 once set)
     float starsVisible; // 0..1 star field opacity
@@ -24,13 +28,47 @@ static const float SUNRISE_SECONDS = 0.0f;    // Dawn begins
 static const float SUNSET_SECONDS = 3000.0f;  // 50:00, inside Dusk (47-55)
 static const float NIGHT_LIGHT = 0.30f;       // darkest the world gets (still playable)
 
+// The sky's clocks (D57; DESIGN.md Part XIII). The sun keeps the day; the
+// moon and stars run on their own, compressed but in real proportion:
+//  - the stars gain one turn a year on the sun (about 1 degree a day), as
+//    real stars rise a little earlier each night;
+//  - the moon goes round in 8 days (new, waxing, full, waning), drifting
+//    east against the sun, so it rises later each day;
+//  - its path is tilted 10 degrees to the sun's, and where the two cross
+//    (the nodes) turns once in 34.7 days, so eclipses come in seasons:
+//    only a new or full moon near a crossing lines up. On average an
+//    eclipse every 16 days (lunar about every 25, solar about every 47),
+//    some of them total (simulated over 560 days).
+// The discs' sizes (radians) are what the sky shader draws.
+static const float MOON_MONTH_DAYS = 8.0f;
+static const float MOON_TILT = 0.1745f;          // 10 degrees
+static const float MOON_NODE_DAYS = 34.7f;
+static const float STAR_YEAR_DAYS = 365.0f;
+static const float SUN_DISC_RADIUS = 0.0283f;    // 1.62 degrees: the sun's bright core
+static const float MOON_DISC_RADIUS = 0.0332f;   // 1.9 degrees: a little larger than the sun, so it can cover it whole
+static const float UMBRA_RADIUS = 0.0454f;       // the world's full shadow at the moon's distance
+static const float PENUMBRA_RADIUS = 0.0785f;    // its partial shadow
+
+// How much of a disc of radius r1 a disc of radius r2 covers, their
+// centres d apart (small angles: flat geometry), 0..1.
+static inline float DiscCover(float r1, float r2, float d) {
+    if (d >= r1 + r2) return 0.0f;
+    if (d <= fabsf(r1 - r2)) return r2 >= r1 ? 1.0f : (r2 * r2) / (r1 * r1);
+    float a1 = acosf((d * d + r1 * r1 - r2 * r2) / (2 * d * r1)), a2 = acosf((d * d + r2 * r2 - r1 * r1) / (2 * d * r2));
+    float lens = r1 * r1 * (a1 - 0.5f * sinf(2 * a1)) + r2 * r2 * (a2 - 0.5f * sinf(2 * a2));
+    return lens / (3.14159265f * r1 * r1);
+}
+static inline float SkyAngle(Vec3 a, Vec3 b) { float c = Dot(a, b); return acosf(c > 1 ? 1 : c < -1 ? -1 : c); }
+
 static inline float SkySmooth(float e0, float e1, float x) {
     float t = (x - e0) / (e1 - e0);
     t = t < 0 ? 0 : (t > 1 ? 1 : t);
     return t * t * (3 - 2 * t);
 }
 
-static inline SkyState ComputeSky(float dayTime) {
+// `day`: whole days since the world began (saved with it); the moon and
+// stars need it, the sun doesn't.
+static inline SkyState ComputeSky(float dayTime, uint32_t day = 0) {
     const float PI = 3.14159265f;
     float t = fmodf(dayTime, DAY_LENGTH_SECONDS);
     if (t < 0) t += DAY_LENGTH_SECONDS;
@@ -43,25 +81,38 @@ static inline SkyState ComputeSky(float dayTime) {
     // rises due east, passes straight overhead and sets due west, its whole
     // path in one vertical plane. Noon shadows fall straight down.
     s.sunDir = Normalize(kEast * cosf(a) + kUp * sinf(a));
-    // The moon runs ~140 degrees ahead of the sun along the same path:
-    // rising late in Dusk, up through the night and still up in the west
-    // for the first minutes of the morning, the way a waning moon lingers
-    // after dawn (so a new world's first sunrise has it). Its path leans a
-    // few degrees off the sun's, as a real moon's does.
-    float m = a + 2.45f;
-    s.moonDir = Normalize(kEast * cosf(m) + kUp * sinf(m) + kNorth * (0.09f * sinf(m)));
-    float up = SkySmooth(-0.12f, 0.25f, s.sunDir.y);
+    // Days since the world began, continuously (a double: exact for ages).
+    double T = (double)day + (double)dayTime / DAY_LENGTH_SECONDS; // unwrapped: 3600 s into day 0 is day 1
+    // The moon's angle ahead of the sun along the sky. A new world starts
+    // ~140 degrees (a waning moon still up in the west at the first
+    // sunrise); it falls back 45 degrees a day: waning, new, waxing, full.
+    float E = (float)(2.45 - 2.0 * PI * fmod(T / MOON_MONTH_DAYS, 1.0));
+    float node = (float)(0.9 + 2.0 * PI * fmod(T / MOON_NODE_DAYS, 1.0));
+    float beta = MOON_TILT * sinf(E - node);     // north or south of the sun's path
+    float m = a + E;
+    s.moonDir = Normalize(kEast * (cosf(m) * cosf(beta)) + kUp * (sinf(m) * cosf(beta)) + kNorth * sinf(beta));
+    s.moonLit = 0.5f * (1.0f - Dot(s.sunDir, s.moonDir));
+    // Eclipses, from the discs themselves: the moon over the sun; the
+    // moon in the world's shadow, which points away from the sun.
+    s.solarEclipse = DiscCover(SUN_DISC_RADIUS, MOON_DISC_RADIUS, SkyAngle(s.sunDir, s.moonDir));
+    Vec3 antiSun = { -s.sunDir.x, -s.sunDir.y, -s.sunDir.z };
+    float dShadow = SkyAngle(antiSun, s.moonDir);
+    s.lunarUmbra = DiscCover(MOON_DISC_RADIUS, UMBRA_RADIUS, dShadow);
+    s.lunarPenumbra = DiscCover(MOON_DISC_RADIUS, PENUMBRA_RADIUS, dShadow);
+    // A solar eclipse barely dims the day until the sun is nearly gone,
+    // then the day falls toward night in the last moments of cover.
+    float dim = 1.0f - 0.93f * SkySmooth(0.55f, 1.0f, s.solarEclipse);
+    float up = SkySmooth(-0.12f, 0.25f, s.sunDir.y) * dim;
     s.daylight = NIGHT_LIGHT + (1.0f - NIGHT_LIGHT) * up;
     // Direct sun arrives within a minute or two of sunrise (low, orange,
     // long shadows) rather than after the sun has climbed ~9 degrees. It
     // ends exactly at the horizon: below it the sun moves 5x faster (the
     // night is short), which would turn the last of the fade into a snap.
-    s.sunLight = SkySmooth(0.0f, 0.10f, s.sunDir.y);
-    s.starsVisible = 1.0f - SkySmooth(-0.20f, 0.05f, s.sunDir.y);
-    // The whole sky turns as one: the stars ride the same angle as the sun
-    // (slow through the day, quick through the short night), so a star and
-    // the sun never drift against each other; the moon trails at a fixed offset.
-    s.starAngle = a;
+    s.sunLight = SkySmooth(0.0f, 0.10f, s.sunDir.y) * dim;
+    s.starsVisible = 1.0f - SkySmooth(-0.20f, 0.05f, s.sunDir.y) * dim;
+    // The stars turn with the sky (the sun's angle: slow through the day,
+    // quick through the short night) and gain a turn a year on the sun.
+    s.starAngle = a + (float)(2.0 * PI * fmod(T / STAR_YEAR_DAYS, 1.0));
     return s;
 }
 
@@ -126,7 +177,10 @@ static inline Atmosphere ComputeAtmosphere(const SkyState& s) {
     a.sunColor = SkyScale(SkyLerp(sunLow, sunHigh, high), 2.3f * s.sunLight);
     // Moonlight: faint and blue, only while the moon is up and the sun isn't.
     float moonUp = SkySmooth(-0.02f, 0.15f, s.moonDir.y) * (1.0f - day);
-    a.moonColor = SkyScale({ 0.55f, 0.65f, 1.0f }, 0.28f * moonUp);
+    // As bright as the lit share of its face (a full moon lights the land,
+    // a new one doesn't), dimmed by the world's shadow in a lunar eclipse.
+    float moonBright = (0.08f + 0.92f * s.moonLit) * (1.0f - 0.92f * s.lunarUmbra) * (1.0f - 0.35f * s.lunarPenumbra);
+    a.moonColor = SkyScale({ 0.55f, 0.65f, 1.0f }, 0.28f * moonUp * moonBright);
     a.zenith = SkyLerp({ 0.004f, 0.006f, 0.018f }, { 0.10f, 0.28f, 0.78f }, day);
     a.horizon = SkyLerp({ 0.012f, 0.016f, 0.035f }, { 0.55f, 0.68f, 0.90f }, day);
     a.twilightAmount = (1.0f - high) * SkySmooth(-0.18f, 0.02f, s.sunDir.y) * (1.0f - SkySmooth(0.25f, 0.45f, s.sunDir.y));

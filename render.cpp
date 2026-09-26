@@ -558,7 +558,7 @@ static const char* g_skyShaderSrc =
     "// uses atmosphere\n"
     "cbuffer SkyCB : register(b0) {\n"
     "    row_major matrix viewProj;\n"
-    "    float4 params;    // x stars visible, y direct-sun amount (disc brightness), zw unused\n"
+    "    float4 params;    // x stars visible, y direct-sun amount (disc brightness), z solar eclipse (0..1 covered), w unused\n"
     "    float4 moon;      // xyz toward the moon, w visibility\n"
     "    float4 starRow0; float4 starRow1; float4 starRow2; // sky direction -> star-field direction\n"
     "};\n"
@@ -580,7 +580,7 @@ static const char* g_skyShaderSrc =
     "    float3 key = float3(floor(g), face);\n"
     "    if (Hash(key) > 0.18f) return 0.0f;\n"
     "    float2 spot = float2(Hash(key + 7.1f), Hash(key + 3.7f)) * 0.7f + 0.15f;\n"
-    "    float size = 0.10f + 0.14f * Hash(key + 1.3f);\n"
+    "    float size = 0.17f + 0.20f * Hash(key + 1.3f);\n"
     "    float b = saturate(1.0f - length(frac(g) - spot) / size);\n"
     "    return b * b * (0.5f + 0.9f * Hash(key + 9.2f));\n"
     "}\n"
@@ -618,11 +618,34 @@ static const char* g_skyShaderSrc =
     "    float3 s = float3(dot(starRow0.xyz, d), dot(starRow1.xyz, d), dot(starRow2.xyz, d));\n"
     "    float veil = 1.0f - cloud;\n"
     "    col += Stars(s) * params.x * above * veil * float3(0.8f, 0.85f, 1.0f);\n"
-    "    float3 moonCol = float3(0.9f, 0.92f, 1.0f) * 1.4f;\n"
-    "    col = lerp(col, moonCol, Disc(d, moon.xyz, 0.99966f) * moon.w * above * veil);\n"
-    // The sun's disc (bright enough to bloom), dimmed by cloud.
-    "    float sunDisc = smoothstep(0.9990f, 0.9996f, mu) * params.y * above;\n"
+    // The moon (D57): a small sphere lit from the sun's side, so its phase
+    // is where the sun actually is -- a crescent near the sun, full
+    // opposite it -- with a faint glow on its dark side. Where it's in the
+    // world's shadow (pointing away from the sun) it dims, and in the
+    // full shadow turns a deep red, as sunlight bent round the world does.
+    // Its disc (radius 1.9 degrees, sky.h MOON_DISC_RADIUS) hides whatever
+    // is behind it, including the sun.
+    "    float moonMask = Disc(d, moon.xyz, 0.999449f) * above;\n"
+    "    [branch] if (moonMask > 0.0f) {\n"
+    "        float3 q = (d - moon.xyz * dot(d, moon.xyz)) / 0.0332f;\n"   // across the disc, 0..1 at the rim
+    "        float3 nrm = q - moon.xyz * sqrt(saturate(1.0f - dot(q, q)));\n" // the visible face points back at us
+    "        float lit = smoothstep(-0.06f, 0.08f, dot(nrm, fSunDir.xyz));\n"
+    "        float ang = acos(clamp(dot(d, -fSunDir.xyz), -1.0f, 1.0f));\n"
+    "        float umbra = 1.0f - smoothstep(0.0434f, 0.0474f, ang);\n"   // sky.h UMBRA_RADIUS, a soft rim
+    "        float pen = 1.0f - smoothstep(0.0454f, 0.0785f, ang);\n"     // PENUMBRA_RADIUS
+    "        float3 face = float3(0.9f, 0.92f, 1.0f) * 1.4f * (lit * (1.0f - 0.55f * pen) + 0.035f);\n"
+    "        face = lerp(face, float3(0.55f, 0.13f, 0.05f) * 0.32f * (0.3f + lit), umbra);\n"
+    // Against the day sky a new moon's dark face barely shows -- except
+    // in front of the sun, where it's the dark disc of an eclipse.
+    "        float show = max(moon.w, params.z);\n"
+    "        col = lerp(col, face * (1.0f - params.z * 0.97f), moonMask * show * veil);\n"
+    "    }\n"
+    // The sun's disc (bright enough to bloom), dimmed by cloud, hidden
+    // behind the moon; at totality a faint pearly corona rings it.
+    "    float sunDisc = smoothstep(0.9990f, 0.9996f, mu) * params.y * above * (1.0f - moonMask);\n"
     "    col += sunDisc * float3(1.0f, 0.9f, 0.7f) * 30.0f * (1.0f - cloud);\n"
+    "    float corona = smoothstep(0.90f, 1.0f, params.z) * smoothstep(0.9955f, 0.999449f, mu) * (1.0f - moonMask) * above;\n"
+    "    col += corona * float3(0.85f, 0.9f, 1.0f) * 3.0f * (1.0f - cloud);\n"
     // Thin ice cloud is lit right through: bright, a strong glow toward
     // the sun, and it catches the sunset's colour first.
     "    float3 cloudLit = fAmbientUp.rgb * 1.3f + fSunColor.rgb * (0.35f + 0.9f * pow(saturate(mu), 6.0f)) + fMoonColor.rgb * 1.2f;\n"
@@ -1183,7 +1206,7 @@ void RenderEmptyScene() {
 }
 
 void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 forward, Vec3 up, float dayTime) {
-    SkyState sky = ComputeSky(dayTime);
+    SkyState sky = ComputeSky(dayTime, g_dayCount);
     bool shadows = g_shadows && g_shadowsAvailable && sky.sunLight > 0.001f;
     if (shadows) { ProfScope prof(PROF_SHADOW); UpdateShadowMap(w, eye, sky.sunDir); }
     GpuStamp(GPU_T_SHADOW);
@@ -1243,7 +1266,7 @@ void RenderScene(World& w, const Mat4& view, const Mat4& proj, Vec3 eye, Vec3 fo
         float moonVis = SkySmooth(-0.03f, 0.05f, md.y) * (1.0f - 0.75f * day);
         struct { Mat4 viewProj; float params[4]; float moon[4]; float rows[3][4]; } cb = {
             skyViewProj,
-            { sky.starsVisible, sky.sunLight, 0, 0 },
+            { sky.starsVisible, sky.sunLight, sky.solarEclipse, 0 },
             { md.x, md.y, md.z, moonVis },
             { { R[0][0], R[1][0], R[2][0], 0 }, { R[0][1], R[1][1], R[2][1], 0 }, { R[0][2], R[1][2], R[2][2], 0 } },
         };

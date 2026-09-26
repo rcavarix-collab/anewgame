@@ -226,7 +226,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int nCmdShow) {
                 // single authoritative source of "what time is it,"
                 // which the music (Part XIV) reads directly rather than
                 // tracking its own independent notion of time.
-                g_dayTimeSeconds = fmodf(g_dayTimeSeconds + FIXED_DT, DAY_LENGTH_SECONDS);
+                g_dayTimeSeconds += FIXED_DT;
+                if (g_dayTimeSeconds >= DAY_LENGTH_SECONDS) { g_dayTimeSeconds -= DAY_LENGTH_SECONDS; g_dayCount++; } // a new day: the moon and stars move on (sky.h)
 
                 {
                     float stepX = g_player.x - headLastX, stepZ = g_player.z - headLastZ;

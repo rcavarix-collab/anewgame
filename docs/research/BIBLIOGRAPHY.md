@@ -150,6 +150,21 @@ Listed so they can be found; each is [h], named by a helper (ChatGPT or Grok) an
 109. Smith, J. O. *Physical Audio Signal Processing*. Online book, Center for Computer Research in Music and Acoustics (CCRMA), Stanford University. ccrma.stanford.edu/~jos/pasp. [k] ?
 110. Plut, C. and Pasquier, P. 2020. Generative Music in Video Games: State of the Art, Challenges, and Prospects. *Entertainment Computing* 33, 100337. [s] ~ (volume and article number ?)
 
+## Sound design (SOUND_DESIGN.md; search results consulted 2026-09-26)
+
+111. Gaver, W. W. 1993. What in the World Do We Hear? An Ecological Approach to Auditory Event Perception. *Ecological Psychology* 5(1), 1–29. DOI 10.1207/s15326969eco0501_1. [s] ~
+112. Klatzky, R. L., Pai, D. K. and Krotkov, E. P. 2000. Perception of Material from Contact Sounds. *Presence: Teleoperators and Virtual Environments* 9(4), 399–410. [s] ~
+113. van den Doel, K., Kry, P. G. and Pai, D. K. 2001. FoleyAutomatic: Physically-Based Sound Effects for Interactive Simulation and Animation. In *Proceedings of SIGGRAPH 2001*, ACM, 537–544. DOI 10.1145/383259.383322. [s] ~
+114. Cook, P. R. 2002. *Real Sound Synthesis for Interactive Applications*. A K Peters, Natick, MA. [s] ~
+115. Cook, P. R. 1997. Physically Informed Sonic Modeling (PhISM): Synthesis of Percussive Sounds. *Computer Music Journal* 21(3). [s] ~ (issue ?)
+116. Nordahl, R., Serafin, S. and Turchet, L. 2010. Sound Synthesis and Evaluation of Interactive Footsteps for Virtual Reality Applications. In *Proceedings of IEEE Virtual Reality 2010*, Waltham, MA. DOI 10.1109/VR.2010.5444796. [s] ~
+117. Turchet, L., Serafin, S. and Cesari, P. 2013. Walking Pace Affected by Interactive Sounds Simulating Stepping on Different Terrains. *ACM Transactions on Applied Perception* 10(4), article 23. DOI 10.1145/2536764.2536770. [s] ~
+118. Zahorik, P., Brungart, D. S. and Bronkhorst, A. W. 2005. Auditory Distance Perception in Humans: A Summary of Past and Present Research. *Acta Acustica united with Acustica* 91, 409–420. [s] ~
+119. Chion, M. 1990. *L'audio-vision*. Nathan; English translation by C. Gorbman, *Audio-Vision: Sound on Screen*, Columbia University Press, 1994. [s] ~
+120. Jørgensen, K. 2008. Left in the Dark: Playing Computer Games with the Sound Turned Off. In K. Collins (ed.), *From Pac-Man to Pop Music*, Ashgate. [s] ~ (whether a book chapter or a book ?)
+121. Jørgensen, K. 2008. Audio and Gameplay: An Analysis of PvP Battlegrounds in World of Warcraft. *Game Studies* 8(2). gamestudies.org. [s] ~
+122. Schafer, R. M. 1977. *The Tuning of the World*. Knopf (reissued 1994 as *The Soundscape: Our Sonic Environment and the Tuning of the World*, Destiny Books). [s] ~
+
 ## Verifying the "?" entries
 
 A helper task, or the owner with Unpaywall or the DOI links, can confirm each "?" against the paper's first page. When one is confirmed, change it to ✓ here.

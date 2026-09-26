@@ -77,6 +77,14 @@ Decided by what the debug views show: a longer baked sky view (16–24 blocks), 
   - motifs of place.
 
   Owner's calls: harmony by region, day tempo.
+- **Sound design (docs/research/SOUND_DESIGN.md):**
+  - the event grammar (material × interaction × pattern) for every world sound;
+  - distance darkening;
+  - grain counts per event;
+  - informative dig and place cues;
+  - keynotes and soundmarks by region.
+
+  Owner's call: longer, harmony-locked rings for hard materials, which relaxes SOUND_PALETTE 1.6's 60 ms cap.
 - Sky settings (cloud amount, cloud speed), now or with weather.
 - A faint wind bed in the world sound that rises when the low clouds move faster.
 - Start planning the building layer (W067) if it becomes M2, with Grok researching alongside.

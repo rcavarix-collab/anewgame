@@ -23,6 +23,7 @@ Our own research: theory and explanation from reliable sources (D66), a regular 
 | [LANDSCAPE.md](LANDSCAPE.md) | How people enjoy, read and find their way through a landscape; twelve design rules for terrain, far land, colour and sound | Kaplan, Appleton, Spehar et al., Lynch, Keltner & Haidt, Palmer & Schloss, Pijanowski et al. [s] |
 | [GAME_DESIGN.md](GAME_DESIGN.md) | Why people play; walkgrid held against the theory; how to see our own blind spots | Hunicke et al., Ryan et al., Sweetser & Wyeth, Pinelle et al. [s] |
 | [MUSIC.md](MUSIC.md) | Consonance by register, voice leading, timbre, reverb, expectation; nine things to try in our music and world sound | Plomp & Levelt, Huron, Grey, McAdams et al., Schroeder, Salimpoor et al., Chowning [s] |
+| [SOUND_DESIGN.md](SOUND_DESIGN.md) | World sounds as events: materials by decay, modal and granular synthesis, footsteps, distance, sync, what sounds tell the player | Gaver, Klatzky et al., van den Doel et al., Cook, Turchet et al., Zahorik et al., Chion, Jørgensen, Schafer [s] |
 | [PAPER_IDEAS.md](PAPER_IDEAS.md) | Papers we might write from the project (background) | none yet |
 
 ## Research steps proposed next (2026-09-26; the owner chooses)

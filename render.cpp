@@ -261,8 +261,20 @@ static const char* g_shaderSrc =
     // One material, projected from the world: colour, and the surface map
     // (relief as a world-space nudge to the normal, shine, glow).
     "struct Mat { float3 col; float3 bump; float shine; float glow; float h; };\n"
+    // Crisp near the player (D47): where a texel covers more than a screen
+    // pixel, the colour is point-sampled (samp0) so each texel shows sharp;
+    // further out the smooth anisotropic read stops shimmer. gCrisp (set per
+    // pixel in PSMain from the pixel's footprint) blends the two over a
+    // short band, so there's no line where one becomes the other. Relief,
+    // shine and height stay smooth: blocky bumps would light in squares.
+    "static float gCrisp = 0.0f;\n"
     "void SampleProj(float2 uv, float layer, inout Mat m, float wgt, float3 tanU, float3 tanV) {\n"
-    "    float3 c = tex0.Sample(softSamp, float3(uv, layer)).rgb;\n"
+    "    float3 c;\n"
+    "    [branch] if (gCrisp > 0.999f) c = tex0.Sample(samp0, float3(uv, layer)).rgb;\n"
+    "    else {\n"
+    "        c = tex0.Sample(softSamp, float3(uv, layer)).rgb;\n"
+    "        if (gCrisp > 0.001f) c = lerp(c, tex0.Sample(samp0, float3(uv, layer)).rgb, gCrisp);\n"
+    "    }\n"
     "    float4 s = surfTex.Sample(softSamp, float3(uv, layer));\n"
     "    m.col += c * wgt;\n"
     "    float2 t = s.xy * 2.0f - 1.0f;\n"
@@ -318,6 +330,9 @@ static const char* g_shaderSrc =
     "    float3 pw = ns * ns; pw *= pw; pw /= max(pw.x + pw.y + pw.z, 1e-5f);\n"
     "    float topness = smoothstep(0.45f, 0.70f, ns.y);\n"
     "    bool up = ns.y >= 0.0f;\n"
+    // Texels per screen pixel along the surface (64 texels a block).
+    "    float foot = max(length(ddx(i.wpos)), length(ddy(i.wpos))) * 64.0f;\n"
+    "    gCrisp = 1.0f - smoothstep(0.55f, 1.0f, foot);\n"
     "    Mat m = SampleMaterial(i.mats.x, i.wpos, pw, topness, up);\n"
     // Height-based blending (23.4): where materials meet, each one's weight
     // is lifted by its own height map and the tallest shows through within

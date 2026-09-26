@@ -11,5 +11,6 @@ Every claim Grok makes about walkgrid is checked against the code before anythin
 | [R5 presets](R5.md) | Fair | A preset table, with the reference preset equal to the defaults and no SSAO |
 | [R6 caves](R6.md) | Good | Worms plus coarse-lattice density, in a terrain v3 |
 | [R7 M2 options](R7.md) | Fair | Four candidates for the owner; building needs W067 first |
+| [T2 proofread](T2.md) | Fair | Five text edits (waiting for the go-ahead) |
 
 **What Grok is good for, so far:** comparing a few approaches on fixed points, and laying out a design skeleton. **Not good for:** anything that depends on how our code actually works (it fills gaps with plausible inventions), and exact numbers.

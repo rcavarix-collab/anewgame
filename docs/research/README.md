@@ -24,3 +24,14 @@ Our own research: theory and explanation from reliable sources (D66), a regular 
 | [GAME_DESIGN.md](GAME_DESIGN.md) | Why people play; walkgrid held against the theory; how to see our own blind spots | Hunicke et al., Ryan et al., Sweetser & Wyeth, Pinelle et al. [s] |
 | [MUSIC.md](MUSIC.md) | Consonance by register, voice leading, timbre, reverb, expectation; nine things to try in our music and world sound | Plomp & Levelt, Huron, Grey, McAdams et al., Schroeder, Salimpoor et al., Chowning [s] |
 | [PAPER_IDEAS.md](PAPER_IDEAS.md) | Papers we might write from the project (background) | none yet |
+
+## Research steps proposed next (2026-09-26; the owner chooses)
+
+Ranked by how directly each serves the plans in hand:
+1. **Landforms (geomorphology):** how real land takes its shape (drainage, erosion, talus, the angle of repose, plateaus and mesas), from agencies and textbooks. Feeds terrain v2 directly, so the land reads as plausible.
+2. **Procedural generation theory:** expressive-range analysis (measuring what a generator can produce and how varied it is) and the academic text on procedural content. It turns "is terrain v2 more varied?" into a measurement.
+3. **Accessibility:** colour-vision deficiency (we tell materials apart by colour), photosensitivity guidance, simulator sickness in first person (field of view, the slide's lean and roll), and hearing (sound cues need visual equivalents). Standards bodies and peer-reviewed work.
+4. **Teaching without words (D26):** affordances and signifiers, and onboarding through play. How a player learns walkgrid with almost no text.
+5. **Ethics of engagement:** dark patterns in game design and compulsion loops, to keep walkgrid respectful of players' time. Fits our privacy stance.
+6. **Building and places (W067):** pattern languages in architecture, and how people make places their own. For the building layer.
+7. **Colour science for the palette:** perceptual colour spaces and harmony, for step 9's art and the colour pass.

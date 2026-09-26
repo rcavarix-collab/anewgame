@@ -359,3 +359,5 @@ At the next session, for each `incoming/grok/<task>.md` (or pasted answer):
 | 2026-09-26 | R3 | Delivered. Appraised: fair; keep the edited-cell flag, drop the rest. `docs/grok_reviews/R3.md` |
 | 2026-09-26 | R4 | Delivered. Appraised: weak to fair; mostly existing or against the owner's direction; keep the texture mark language and per-texel mosaic edges. `docs/grok_reviews/R4.md` |
 | 2026-09-26 | R5 | Delivered (the first-run rule missing from the paste). Appraised: fair; the reference preset must equal the defaults, no SSAO. `docs/grok_reviews/R5.md` |
+| 2026-09-26 | R6 | Delivered. Appraised: good, the best so far; keep worms and coarse-lattice density. `docs/grok_reviews/R6.md` |
+| 2026-09-26 | R7 | Delivered. Appraised: fair; invented a props list and missed the building layer (W067). `docs/grok_reviews/R7.md` |

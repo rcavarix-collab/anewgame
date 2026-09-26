@@ -1,97 +1,72 @@
 # Tasks for a helper agent (Grok, fast mode)
 
-Work another agent can do on walkgrid between Claude sessions. Written for a **chat assistant in fast mode**: it can read what's pasted to it and write text, but it can't open the repository, compile, run scripts, render pictures or play the game. Claude reviews, applies and checks everything at the next session.
+Work another agent can do on walkgrid between Claude sessions. Written for a **chat assistant in fast mode** that sees only what's pasted to it.
 
-**Copy and paste only, no attachments.** Every task has a ready-made pack in `docs/agent_packs/`: the Brief, the task and the excerpts of code and docs it needs, as text in one to four parts, each short enough for one message on a free plan. The agent answers in text too.
+**No files, only what the task needs** (owner, 2026-09-26: "we can let grok see chunks of code, but I'm not going to give it piles of files"):
+- Each task carries the facts it needs, written out in plain words by Claude: names of the knobs, what they do, their ranges and limits.
+- Where a format matters (how a test is written, a function's signature, a file layout), the task includes a few lines showing it. Never a whole file.
+- The one exception is T1 and T2, which carry the player's own words (`assets/text/en.txt`), because those words are what the task works on.
 
-So every task here:
-- is small enough for one conversation and a few pastes;
-- has its pack, holding only the excerpts it needs;
-- names exactly what to hand back, in what form;
-- says what "done" means;
-- ends with a fixed self-review.
+**Each task is one paste**, a file in `docs/agent_packs/` (for example `docs/agent_packs/R1.md`). It holds the Brief and the task. Its name is at the top and the bottom, so tasks can't be mixed up. The agent answers in text.
 
-Nothing the agent writes goes into the game until Claude has checked it.
+Nothing the agent writes goes into the game until Claude has checked it against the real code.
 
 ---
 
 ## For the owner: how to run a task
 
-1. Start a fresh chat for each task (fast mode keeps a short memory).
-2. On GitHub, branch `claude/epic-rubin-6pctr0`, open `docs/agent_packs/README.md`: it lists each task's files in order. Free chat plans cap a message's length, so most tasks come in 2–4 parts of at most 12,000 characters (`R1-1.md`, `R1-2.md`, ...); a short task is one file (`T2.md`). For each part in turn: open it, press the **Copy raw file** button (two overlapping squares, top right of the file), paste it into the chat and send. The agent answers "got part 1 of 3" and so on, and starts the task when it gets the last part. If a paste is refused or cut short, tell Claude: the part size is one number in the tool.
-3. If the answer stops part way, type `continue`. Repeat until it writes `END OF DELIVERY`.
-4. Copy the whole answer (the copy button under it; for several parts, copy each in turn). On GitHub, branch `agent/grok` (create it from `claude/epic-rubin-6pctr0` the first time), choose **Add file, Create new file**, name it `incoming/grok/<task>.md` (for example `incoming/grok/R1.md`), paste, and commit. Several parts go one after another in the same file. Or simply paste it to Claude next session.
+1. Start a **new private chat** for every task (Grok's private or temporary chat, so it doesn't draw on its memory of earlier chats). Never reuse a chat that had another task in it: the agent mixes them up. Its first R1 run, in a fresh chat, quoted task R2's inputs, which were never in the R1 pack: it made them up or drew them from its own memory.
+2. On GitHub, branch `claude/epic-rubin-6pctr0`, open `docs/agent_packs/<task>.md` (the list is `docs/agent_packs/README.md`). Press **Copy raw file** (two overlapping squares, top right of the file), paste it into the chat and send.
+3. If its answer stops part way, type `continue`, until it writes `END OF DELIVERY`.
+4. Copy the whole answer (the copy button under it; for several parts, each in turn). On GitHub, branch `agent/grok` (create it from `claude/epic-rubin-6pctr0` the first time), choose **Add file, Create new file**, name it `incoming/grok/<task>.md` (for example `incoming/grok/R1.md`), paste and commit. Or paste it to Claude next session.
 5. Add a line to the Log at the bottom of this file, or tell Claude which tasks you ran.
+
+If the agent refuses, stalls, or says it's missing files, reply: `Everything you need is in my first message. Where you need a detail that isn't there, make a sensible assumption, label it ASSUMPTION, and carry on.` If it still won't, skip the task and tell Claude.
 
 Don't paste the agent's code into the game yourself. Claude applies it next session and runs the checks, so a mistake can't break your build.
 
-**Keeping packs fresh (Claude).** The packs are made by `python3 tools/make_agent_packs.py` from this file and the current code. Claude reruns it at every milestone, whenever it appends a task, and before the owner's away days, and commits the result. Each pack says the date it was made. A pack made before code changed may have stale excerpts: Claude's apply step (below) rejects an edit whose Find text no longer matches, so nothing breaks, the task is just redone.
+**Keeping packs fresh (Claude).** `python3 tools/make_agent_packs.py` makes the packs from this file. Claude reruns it whenever this file changes and commits the result. When the code changes, Claude updates the facts in the affected tasks.
 
 ---
 
-## The Brief (paste this first, every time)
+## The Brief (goes at the top of every pack)
 
-> You're helping build **walkgrid**, a first-person game on a faceted world (angular ground over a grid of one-block cells), written in C++17 with Direct3D 11 for Windows. The owner is Ryan; the lead developer is another AI (Claude), who will review and apply everything you produce at its next session. You can't compile or run anything, so precision matters more than speed.
+> You're helping build **walkgrid**, a first-person game for Windows (C++17, Direct3D 11). The world is faceted: angular ground built over a grid of one-block cells, lit by a sun, moon and sky that move on their own clocks. The owner is Ryan; the lead developer is another AI (Claude), who checks and applies everything you write at its next session.
+>
+> **This message is complete, and it's about one task only: the one named at the top.** You won't get any files. The task tells you the facts you need about the game, with a few lines of code where a format matters. Trust them.
+>
+> **Never stop or refuse for lack of information.** Where you'd need a detail that isn't here, pick the most sensible assumption, write it in your text as `ASSUMPTION: ...`, and carry on. Claude checks every assumption against the real code, so a labelled guess is useful and an unlabelled one is harmful.
 >
 > **Hard rules, never broken:**
-> - no network code of any kind;
-> - no recorded or sampled audio (sound is synthesized only);
-> - no brand, product or company names, or anyone's art, music or text, in anything the player sees;
-> - every word the player sees comes from `assets/text/en.txt` through `Str("key")` or `StrF("key", {...})`, never written into code;
-> - no reading the player's machine;
-> - never copy another game's look.
+> - no network use of any kind;
+> - no recorded or sampled audio (all sound is synthesized);
+> - no brand, product or company names, and nobody else's art, music, text or characters;
+> - never copy another game's look;
+> - everything must run well on a six-year-old PC (GTX 1060 class) at 60 frames a second; heavy effects need a setting to turn them off;
+> - the player sees few words, and every word the player sees comes from a text file keyed by name, so the game can be translated;
+> - no numbers shown to the player where a feel or a band will do.
 >
-> **How to hand work back.** Everything goes in your answer, as text: the owner copies it into one file, and Claude splits it. So:
-> - Start with `REPORT.md` (template below), then each other file you produce.
-> - Put each file under a heading line `=== FILE: incoming/grok/<task number>-<name>/<file name> ===`, then its content as one complete fenced block.
-> - If you're running out of room, stop at the end of a file and write `CONTINUED: say "continue"`. When the owner says continue, carry on with the next file; never repeat or restart one.
-> - End your last part with the line `END OF DELIVERY`.
-> - **Code changes to existing files are never whole rewritten files.** Write them as numbered edits in a file called `EDITS.md`, each in exactly this form:
+> **How to answer.** Everything goes in your reply, as text. The owner copies it into one file and Claude splits it:
+> 1. First, a short report (template below), under the line `=== FILE: REPORT.md ===`.
+> 2. Then each file the task asks for, under its own line `=== FILE: <name the task gives> ===`, with the content right after it (code in one fenced block).
+> 3. If you run out of room, stop at the end of a file and write `CONTINUED: say "continue"`. When told to continue, go on with the next file; never repeat or restart one.
+> 4. End with the line `END OF DELIVERY`.
 >
->   ````
->   ### Edit 1: <one-line purpose>
->   File: <path, e.g. hud.cpp>
->   Find (copied exactly from the file I gave you; at least 3 whole lines; appears only once in the file):
->   ```cpp
->   <the lines, character for character, including indentation>
->   ```
->   Replace with:
->   ```cpp
->   <the new lines>
->   ```
->   ````
+> **Before you answer, check your work once against the task's "Done when" list** and fix what you find.
 >
->   Copy the Find text from the excerpt you were given; never retype it from memory. It can only come from an excerpt in this message. Change nothing outside the edits: no reformatting, no renaming, no "while I'm here" fixes. Keep the file's style: its naming, its comment density, a header comment on any new file saying what it is.
-> - **New files** (a new test function, a script, a document) are complete files.
-> - If something the task needs isn't in what you were given, don't guess: list it under "Needed but not given" in the report and stop that part.
-> - The code and docs below are **excerpts**: a file may hold more than you see. Say "not in my excerpt" rather than assuming something is missing from the game.
->
-> **Code rules:**
-> - C++17 only.
-> - Use only functions, types and constants you can see in the excerpts you were given. List any you assumed exist.
-> - Never use these words as names: `small`, `near`, `far`, `interface`, `hyper`, `pascal`, `cdecl` (Windows macros).
-> - Never use `sprintf`, `strcpy`, `fopen`, `getenv`, `localtime` or similar unsafe C functions: use `snprintf` and `std::` equivalents.
-> - Comment lines inside shader string code must not end in `;`.
->
-> **Before you answer, review your own work once, completely**, against the task's "Done when" list and the checklist in the report template, and fix what you find. Then fill in the report honestly: "not sure" is a useful answer; a confident wrong one costs a day.
->
-> **REPORT.md template:**
+> **Report template:**
 > ```
-> # Task <number>: <name>
-> ## What I produced
-> <each file, one line: path, new or edits, what it's for>
-> ## Done when (from the task)
-> <each item: Yes / Partly / No, with where in my files>
-> ## Self-review
-> 1. I re-read every file I produced start to finish after writing it: Yes/No
-> 2. Every Find block is copied exactly and is unique in its file: Yes/No/Not applicable
-> 3. Every function, type, constant and string key I use appears in the excerpts I was given (list any that don't): ...
-> 4. Hard rules and code rules above all kept: Yes/No (say which, if No)
-> 5. Every claim I make about the existing code quotes it or names the file and function: Yes/No
-> 6. What I changed during my review pass: ...
-> 7. What I could not check (I can't compile or run anything): ...
-> 8. Confidence, per file: high / medium / low, and why
-> ## Needed but not given
+> # Task <ID>: <name>
+> ## Files
+> <each file: name, one line on what it is>
+> ## Done when
+> <each item from the task: Yes / Partly / No, and where>
+> ## Assumptions
+> <every ASSUMPTION you made, one line each, or "none">
+> ## Self-check
+> 1. Hard rules kept: Yes/No
+> 2. Everything I say about the game comes from the task's facts or is labelled ASSUMPTION: Yes/No
+> 3. What I'm least sure of: ...
 > ## Questions for the owner or Claude
 > ```
 
@@ -99,203 +74,283 @@ Don't paste the agent's code into the game yourself. Claude applies it next sess
 
 ## The tasks
 
-Each task lists: **Pack has** (the excerpts its pack carries; nothing to attach), **Do**, **Hand back** (exact paths), **Done when**, and any task-specific checks. Sizes: **S** fits one reply; **M** may need a follow-up "continue". The groups are ordered by usefulness, and within each group the first tasks matter most.
+Each task has: **Facts** (what's true in the game today, for the agent to build on), **Do**, **Hand back**, **Done when**. The groups are ordered by usefulness.
 
-### Research notes (documents only: safest, and most useful for the next Claude session)
+### Research notes (documents only)
 
-Each note should run 800–2,000 words. Use short sections. For every option, give:
+Each note runs 800–2,000 words in short sections. For every option, give:
 - what it is;
-- where it costs (when a chunk is built, or every frame; name the system from COST_LEDGER);
+- when it costs: when a piece of ground is built (once, on a background thread) or every frame;
 - what the player would see;
-- which files it would touch;
-- risks.
+- what could go wrong.
 
-End with a recommendation and the open questions for the owner. No code beyond short illustrative snippets.
+End with a recommendation and the open questions for the owner. Short illustrative snippets only; no full code.
 
 **R1. Cheap realistic lighting (M)**
-- Pack has: `docs/PROJECT_NOTES.md`, `DESIGN.md` 4.8, 4.9, 23.3, 23.4 and 23.5a; `ComputeAtmosphere` from `sky.h`; the world shader's lighting lines from `render.cpp`; `docs/COST_LEDGER.md`.
-- Do: the owner wants realistic light at no frame cost, not heavy post-processing. The problem today is a "golf ball" look, a dimpled self-shadowing on the lumpy ground. Weigh:
-  - lighting baked into the ground when a chunk is built (each ground vertex already carries "openness" and "sky" values: see groundmesh and 23.4);
-  - whether screen-space AO should go;
-  - how small lumps and sun shadows interact at a low sun;
-  - sky and sun colour models;
+- Facts:
+  - The ground is a mesh of flat triangles (facets), built for each 16×16×16 chunk of cells on a background thread whenever the chunk changes.
+  - Each ground corner stores two baked values:
+    - "openness": how many of the 64 cells around it are solid;
+    - "sky view": how much sky it sees, from the steepest rise within 8 blocks in 8 directions.
+  - The ground shader lights each pixel as ambient + direct:
+    - Ambient is sky light from above (blue by day) blended with a dim warm bounce from below by how much the surface faces up, plus a fill light from the sun: 8% of the sun from the whole sky, more on faces turned toward the sun, and a warm bounce onto faces tilting sideways or down.
+    - The ambient is multiplied by openness and by (0.25 + 0.75 × sky view).
+    - Direct light is the sun colour × √(facing) × shadow, with a moon term at night.
+    - The facet's lighting normal is 55% of the way from its flat normal toward the smooth one, so neighbouring facets differ less.
+  - Sun shadows come from a 2048² shadow map over up to ±112 blocks, softened by 9 filtered samples. When the sun moves, the map is redrawn over four frames and crossfaded, so shadows glide.
+  - Low clouds cast soft moving shadows.
+  - Colour is lit in linear light and finished with a filmic tone curve.
+  - Distant ground fades into the sky colour.
+  - There is an optional screen-space ambient occlusion (SSAO) pass, now off by default: on the lumpy ground it made a dimpled "golf ball" look.
+  - Per-frame graphics budget: 5 ms for the world, 1 ms for post effects; today the world takes about 1–3 ms.
+  - The owner wants realistic light at no frame cost, and dislikes heavy post-processed looks.
+- Do: propose at least 5 cheap ways to make the light more convincing. Consider:
+  - more baked at build time (for example bent normals, or a longer horizon);
+  - better sky and sun colours through the day;
   - aerial perspective;
+  - how small lumps and low sun interact;
   - anything else cheap.
-- Hand back: `incoming/grok/R1-lighting/lighting.md`, `REPORT.md`.
-- Done when: at least 5 options are costed as above, one is recommended, and the golf-ball cause is discussed with the evidence it rests on.
+- Hand back: `lighting.md`.
+- Done when:
+  - at least 5 options, each with when it costs and what it looks like;
+  - one recommended option, and a first step Claude could take.
 
 **R2. Weather (M)**
-- Pack has: `docs/PROJECT_NOTES.md` section 1; `DESIGN.md` Part XIII; `sky.h`; `docs/SOUND_PALETTE.md` sections 1–3.
-- Do: design a weather system with cheap tricks only (nothing volumetric: owner). The knobs that exist:
-  - cloud cover per layer (`CIRRUS_COVER`, `CUMULUS_COVER`; `fClouds` in the shaders);
-  - the jet stream (`JetStreamAngle`);
-  - fog distance, light colour and exposure (`ComputeAtmosphere`);
-  - the sound palette's axes and ambient scene.
-
-  Propose:
+- Facts, the knobs that exist today:
+  - two cloud layers:
+    - thin high streaks, cover 0..1 (default 0.55), stretched along the wind;
+    - soft low clouds, cover 0..1 (default 0.28) at 220 blocks up, which cast soft shadows on the ground;
+    - both are drawn in the sky shader from a few per-frame numbers: no extra passes;
+  - a high wind, the "jet stream": a direction that wanders over a few game hours and, every few game days, swings up to about 60°; the clouds drift with it;
+  - per-frame light values:
+    - sun colour and strength;
+    - sky colour at the top and at the horizon;
+    - ambient light from above and from below;
+    - exposure;
+    - fog start and end distance (fog fades distant ground into the sky colour);
+  - the day clock: one game day is one real hour; the sun is up for 50 minutes of it; the moon and stars keep their own clocks and eclipses happen;
+  - sound: everything is synthesized. A world-sound system reads the surroundings into three slow-moving axes (organic ↔ mechanical, negative ↔ positive, calm ↔ active) and an ambient scene (plants, water, open sky, enclosed or deep). Every sound's character follows the axes, and all pitches come from the music's harmony. The music is one hour long, following the day in six sections.
+  - The owner rules out anything costly such as volumetric clouds.
+- Do: design a weather system:
   - a small weather state (its fields);
-  - how it moves between kinds (transitions over game time);
-  - 4–6 kinds as data (a table of knob values);
-  - rain or snow as screen-space tricks;
-  - their sound through the synth;
-  - how a new kind is added without code changes.
-- Hand back: `incoming/grok/R2-weather/weather.md`, `REPORT.md`.
-- Done when: every knob it uses exists in the given files (cited), the kinds are a table, and adding a kind is shown step by step.
+  - how it moves between kinds over game time;
+  - 4–6 kinds as a data table of knob values;
+  - rain and snow as cheap screen-space tricks;
+  - their sounds as synth ideas that fit the three axes;
+  - how a new kind is added as data, without code changes.
+- Hand back: `weather.md`.
+- Done when:
+  - the kinds are a table using only the knobs above (anything new is marked ASSUMPTION: new knob);
+  - adding a kind is shown step by step.
 
 **R3. Terracing, a nicer way (S)**
-- Pack has: `facetmesh.h`, the function `CornerPos` from `facetmesh.cpp`, `terrain.h`, `docs/DECISIONS.md` rows D35, D39, D55, D62.
-- Do: gentle slopes show one-cell steps as terraces. The smoothing pass (`FacetShape::terrace`, off) softens player edits too. Evaluate:
-  - marking edited cells (each cell has a spare state byte);
-  - smoothing driven by the terrain's height function rather than cells;
-  - a terrain v3 that shapes slopes differently;
-  - one more idea of its own.
-- Hand back: `incoming/grok/R3-terracing/terracing.md`, `REPORT.md`.
-- Done when: each option covers the chunk seams (neighbouring chunks must compute identical corners), collision (it uses the same corners) and saved worlds.
+- Facts:
+  - The ground is cells one block wide. The mesher places each corner where the cells around it meet, eases it halfway toward a smooth surface, and jitters it a little from a seed.
+  - On gentle slopes, one-cell steps show as terraces.
+  - A smoothing pass exists but is off: it also softens the player's own one-cell digging and building, which must stay crisp.
+  - Neighbouring chunks must compute exactly the same corner positions, or cracks open.
+  - Walking and collision use the same corners as drawing.
+  - Each cell has a spare state byte.
+  - Terrain comes from a pure height function of (seed, x, z). Each version of it is frozen forever, so old worlds never change; a new shape needs a new version.
+- Do: evaluate:
+  - marking edited cells (so smoothing skips them);
+  - smoothing driven by the terrain's height function instead of by cells;
+  - a new terrain version that shapes gentle slopes differently;
+  - one idea of your own.
+- Hand back: `terracing.md`.
+- Done when: each option addresses seams between chunks, collision, and existing saved worlds.
 
 **R4. Our own look (S)**
-- Pack has: `docs/PROJECT_NOTES.md` section 1, `DESIGN.md` 23.1 and 23.5a, `assets/textures/TEXTURE_BRIEF.md`. Screenshots are optional: if the owner adds one or two, the agent uses them; without them it works from the words.
-- Do: walkgrid currently resembles Valheim's low-texel realism in terrain and light; the owner wants it distinct (D60). Propose concrete levers: palette, facet emphasis and edges, light colour through the day, sky character, texture style. Describe them in words and from our own screenshots, never by pointing at another game's assets. Say what makes each ours.
-- Hand back: `incoming/grok/R4-look/look.md`, `REPORT.md`.
-- Done when: 5–8 levers, each with what changes, where (file or system) and its cost; a short "what walkgrid should never look like" list.
+- Facts:
+  - The ground is faceted (angular triangles over a cell grid), with 32-pixel textures projected from the world, crisp near the player.
+  - Materials: meadow grass, dry turf, moss, dirt, loam, clay, sand, gravel, stone, slate, layered sandstone, snow.
+  - Plateaus with sandstone cliffs, rolling hills.
+  - The sky has a real sun, moon and stars, thin high cloud streaks and soft low clouds.
+  - The owner feels it currently resembles another well-known game's low-texel realism, and wants walkgrid to be distinctly its own. The faceted ground is our signature.
+- Do: propose concrete levers:
+  - palette;
+  - facet emphasis and edges;
+  - light colour through the day;
+  - sky character;
+  - texture style.
+
+  Describe each in words. Never point at another game's assets.
+- Hand back: `look.md`.
+- Done when:
+  - 5–8 levers, each with what changes, where (ground, sky, textures, light) and its rough cost;
+  - a short "walkgrid should never look like" list.
 
 **R5. Graphics presets (S)**
-- Pack has: `settings.h`, `DESIGN.md` 4.8 and 23.6, `docs/COST_LEDGER.md`, `docs/FOUNDATIONS.md` section 4.
-- Do: propose LOW / MEDIUM / HIGH presets as a table of the existing settings (render distance, fine detail, sun shadows, SSAO, bloom, outlines, frame limit): one for the floor machine (8 GB RAM, 2 GB card), one for the reference (GTX 1060), one above. Use only settings that exist in `settings.h`.
-- Hand back: `incoming/grok/R5-presets/presets.md`, `REPORT.md`.
-- Done when: every setting named exists (cited), and each choice gives its reason from the cost ledger.
+- Facts, the graphics settings that exist:
+  - render distance, in chunks of 16 blocks;
+  - fine detail near the player, levels 0–4 (4 is the default, and doubles the ground triangles close by);
+  - sun shadows on/off;
+  - SSAO on/off (off by default);
+  - bloom on/off;
+  - outlines on/off;
+  - frame-rate cap 30–200;
+  - vsync on/off;
+  - field of view.
 
-**R6. Caves and terrain v3 (M)**
-- Pack has: `terrain.h`, `terrain.cpp`, `DESIGN.md` 23.2 and 23.7, `docs/FOUNDATIONS.md` sections 3–5.
-- Do: how caves and overhangs could be generated in a future terrain version:
-  - noise approaches;
-  - cost per column (it runs on a job thread);
-  - how the hidden-chunk walk (23.7) benefits;
-  - what the versioning rules require (old versions never change).
-- Hand back: `incoming/grok/R6-caves/caves.md`, `REPORT.md`.
-- Done when: 2–3 approaches are compared, and the versioning and seam requirements are addressed explicitly.
+  Budgets per frame:
+  - main thread 16.7 ms at the 60 fps floor;
+  - graphics card: world 5 ms, shadows 1.5 ms, post effects 1 ms.
 
-**R7. M2 options (S)**
-- Pack has: `docs/GOALS.md`, `docs/ROADMAP.md`, `docs/PROJECT_NOTES.md` section 9, and the scope sheet's rows as text (made from `docs/SCOPE_MOSCOW.xlsx`).
-- Do: propose 3–5 options for milestone M2. For each: what the player would get, the rough size, what it depends on, and what it risks.
-- Hand back: `incoming/grok/R7-m2/m2_options.md`, `REPORT.md`.
-- Done when: the options are distinct, each ties to a goal or scope row by its ID, and nothing contradicts a logged decision.
+  Measured on the reference PC (GTX 1060 3 GB) at 1080p, render distance 3: world 3.1 ms, shadows 0.2 ms, post effects 0.7 ms. The floor machine is 8 GB RAM and a 2 GB graphics card.
+- Do: propose LOW / MEDIUM / HIGH presets as a table of these settings: one for the floor machine, one for the reference, one above. Include a short rule for which preset to pick the first time the game runs, based only on video memory.
+- Hand back: `presets.md`.
+- Done when: only the settings above are used, and every choice gives its reason.
 
-### Text
+**R6. Caves (M)**
+- Facts:
+  - Terrain today is a height map: a pure function of (seed, x, z), made column by column (16 × 16 blocks, full height) on a background thread, at about 0.05 ms a column.
+  - Each version of the terrain is frozen forever (old worlds never change), so caves mean a new version.
+  - The renderer skips chunks the camera can't see into: it walks from the camera's chunk through the openings between chunks, and a chunk that is solid all through blocks the walk.
+  - The ground mesh is built per 16³ chunk.
+- Do: compare 2–3 ways to generate caves and overhangs. Cover:
+  - the noise approach;
+  - cost per column;
+  - how caves interact with the chunk-skipping walk;
+  - what versioning requires.
+- Hand back: `caves.md`.
+- Done when: the approaches are compared on the same points, with a recommendation.
 
-**T1. A second language (M): owner picks the language**
-- Pack has: `assets/text/en.txt`, `strtable.h` (for the format rules). The owner types the language under the pack when pasting (for example `Language: French`).
-- Do: translate every text. Keep every key, and every `{0}`/`{1}` slot exactly. Keep words few and plain, capitals where the language has them, `\n` where English has it. Leave `window.title` and `title.name` as the game's name.
-- Hand back: `incoming/grok/T1-<language code>/<language code>.txt` (e.g. `fr.txt`), `REPORT.md`.
-- Done when: the file has exactly the same keys as `en.txt`, in the same order, and slots match line by line.
-- Extra self-check (put it in the report): the key count in each file, and every line whose slots differ (should be none).
+**R7. Next milestone options (S)**
+- Facts:
+  - Built (milestone M1, the prototype):
+    - faceted ground with 12 materials;
+    - walking, digging and building on facets;
+    - terrain with hills and sandstone mesas;
+    - sun, moon, stars and eclipses;
+    - two cloud layers and a changing jet stream;
+    - shadows that glide;
+    - synthesized music following the day, and footsteps per material;
+    - saves;
+    - text ready for translation;
+    - a profiler.
+  - Not yet: anything to do, own, make or find beyond placing blocks; weather; caves; props and building pieces (designed, not built); plants.
+- Do: propose 3–5 options for milestone M2. For each:
+  - what the player gets;
+  - rough size;
+  - what it depends on;
+  - what it risks.
+
+  Keep them distinct.
+- Hand back: `m2_options.md`.
+- Done when: each option says why it makes the game more fun to play, not only bigger.
+
+### Text (these carry the player's words, `en.txt`)
+
+**T1. A second language (M): the owner picks it**
+- Facts: the pack carries `en.txt`, one `key = text` per line; `#` starts a comment; `{0}` and `{1}` are slots filled by the game; `\n` is a line break. The owner writes the language under the pack when pasting (for example `Language: French`).
+- Do:
+  - Translate every text.
+  - Keep every key, in the same order, and every slot exactly.
+  - Keep words few and plain, capitals where the language has them, and `\n` where English has it.
+  - Leave `window.title` and `title.name` as the game's name.
+- Hand back: `<language code>.txt` (for example `fr.txt`).
+- Done when: the same keys as `en.txt`, in the same order, and slots matching line by line. Give the key count in the report.
 
 **T2. English proofread (S)**
-- Pack has: `assets/text/en.txt`, the "Minimal text" rule from `CLAUDE.md`.
-- Do: find wording that is inconsistent (the same thing named two ways), longer than needed, unclear, or that shows a number where a feel would do. Don't edit the file.
-- Hand back: `incoming/grok/T2-proofread/proofread.md` (a table: key, current text, suggested text, reason), `REPORT.md`.
-- Done when: every suggestion keeps the key and its slots, and each has a reason.
+- Facts: the pack carries `en.txt` (format as in T1). The rule: show, don't tell; few, plain words; no numbers where a feel will do.
+- Do: find wording that is inconsistent (the same thing named two ways), longer than needed, unclear, or showing a number where a feel would do. Don't rewrite the file.
+- Hand back: `proofread.md`, a table: key, current text, suggested text, reason.
+- Done when: every suggestion keeps the key and its slots, and has a reason.
 
-### Tests (C++, for code with no graphics; Claude compiles and runs them)
+### Code from a spec (Claude compiles, tests and wires it in)
 
-Test style: tests live in `tests/tests.cpp` as `static void TestSomething()` functions, called from `main()` at the bottom. They use `CHECK(condition)` and print a short summary with `printf`. Every test pack carries the first 60 lines of `tests/tests.cpp` (the includes and the `CHECK` macro) and its `main`, so the agent copies the style.
-
-**X1. Sky edge cases (S)**
-- Pack has: `sky.h`, the two test excerpts.
-- Do: a new `static void TestSkyEdges()`. Check:
-  - `DiscCover`: symmetric in a sense you can justify; 0 when apart; continuous as discs slide past (check small steps change it by small amounts);
-  - `moonLit`: near 0 at some time in days 0–7 and near 1 at another;
-  - `JetStreamAngle`: continuous across whole-day boundaries;
-  - `ComputeAtmosphere` during a total solar eclipse (find one by scanning `ComputeSky` over days 0–400): direct sunlight close to 0.
-- Hand back: `incoming/grok/X1-sky-tests/TestSkyEdges.cpp` (just the function), `EDITS.md` (one edit adding the call to `main`), `REPORT.md`.
-- Done when: every function and field used exists in `sky.h` (cited), and every loop is bounded (under a second of work in total).
-
-**X2. String table edge cases (S)**
-- Pack has: `strtable.h`, `strtable.cpp`, the two test excerpts.
-- Do: `static void TestStringsEdges()`. Cover:
-  - a key defined twice (the later wins);
-  - a line without `=`;
-  - a very long text;
-  - `{9}` with fewer arguments (stays literal);
-  - invalid UTF-8 mid-line (`DecodeUtf8` gives U+FFFD and moves on);
-  - `WideToUtf8(Utf8ToWide(s)) == s` for a few strings with accents.
-
-  Restore the table with `SetStrings({})` at the end.
-- Hand back: `incoming/grok/X2-string-tests/TestStringsEdges.cpp`, `EDITS.md`, `REPORT.md`.
-- Done when: as for X1.
-
-**X3. Chunk openings shapes (S)**
-- Pack has: `facetmesh.h` (the `FacetOpenings` and `FacetPairBit` parts are at the end), the two test excerpts, and the existing `TestHiddenChunks` function (it shows how a test grid is built).
-- Do: `static void TestOpeningsShapes()` with an L-shaped tunnel, a vertical shaft, a sealed pocket in the middle, and a thin wall splitting the cube. Assert the expected face pairs.
-- Hand back: `incoming/grok/X3-openings-tests/TestOpeningsShapes.cpp`, `EDITS.md`, `REPORT.md`.
-- Done when: each shape's expected pairs are explained in a comment (which faces see which, and why).
-
-### Small tools (Python, standalone; they never change game files)
-
-**P1. Save file reader, `tools/dump_save.py` (S)**
-- Pack has: `worldfile.h`, `worldfile.cpp` (the layout is in its header comment; the decode function is exact), `savegame.cpp` (the `DAY1` tag).
-- Do: a read-only script. `python3 tools/dump_save.py slot1.sav` prints:
-  - version, player position, time of day, day count;
-  - generator name, version and seed;
-  - the block names table;
-  - chunk count, and edited cells per material;
+**P1. Save file reader, `dump_save.py` (S)**
+- Facts, the save file layout (little-endian):
+  - `u32` magic, the bytes `W G R D` in file order; `u32` version (1);
+  - player: `f32` x, y, z, yaw, pitch; `i32` hotbar slot; `f32` time of day (seconds, 0–3600);
+  - generator: `str` name, `u32` version, `u64` seed;
+  - `u32` name count, then that many `str` block names;
+  - `u32` chunk count, then per chunk:
+    - `i32` cx, cy, cz; `u8` flags (1 = has state, 2 = has data);
+    - blocks: runs of (`u16` length, `u16` name index) covering all 4096 cells;
+    - if flag 1: state as runs of (`u16` length, `u8` value) covering 4096 cells;
+    - if flag 2: `u16` count, then per entry (`u16` cell, `u32` length, bytes);
+  - `u32` update count, then per update: `i32` x, y, z; `u8` kind; `u32` delay;
+  - `u32` game-section length, then its bytes. When it starts with the 4 bytes `DAY1`, the next `u32` is the day count.
+  - Last: `u32` FNV-1a checksum (32-bit: start 2166136261, for each byte xor then multiply by 16777619) of every byte before it.
+  - `str` is a `u16` length then that many UTF-8 bytes. Cells run x fastest, then z, then y.
+- Do: a read-only Python 3 script, standard library only. `python3 dump_save.py slot1.sav` prints:
+  - the version, player position and time of day, and the day count;
+  - the generator's name, version and seed;
+  - the block names;
+  - the chunk count, and how many cells of each block name the stored chunks hold;
   - whether the checksum matches.
 
-  Standard library only. It never writes.
-- Hand back: `incoming/grok/P1-dump-save/dump_save.py`, `REPORT.md`.
-- Done when: every field is read in the same order and width as `DecodeSave` reads it, and the report cites the lines matched.
+  A short or damaged file prints a clear message instead of a stack trace. It never writes anything.
+- Hand back: `dump_save.py`.
+- Done when: fields are read in exactly the order and sizes above, and every read checks there are enough bytes left.
 
-**P2. Docs checker, `tools/check_docs.py` (S)**
-- Pack has: the top of `tools/check_strings.py` (as a style example), and the list of the repository's files.
-- Do: a script that exits 1 and prints each problem when:
-  - a `D<number>` mentioned in any `.md`, `.cpp` or `.h` file has no row in `docs/DECISIONS.md`;
-  - a path in backticks in `DESIGN.md`, `docs/PROJECT_NOTES.md` or `docs/AGENT_TASKS.md` doesn't exist.
+**X1. Sky tests (S)**
+- Facts, the C++ you may call (header `sky.h`; everything is inline, with no side effects):
+  - `float DiscCover(float r1, float r2, float d)`: the fraction of disc 1 (radius r1) covered by disc 2 (radius r2) with centres d apart (radians on the sky); 0 when apart.
+  - `SkyState ComputeSky(float dayTime, uint32_t day)`: dayTime in seconds, 0–3600. Fields:
+    - `Vec3 sunDir`, `moonDir`;
+    - `float moonLit` (0 new .. 1 full);
+    - `float solarEclipse`, `lunarUmbra`, `lunarPenumbra` (0..1);
+    - `float daylight`, `sunLight`, `starsVisible`.
+  - `Atmosphere ComputeAtmosphere(const SkyState&)`: fields `Vec3 sunColor, moonColor, zenith, horizon, ambientUp, ambientDown` (`Vec3` has `x, y, z` floats) and `float exposure`.
+  - `float JetStreamAngle(double T)`: T in days (day + dayTime / 3600); radians.
+  - Constants: `SUN_DISC_RADIUS` 0.0283, `MOON_DISC_RADIUS` 0.0332.
+  - The test style:
+    ```cpp
+    static void TestSomething() {
+        CHECK(condition);   // counts a check; prints the line if it fails
+    }
+    ```
+    `<cmath>`, `<cstdio>`, `<vector>` and `<algorithm>` are included.
+- Do: `static void TestSkyEdges()`, which checks:
+  - DiscCover is 0 apart, 1 for a small disc inside a big one, and changes by small amounts for small steps of d;
+  - moonLit is near 0 at some time in days 0–7 and near 1 at another;
+  - JetStreamAngle is continuous across whole-day boundaries;
+  - during a total solar eclipse (find one by scanning days 0–400 in steps small enough, say 30 s, only near noon), `sunColor` is close to black.
 
-  Standard library only.
-- Hand back: `incoming/grok/P2-check-docs/check_docs.py`, `REPORT.md`.
-- Done when: it runs from any folder (paths relative to the script, as `check_strings.py` does), and it skips `reference/` and `incoming/`.
+  Keep the whole test under a second.
+- Hand back: `TestSkyEdges.cpp` (just the function).
+- Done when: it uses only the names above, and every loop is bounded.
 
-### Small features (edits to game code; Claude applies and tests them)
+**X2. Text table tests (S)**
+- Facts, the C++ you may call (header `strtable.h`):
+  - `void ParseStrings(const std::string& utf8, const std::string& fileName, std::unordered_map<std::string, std::string>& out, std::vector<std::string>& errors)`: parses `key = text` lines; a later key replaces an earlier one; `#` starts a comment; a bad line adds a message to `errors`.
+  - `void SetStrings(const std::unordered_map<std::string, std::string>& table)`: replaces the loaded table.
+  - `const std::string& Str(const char* key)`: the text, or the key itself if missing.
+  - `std::string StrF(const char* key, std::initializer_list<std::string> args)`: fills `{0}`, `{1}`...; a slot with no argument stays as written.
+  - `uint32_t DecodeUtf8(const std::string& s, size_t& i)`: reads one code point at `i` and advances; invalid bytes give 0xFFFD and advance by one.
+  - `std::wstring Utf8ToWide(const std::string&)`, `std::string WideToUtf8(const std::wstring&)`.
+  - Test style as in X1 (`CHECK(condition)` inside `static void TestSomething()`).
+- Do: `static void TestStringsEdges()`, which covers:
+  - a key defined twice;
+  - a line without `=`;
+  - a 10,000-character text;
+  - `{9}` with fewer arguments;
+  - invalid UTF-8 mid-line;
+  - that WideToUtf8(Utf8ToWide(s)) gives back s for three strings with accents.
 
-**F1. Budgets in the F3 overlay (M)**
-- Pack has: the F3 debug block from `hud.cpp`, `profiler.h`, `docs/FOUNDATIONS.md` section 4 and `docs/COST_LEDGER.md` (for the budgets).
-- Do: in the F3 overlay (the block between `// D26: debug text` and `// D26: end` in `hud.cpp`), add each row's budget beside AVG and WORST, and mark rows whose AVG is over budget with `!`. Budgets come from a small table in `hud.cpp`, one per `ProfSection`, taken from the ledger. Rows without a budget show `-`. It's debug text, so English is fine; keep it inside the markers.
-- Hand back: `incoming/grok/F1-f3-budgets/EDITS.md`, `REPORT.md`.
-- Done when: the `ProfSection` names match `profiler.h` exactly (cited), the table has one entry per section, and the change is only inside the debug block (plus the table just above it).
-
-**F2. Key-binding conflicts (S)**
-- Pack has: from `hud.cpp`, the `drawRowButton` helper and the Keybindings screen (it draws around `g_rebindingAction`); the Keybindings part of `game_internal.h`; `settings.h`.
-- Do: in the Keybindings menu, draw a row whose input is also bound to another action in a warning colour (and that other row too). Colour only: no new words.
-- Hand back: `incoming/grok/F2-key-conflicts/EDITS.md`, `REPORT.md`.
-- Done when: it uses `g_keyBindings` and `ACT_COUNT` as declared in `settings.h`, costs nothing outside the Keybindings screen, and leaves every other screen untouched.
-
-### Reviews (read and report; never fix)
-
-For each: read the excerpts and list suspected bugs, edge cases and risks, most serious first. Each item gives the file, function and line text (quoted), what could go wrong, and a concrete scenario. Say how sure you are. Findings only: no fixes.
-
-**V1. The sky clocks (S).** Pack has: `sky.h`. Hand back: `incoming/grok/V1-review-sky/review.md`, `REPORT.md`.
-**V2. The shadow crossfade (S).** Pack has: from `render.cpp`, the shadow state around `ShadowFade`, the function `UpdateShadowMap`, and the world shader's `ShadowLit` and where it's used. Hand back: `incoming/grok/V2-review-shadows/review.md`, `REPORT.md`.
-**V3. Terrain v2 (S).** Pack has: `terrain.h`, `terrain.cpp`. Focus: v1's output must be unchanged byte for byte by the v2 code paths. Hand back: `incoming/grok/V3-review-terrain/review.md`, `REPORT.md`.
-**V4. Saving the day count and the game folder (S).** Pack has: `savegame.cpp`, `gamefiles.h`, `gamefiles.cpp`. Hand back: `incoming/grok/V4-review-files/review.md`, `REPORT.md`.
+  End with `SetStrings({})`.
+- Hand back: `TestStringsEdges.cpp`.
+- Done when: it uses only the names above.
 
 ---
 
 ## Off limits, even when asked
 
-Threads (`jobs.*`, audio threads), the renderer's structure (passes, resources), the save format (`worldfile.*`), changing an existing terrain version's output, sound recipes and music (`sfx_synth.cpp`, `music_synth.cpp`), editing or reversing anything in `docs/DECISIONS.md`, and anything in `reference/`.
+Anything needing whole source files; threads; the renderer's structure; the save format itself; changing an existing terrain version's output; sound recipes and music; editing or reversing anything in `docs/DECISIONS.md`; anything in `reference/`.
 
 ## What Claude does with a delivery
 
 At the next session, for each `incoming/grok/<task>.md` (or pasted answer):
-1. Split it into its files by the `=== FILE:` lines. Read `REPORT.md`, especially "Needed but not given" and the confidence.
-2. Apply `EDITS.md` mechanically: every Find must match exactly once, or the edit is rejected.
-3. Run all the checks.
-4. Review against the task's "Done when".
-5. Merge into the main branch with the owner's OK, or send it back with notes.
-
-Research notes feed the next plan the owner approves.
+1. Split it into its files by the `=== FILE:` lines. Read the report, especially the assumptions.
+2. Check every fact and assumption against the real code.
+3. For code: put it in place, wire it in (a test's call in `main`, a tool in `tools/`), and run all the checks.
+4. Research notes feed the next plan the owner approves.
+5. Merge with the owner's OK, or send it back with notes.
 
 ## Log
 
 | Date | Task | Result (delivered / reviewed / merged / sent back) |
 |---|---|---|
-| | | |
+| 2026-09-26 | R1 | Stopped. The owner pasted R1's three parts correctly, as a first chat; the agent still quoted R2's inputs, which no R1 pack ever contained (checked in every commit), and the Brief then told it to stop when something was missing. Rewritten: one self-contained paste per task, facts in plain words, assume and label instead of stopping, private chats. |

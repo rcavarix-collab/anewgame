@@ -147,7 +147,7 @@ These are the places where content goes in as data or small, local code. Each ne
 
 **Heavy work for Claude sessions** (structure, engine, anything risky): weather as a system (see below), caves and a terrain v3 if wanted, the M2 plan with the owner, anything in shaders or threads, and anything touching the save format.
 
-**The full helper-agent list is `docs/AGENT_TASKS.md`** (20 tasks with sizes, rules, what's off limits, and a report template). Each task has a ready-to-paste pack in `docs/agent_packs/`, made by `tools/make_agent_packs.py`: the owner pastes one text, attaches nothing. A short version:
+**The full helper-agent list is `docs/AGENT_TASKS.md`** (12 tasks with sizes, rules, what's off limits, and a report template). Each task is one self-contained paste in `docs/agent_packs/`, made by `tools/make_agent_packs.py`: the facts the agent needs in plain words, a few lines of code only where a format matters, never whole files (owner). A short version:
 
 **Small tasks a helper agent could do** (each still needs the owner's OK, the checks, and a report that says what was and wasn't verified):
 1. **Translations:** a second language file (the owner picks the language), checked with `check_strings.py`.

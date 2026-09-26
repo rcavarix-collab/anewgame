@@ -36,7 +36,7 @@ Decided by what the debug views show: a longer baked sky view (16–24 blocks), 
 
 ## Ideas on the table (thrown at the wall, not scheduled)
 
-- **From the research overview (docs/research/OVERVIEW.md):** far terrain as a coarse clipmap-style ring drawn from the height function (the biggest unplanned look upgrade); constrained surface-net relaxation as the principled answer to terracing (W055), edited cells pinned; bent-normal ambient from the sky-view bake; Hosek–Wilkie as a colour reference for the sky and light.
+- **From the research overview (docs/research/OVERVIEW.md):** far terrain as a coarse clipmap-style ring drawn from the height function (the biggest unplanned look upgrade); constrained surface nets as the principled answer to terracing (W055, read in full: `docs/research/SURFACE_NETS.md`), best as the terrain's continuous height clamped into each cube, seam-safe with no iterations, edited cells pinned; bent-normal ambient from the sky-view bake; Hosek–Wilkie as a colour reference for the sky and light.
 
 - **East Asian text (W068):** the UI font atlas and text layout assume every character is one cell wide; Chinese, Japanese and Korean characters are two. A step gives wide characters double-width cells, in the atlas (`GenerateUIAtlas`) and in layout (`UIDrawText`, `UITextWidth`). Grok's T18–T21 translations wait on it. Scripts that need shaping (Devanagari, Thai, Arabic's right-to-left joining) need a shaping step beyond a glyph atlas: parked (W069). African languages (T26–T33): the Latin-script ones work now (the atlas takes any code point the font has); Yoruba's stacked tone marks need precomposed characters or combining-mark support; Amharic's Ethiopic script needs its font and may need wide cells like W068.
 

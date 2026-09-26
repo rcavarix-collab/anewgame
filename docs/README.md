@@ -5,6 +5,7 @@ Each document has one job. If you're looking for something, this says where it i
 | Document | Its one job | Updated when |
 |---|---|---|
 | `PROJECT_NOTES.md` | Everything in one place for a newcomer (owner, Claude or another agent): what walkgrid is, what's built, the code map, how to add things, what bit us, what's next | With every step that changes any of those |
+| `PLAN_LOOK.md` | The third play-test digested: causes found in the code, the look and sky plan (A–H), open questions, the parked building layer | When an item is built or the owner decides |
 | `AGENT_TASKS.md` | Work a helper agent can do between Claude sessions: rules, what's off limits, the task list, a report template, a log | When tasks are done or added, at each milestone |
 | `agent_packs/` | One ready-to-paste text per helper task (Brief and task, facts in plain words), made by `tools/make_agent_packs.py` | Rerun the tool whenever `AGENT_TASKS.md` changes; update a task's facts when its code changes |
 | `../CLAUDE.md` | How we work: the rules every session follows | Rarely; changes are logged in DECISIONS |
